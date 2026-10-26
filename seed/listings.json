@@ -1,0 +1,44 @@
+[
+  {
+    "id": "seed_miami",
+    "note": "Placeholder facts until hero footage lands. Not a real listing.",
+    "facts": {
+      "address": "Placeholder: Miami Beach, FL",
+      "city": "Miami",
+      "beds": 3,
+      "baths": 3.5,
+      "sqft": 2400,
+      "price": 4250000,
+      "currency": "USD",
+      "estimate_price": false
+    }
+  },
+  {
+    "id": "seed_los_angeles",
+    "note": "Placeholder facts until hero footage lands. Not a real listing.",
+    "facts": {
+      "address": "Placeholder: Malibu, CA",
+      "city": "Los Angeles",
+      "beds": 4,
+      "baths": 4.5,
+      "sqft": 4200,
+      "price": 9800000,
+      "currency": "USD",
+      "estimate_price": false
+    }
+  },
+  {
+    "id": "seed_london",
+    "note": "Placeholder facts until hero footage lands. Not a real listing.",
+    "facts": {
+      "address": "Placeholder: Mayfair, London",
+      "city": "London",
+      "beds": 3,
+      "baths": 2.5,
+      "sqft": 2150,
+      "price": 4850000,
+      "currency": "GBP",
+      "estimate_price": false
+    }
+  }
+]

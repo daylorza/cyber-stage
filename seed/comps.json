@@ -1,0 +1,20 @@
+{
+  "miami": [
+    {"label": "Demo comp A", "area": "Miami Beach", "beds": 3, "baths": 3, "sqft": 2250, "price": 3950000, "currency": "USD", "status": "Sold", "date": "2026-07"},
+    {"label": "Demo comp B", "area": "Miami Beach", "beds": 3, "baths": 3.5, "sqft": 2600, "price": 4700000, "currency": "USD", "status": "Sold", "date": "2026-08"},
+    {"label": "Demo comp C", "area": "Surfside", "beds": 2, "baths": 2.5, "sqft": 1900, "price": 3100000, "currency": "USD", "status": "Sold", "date": "2026-06"},
+    {"label": "Demo comp D", "area": "Bal Harbour", "beds": 4, "baths": 4.5, "sqft": 3100, "price": 5900000, "currency": "USD", "status": "Sold", "date": "2026-09"}
+  ],
+  "los-angeles": [
+    {"label": "Demo comp A", "area": "Malibu", "beds": 4, "baths": 4, "sqft": 3900, "price": 8900000, "currency": "USD", "status": "Sold", "date": "2026-07"},
+    {"label": "Demo comp B", "area": "Malibu", "beds": 5, "baths": 5.5, "sqft": 4800, "price": 11750000, "currency": "USD", "status": "Sold", "date": "2026-05"},
+    {"label": "Demo comp C", "area": "Pacific Palisades", "beds": 4, "baths": 4.5, "sqft": 4100, "price": 8200000, "currency": "USD", "status": "Sold", "date": "2026-08"},
+    {"label": "Demo comp D", "area": "Malibu", "beds": 3, "baths": 3.5, "sqft": 3200, "price": 7400000, "currency": "USD", "status": "Sold", "date": "2026-09"}
+  ],
+  "london": [
+    {"label": "Demo comp A", "area": "Mayfair", "beds": 3, "baths": 3, "sqft": 2050, "price": 4600000, "currency": "GBP", "status": "Sold", "date": "2026-07"},
+    {"label": "Demo comp B", "area": "Marylebone", "beds": 3, "baths": 2.5, "sqft": 2300, "price": 4250000, "currency": "GBP", "status": "Sold", "date": "2026-06"},
+    {"label": "Demo comp C", "area": "Knightsbridge", "beds": 2, "baths": 2, "sqft": 1700, "price": 3900000, "currency": "GBP", "status": "Sold", "date": "2026-08"},
+    {"label": "Demo comp D", "area": "Mayfair", "beds": 4, "baths": 3.5, "sqft": 2900, "price": 6800000, "currency": "GBP", "status": "Sold", "date": "2026-09"}
+  ]
+}

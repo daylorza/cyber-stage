@@ -1,0 +1,90 @@
+@import "tailwindcss";
+@import "@fontsource-variable/albert-sans";
+@import "@fontsource/newsreader/400.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+
+@theme {
+  --color-night: #0d0e10;
+  --color-smoke: #16181b;
+  --color-ivory: #ece5d8;
+  --color-champagne: #c9b38a;
+  --color-ice: #9be6ef;
+  --color-ash: #8c8a84;
+  --color-rose: #d7938a;
+
+  --font-sans: "Albert Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Newsreader", ui-serif, Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-night text-ivory font-sans antialiased;
+    background-image:
+      radial-gradient(60rem 40rem at 100% -10%, rgb(155 230 239 / 0.05), transparent 60%),
+      radial-gradient(50rem 40rem at -10% 110%, rgb(201 179 138 / 0.05), transparent 60%);
+    background-attachment: fixed;
+    min-height: 100dvh;
+  }
+  :focus-visible {
+    outline: 1px solid var(--color-ice);
+    outline-offset: 3px;
+  }
+  ::selection {
+    background: rgb(155 230 239 / 0.25);
+  }
+}
+
+@layer components {
+  .glass {
+    background: rgb(22 24 27 / 0.55);
+    backdrop-filter: blur(18px) saturate(120%);
+    box-shadow: inset 0 0 0 1px rgb(236 229 216 / 0.06);
+    border-radius: 1.25rem;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-ash);
+  }
+  .field {
+    @apply w-full rounded-xl bg-ivory/[0.04] px-4 py-3 text-ivory placeholder:text-ash/60 transition;
+    box-shadow: inset 0 0 0 1px rgb(236 229 216 / 0.04);
+  }
+  .field:focus {
+    outline: none;
+    box-shadow: inset 0 0 0 1px rgb(155 230 239 / 0.45);
+  }
+  .ice-dot {
+    @apply inline-block h-1.5 w-1.5 rounded-full bg-ice;
+    box-shadow: 0 0 10px rgb(155 230 239 / 0.7);
+  }
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm tracking-wide transition disabled:cursor-not-allowed disabled:opacity-35;
+}
+
+@utility btn-primary {
+  @apply btn bg-champagne text-night hover:bg-[#d6c29c];
+}
+
+@utility btn-glass {
+  @apply btn bg-ivory/[0.04] text-ivory hover:bg-ivory/[0.08];
+  box-shadow: inset 0 0 0 1px rgb(236 229 216 / 0.08);
+  backdrop-filter: blur(14px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
