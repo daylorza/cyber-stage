@@ -122,6 +122,8 @@ def test_video_over_length_limit_fails_job(client, walkthrough_video, monkeypatc
 def test_seeded_inventory(client):
     seeds = [item for item in client.get("/api/listings").json() if item["source"] == "seed"]
     assert sorted(item["city"] for item in seeds) == ["London", "Los Angeles", "Miami"]
+    assert sorted(item["title"] for item in seeds) == ["The Hillside Residence", "The Ocean Residence", "The Thames Residence"]
     london = client.get("/api/listings/seed_london").json()
+    assert london["copy"]["evidence"]["title"] == [{"kind": "fact", "ref": "name", "value": "The Thames Residence"}]
     assert london["comps"]["source"] == "demo"
     assert london["comps"]["suggested_range"]["currency"] == "GBP"

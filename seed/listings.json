@@ -3,6 +3,7 @@
     "id": "seed_miami",
     "note": "Placeholder facts until hero footage lands. Not a real listing.",
     "facts": {
+      "name": "The Ocean Residence",
       "address": "Placeholder: Miami Beach, FL",
       "city": "Miami",
       "beds": 3,
@@ -17,7 +18,8 @@
     "id": "seed_los_angeles",
     "note": "Placeholder facts until hero footage lands. Not a real listing.",
     "facts": {
-      "address": "Placeholder: Malibu, CA",
+      "name": "The Hillside Residence",
+      "address": "Placeholder: Hollywood Hills, CA",
       "city": "Los Angeles",
       "beds": 4,
       "baths": 4.5,
@@ -31,7 +33,8 @@
     "id": "seed_london",
     "note": "Placeholder facts until hero footage lands. Not a real listing.",
     "facts": {
-      "address": "Placeholder: Mayfair, London",
+      "name": "The Thames Residence",
+      "address": "Placeholder: South Bank, London",
       "city": "London",
       "beds": 3,
       "baths": 2.5,

@@ -15,6 +15,18 @@
   --font-sans: "Albert Sans Variable", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Newsreader", ui-serif, Georgia, serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --animate-fade-in: fade-in 0.9s ease-out both;
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
 @layer base {
@@ -64,6 +76,12 @@
     @apply inline-block h-1.5 w-1.5 rounded-full bg-ice;
     box-shadow: 0 0 10px rgb(155 230 239 / 0.7);
   }
+}
+
+@utility legible {
+  text-shadow:
+    0 1px 2px rgb(0 0 0 / 0.25),
+    0 0 28px rgb(0 0 0 / 0.35);
 }
 
 @utility btn {

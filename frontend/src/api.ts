@@ -97,6 +97,7 @@ export type ListingSummary = {
   source: "upload" | "seed";
   title: string;
   city: string | null;
+  facts: Facts;
   price_display: string | null;
   cover: string | null;
   rooms: number;

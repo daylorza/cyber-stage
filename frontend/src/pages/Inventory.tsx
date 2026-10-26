@@ -59,7 +59,7 @@ export default function Inventory() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-8">
         <div>
-          <h1 className="text-6xl font-[200] tracking-tight sm:text-8xl">Residences.</h1>
+          <h1 className="text-6xl font-[200] tracking-tight sm:text-8xl">Inventory.</h1>
           <p className="mt-5 max-w-md text-ash">
             Film the walkthrough, review the staged listing, publish when it's right.
           </p>

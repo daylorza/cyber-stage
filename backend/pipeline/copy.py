@@ -37,7 +37,9 @@ def write(listing: dict[str, Any]) -> dict[str, Any]:
     if f.get("sqft"):
         highlights.append({"text": f"{f['sqft']:,} sq ft", "evidence": [fact("sqft", f["sqft"])]})
 
-    if f.get("beds") and f.get("city"):
+    if f.get("name"):
+        title, evidence = f["name"], [fact("name", f["name"])]
+    elif f.get("beds") and f.get("city"):
         title = f"{_num(f['beds'])}-bedroom residence in {f['city']}"
         evidence = [fact("beds", f["beds"]), fact("city", f["city"])]
     elif f.get("city"):

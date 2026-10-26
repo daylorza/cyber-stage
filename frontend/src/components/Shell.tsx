@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { BRAND } from "../brand";
 
 const LINKS = [
-  { to: "/", label: "Inventory", end: true },
+  { to: "/", label: "Residences", end: true },
+  { to: "/inventory", label: "Inventory", end: false },
   { to: "/new", label: "New walkthrough", end: false },
 ];
 
@@ -55,7 +57,7 @@ export function Wordmark() {
   return (
     <Link to="/" className="eyebrow pointer-events-auto flex items-center gap-2.5 text-ivory/75! transition hover:text-ivory!">
       <span className="ice-dot" />
-      Walkthrough to Listing
+      {BRAND}
     </Link>
   );
 }

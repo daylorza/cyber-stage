@@ -36,15 +36,25 @@ def new_listing(listing_id: str, *, source: str, facts: dict[str, Any], uploads:
     }
 
 
+def _untouched_seed(listing: dict[str, Any]) -> bool:
+    return listing["status"] == "draft" and not listing["review"]["edited_fields"]
+
+
 def seed_inventory() -> None:
+    """Insert seeded hero listings; refresh ones the broker hasn't touched so seed edits show up."""
     entries = json.loads((config.settings.seed_dir / "listings.json").read_text())
-    with db.connect() as conn:
-        for entry in entries:
-            if db.listing_exists(conn, entry["id"]):
-                continue
-            listing = new_listing(entry["id"], source="seed", facts=entry["facts"], uploads=[], status="draft")
-            listing["note"] = entry.get("note")
-            db.insert_listing(conn, comps.attach(copy.write(listing)))
+    for entry in entries:
+        existing = db.get_listing(entry["id"])
+        if existing and not _untouched_seed(existing):
+            continue
+        listing = new_listing(entry["id"], source="seed", facts=entry["facts"], uploads=[], status="draft")
+        listing["note"] = entry.get("note")
+        listing = comps.attach(copy.write(listing))
+        if existing:
+            db.save_listing({**listing, "created_at": existing["created_at"]})
+        else:
+            with db.connect() as conn:
+                db.insert_listing(conn, listing)
 
 
 def summary(listing: dict[str, Any]) -> dict[str, Any]:
@@ -56,6 +66,7 @@ def summary(listing: dict[str, Any]) -> dict[str, Any]:
         "source": listing["source"],
         "title": listing.get("copy", {}).get("title", ""),
         "city": facts.get("city"),
+        "facts": {k: v for k, v in facts.items() if k != "estimate_price"},
         "price_display": copy.format_price(facts.get("price"), facts.get("currency")),
         "cover": rooms[0]["before"] if rooms else None,
         "rooms": len(rooms),
