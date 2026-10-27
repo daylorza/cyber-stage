@@ -30,17 +30,17 @@
     }
   },
   {
-    "id": "seed_london",
+    "id": "seed_new_york",
     "note": "Placeholder facts until hero footage lands. Not a real listing.",
     "facts": {
-      "name": "The Thames Residence",
-      "address": "Placeholder: South Bank, London",
-      "city": "London",
+      "name": "The Greenwich Penthouse",
+      "address": "Placeholder: Greenwich Village, New York",
+      "city": "New York",
       "beds": 3,
-      "baths": 2.5,
-      "sqft": 2150,
-      "price": 4850000,
-      "currency": "GBP",
+      "baths": null,
+      "sqft": 3850,
+      "price": 8450000,
+      "currency": "USD",
       "estimate_price": false
     }
   }

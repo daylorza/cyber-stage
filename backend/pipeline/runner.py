@@ -1,12 +1,20 @@
-"""Runs one listing job through the pipeline, reporting stage + progress for status polling."""
+"""Runs one listing job through the pipeline, reporting stage + progress for status polling.
+
+Stages write checklist items; the independent verifier runs last and reconciles
+them. Meta errors mark their stage's item failed but never fail the job;
+PipelineError (bad upload, over limit) still fails it.
+"""
 
 import logging
 import time
 from typing import Any, Callable
 
+import checklist
 import config
 import db
-from pipeline import PipelineError, comps, copy, frames, segment, stage
+import meta_client
+import verify
+from pipeline import PipelineError, classify, comps, copy, frames, privacy, segment, stage
 
 log = logging.getLogger("vre.pipeline")
 
@@ -14,18 +22,57 @@ Step = Callable[[dict[str, Any]], dict[str, Any]]
 
 STAGES: list[tuple[str, Step]] = [
     ("frames", frames.extract),
-    ("rooms", segment.group_rooms),
+    ("masks", segment.run),
+    ("privacy", privacy.run),
+    ("rooms", classify.run),
     ("staging", stage.stage_rooms),
     ("copy", copy.write),
     ("comps", comps.attach),
+    ("verify", verify.run),
 ]
 
 
-def run(job: dict[str, Any]) -> None:
+def _run_verify(job: dict[str, Any]) -> None:
     listing = db.get_listing(job["listing_id"])
     if listing is None:
         db.update_job(job["id"], status="failed", error="Listing no longer exists.")
         return
+    client = meta_client.get_client()
+    if hasattr(client, "reset_budget"):
+        client.reset_budget()
+    try:
+        db.update_job(job["id"], stage="verify", progress=50)
+        listing = verify.run(listing)
+    except Exception:
+        log.exception("verify job %s crashed", job["id"])
+        listing.update(status="draft", error="Verification stopped unexpectedly.")
+        db.save_listing(listing)
+        db.update_job(job["id"], status="failed", error="Verification stopped unexpectedly.")
+        return
+    if listing["review"]["decision"] == "rejected":
+        listing["status"] = "rejected"
+    else:
+        listing["status"] = "draft"
+        if listing["review"]["decision"] == "approved":
+            listing["review"].update(decision=None, decided_at=None)
+    db.save_listing(listing)
+    db.update_job(job["id"], status="done", stage="ready", progress=100)
+
+
+def run(job: dict[str, Any]) -> None:
+    if job.get("kind") == "verify":
+        _run_verify(job)
+        return
+    listing = db.get_listing(job["listing_id"])
+    if listing is None:
+        db.update_job(job["id"], status="failed", error="Listing no longer exists.")
+        return
+    listing["checklist"] = checklist.new_checklist()
+    listing["trace"] = []
+    db.save_listing(listing)
+    client = meta_client.get_client()
+    if hasattr(client, "reset_budget"):
+        client.reset_budget()
     name = "start"
     try:
         for index, (name, step) in enumerate(STAGES):

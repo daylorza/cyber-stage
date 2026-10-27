@@ -24,7 +24,7 @@ export const RESIDENCES: Residence[] = [
     id: "seed_miami",
     city: "Miami",
     collection: "Private collection",
-    hero: "/residences/miami.jpg",
+    hero: "/residences/miami.png",
     plan: {
       outline: "M10 12 H112 Q184 34 190 128 H10 Z",
       rooms: [
@@ -43,7 +43,7 @@ export const RESIDENCES: Residence[] = [
     id: "seed_los_angeles",
     city: "Los Angeles",
     collection: "Private collection",
-    hero: "/residences/los-angeles.jpg",
+    hero: "/residences/los-angeles.png",
     plan: {
       outline: "M10 20 H190 V120 H10 Z",
       rooms: [
@@ -59,22 +59,22 @@ export const RESIDENCES: Residence[] = [
     },
   },
   {
-    id: "seed_london",
-    city: "London",
+    id: "seed_new_york",
+    city: "New York",
     collection: "Private collection",
-    hero: "/residences/london.jpg",
+    hero: "/residences/new-york.png",
     plan: {
-      outline: "M10 12 H190 V118 H10 Z",
+      outline: "M10 14 H190 V126 H10 Z",
       rooms: [
-        { id: "salon", label: "Salon", d: "M10 12 H130 V82 H10 Z" },
-        { id: "primary", label: "Primary suite", d: "M130 12 H190 V70 H130 Z" },
-        { id: "library", d: "M130 70 H190 V118 H130 Z" },
-        { id: "terrace", label: "River terrace", d: "M10 82 H130 V118 H10 Z" },
+        { id: "living", label: "Living room", d: "M10 14 H128 V92 H10 Z" },
+        { id: "primary", label: "Primary suite", d: "M128 14 H190 V78 H128 Z" },
+        { id: "dining", d: "M128 78 H190 V126 H128 Z" },
+        { id: "terrace", label: "Terrace", d: "M10 92 H128 V126 H10 Z" },
       ],
-      details: ["M28 82 A8 8 0 0 1 44 82", "M62 82 A8 8 0 0 1 78 82", "M96 82 A8 8 0 0 1 112 82"],
-      current: "salon",
-      position: [66, 44],
-      facing: 160,
+      details: ["M16 19 H122"],
+      current: "living",
+      position: [62, 66],
+      facing: 8,
     },
   },
 ];

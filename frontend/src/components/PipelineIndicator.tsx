@@ -2,10 +2,13 @@ import type { Job } from "../api";
 
 const STAGES = [
   { id: "frames", label: "Frames", detail: "Sampling the walkthrough" },
-  { id: "rooms", label: "Rooms", detail: "Finding each space" },
+  { id: "masks", label: "Masks", detail: "SAM 3.1 finding faces, photos, windows" },
+  { id: "privacy", label: "Privacy", detail: "Blurring faces and personal items" },
+  { id: "rooms", label: "Rooms", detail: "Wonder classifying each space" },
   { id: "staging", label: "Staging", detail: "Furnishing each room" },
-  { id: "copy", label: "Copy", detail: "Writing from what was seen" },
+  { id: "copy", label: "Copy", detail: "Spark writing from evidence" },
   { id: "comps", label: "Comps", detail: "Pricing against comparables" },
+  { id: "verify", label: "Verify", detail: "Independent checks" },
   { id: "ready", label: "Ready", detail: "Waiting for broker review" },
 ];
 
@@ -48,7 +51,7 @@ export default function PipelineIndicator({ job }: { job: Job | null }) {
         <p className="mt-3 text-lg font-light text-ivory/85">{floor ? floor.label : "Queued"}</p>
         <p className="text-sm text-ash">{floor ? floor.detail : "Waiting for a worker"}</p>
       </div>
-      <ol aria-label="Processing stages" className="flex flex-col-reverse gap-3.5 sm:justify-self-end">
+      <ol aria-label="Processing stages" className="flex flex-col-reverse gap-3 sm:justify-self-end">
         {STAGES.map((s, i) => {
           const state = stateOf(i);
           return (

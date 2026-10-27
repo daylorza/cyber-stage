@@ -34,6 +34,16 @@ class Settings:
         """Derived, publishable media only (frames, staged images). Raw uploads are never served."""
         return self.data_dir / "media"
 
+    @property
+    def raw_frames_dir(self) -> Path:
+        """Raw extracted frames. Never publishable: deliberately outside media_dir."""
+        return self.data_dir / "frames_raw"
+
+    @property
+    def staged_raw_dir(self) -> Path:
+        """Staged images before the staged-faces check clears them. Never served."""
+        return self.data_dir / "staged_raw"
+
 
 settings = Settings()
 
@@ -42,6 +52,7 @@ def configure(**overrides) -> Settings:
     """Rebuild settings from environment defaults plus explicit overrides, and create data dirs."""
     global settings
     settings = Settings(**overrides)
-    for path in (settings.data_dir, settings.uploads_dir, settings.media_dir):
+    for path in (settings.data_dir, settings.uploads_dir, settings.media_dir,
+                 settings.raw_frames_dir, settings.staged_raw_dir):
         path.mkdir(parents=True, exist_ok=True)
     return settings
