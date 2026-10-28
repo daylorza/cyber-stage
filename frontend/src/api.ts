@@ -1,15 +1,80 @@
-export type Evidence = { kind: "fact" | "broker" | "visual"; ref: string; value?: unknown };
-export type Claim = { text: string; evidence: Evidence[] };
+export type Evidence =
+  | { kind: "fact"; ref: string; value: unknown }
+  | { kind: "visual"; ref: string; frame: string; room_id: string; text: string; t: number | null }
+  | { kind: "broker"; ref: string }
+  | { kind: "unknown"; ref: string };
+export type Claim = { id?: string; text: string; evidence: Evidence[] };
+
+export type Box = { concept: string; box: [number, number, number, number]; score: number | null };
+
+export type Frame = {
+  id: string;
+  raw: string | null;
+  path: string | null;
+  t: number | null;
+  upload: number;
+  width: number | null;
+  height: number | null;
+  sharpness: number | null;
+  sam: { privacy: Box[]; structure: Box[] } | null;
+  wonder: {
+    room_key: string;
+    room_type: string;
+    usable: boolean;
+    coverage: number;
+    observations: { id: string; text: string }[];
+    condition: string;
+  } | null;
+  blur: { regions: number } | null;
+};
 
 export type Room = {
   id: string;
   name: string;
   type: string;
-  source_frame: string;
-  before: string;
+  source_frame: string | null;
+  before: string | null;
   after: string | null;
   style: string | null;
+  frames: string[];
+  hero_reason: string;
+  staging: { model: string | null; prompt: string; style: string; error: string | null } | null;
   rejected: boolean;
+};
+
+export type ChecklistStatus = "open" | "generated" | "failed" | "done" | "flagged";
+export type ChecklistItem = { id: string; label: string; status: ChecklistStatus; detail: string; updated_at: string };
+export type Checklist = { created_at: string; items: ChecklistItem[] };
+
+export type Check = {
+  id: string;
+  item: string;
+  kind: "code" | "meta";
+  target: Record<string, unknown>;
+  status: "pass" | "fail" | "unclear";
+  reason: string;
+  model: string | null;
+};
+export type Flag = { id: string; item: string; target: Record<string, unknown>; message: string; resolution: string };
+export type Verification = { ran_at: string; passed: boolean; checks: Check[]; flags: Flag[] };
+
+export type TraceEntry = {
+  id: string;
+  model: string;
+  purpose: string;
+  target: Record<string, unknown>;
+  at: string;
+  ms: number;
+  ok: boolean;
+  error: string | null;
+  cached: boolean;
+  summary: string;
+};
+
+export type MetaStatus = {
+  configured: boolean;
+  base_url: string | null;
+  models: { spark: string; wonder: string; image: string; sam: string };
 };
 
 export type Facts = {
@@ -45,13 +110,16 @@ export type Comps = {
 export type Copy = {
   title: string;
   description: string;
+  sentences: Claim[];
   highlights: Claim[];
   evidence: Record<string, Evidence[]>;
+  generator: { model: string | null; note: string };
 };
 
 export type Job = {
   id: string;
   listing_id: string;
+  kind: "listing" | "verify";
   status: "queued" | "running" | "done" | "failed";
   stage: string | null;
   progress: number;
@@ -71,6 +139,7 @@ export type PublishedPage = {
   comps: Comps;
   approved_at: string;
   published_at: string;
+  verification: { passed: boolean; ran_at: string; checks: number };
 };
 
 export type Listing = {
@@ -79,8 +148,12 @@ export type Listing = {
   status: ListingStatus;
   facts: Facts;
   uploads: { name: string; kind: "video" | "photo" }[];
-  frames: string[];
+  frames: Frame[];
   rooms: Room[];
+  style: string;
+  checklist: Checklist;
+  verification: Verification | null;
+  trace: TraceEntry[];
   copy?: Copy;
   comps?: Comps;
   review: { decision: "approved" | "rejected" | null; decided_at: string | null; notes: string; edited_fields: string[] };
@@ -152,6 +225,9 @@ export const api = {
   review: (id: string, body: ReviewBody) => request<Listing>(`/listings/${id}/review`, json(body)),
   publish: (id: string) => request<Listing>(`/listings/${id}/publish`, { method: "POST" }),
   page: (id: string) => request<PublishedPage>(`/listings/${id}/page`),
+  metaStatus: () => request<MetaStatus>("/meta/status"),
+  reprocess: (id: string) => request<{ listing_id: string; job_id: string }>(`/listings/${id}/reprocess`, { method: "POST" }),
+  verify: (id: string) => request<{ listing_id: string; job_id: string }>(`/listings/${id}/verify`, { method: "POST" }),
 };
 
 export const media = (path: string) => `/api/media/${path}`;
@@ -170,6 +246,15 @@ export function factLine(f: Facts): string {
   ]
     .filter(Boolean)
     .join("  ·  ");
+}
+
+export function clock(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+export function shortTime(iso: string | null | undefined): string {
+  return iso ? new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "";
 }
 
 export function shortDate(iso: string | null | undefined): string {

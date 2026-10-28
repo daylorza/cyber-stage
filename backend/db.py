@@ -105,6 +105,11 @@ def list_listings() -> list[dict[str, Any]]:
     return [json.loads(r["data"]) for r in rows]
 
 
+def delete_listing(listing_id: str) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM listings WHERE id = ?", (listing_id,))
+
+
 def listing_exists(conn: sqlite3.Connection, listing_id: str) -> bool:
     return conn.execute("SELECT 1 FROM listings WHERE id = ?", (listing_id,)).fetchone() is not None
 

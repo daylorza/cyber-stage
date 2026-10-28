@@ -25,10 +25,17 @@ backend/    FastAPI, SQLite jobs table, async pipeline worker
   pipeline/          frames, rooms, staging, copy, comps
   comps_adapter.py   seeded demo comps behind an adapter interface
 frontend/   React + Vite + Tailwind
-seed/       hero listings (Miami, Los Angeles, London) and demo comps
+seed/       hero listings (Miami, Los Angeles, New York) and demo comps
 ```
 
 ## Status
 
 Stage 0: upload, job, status polling, broker review, publish, published page.
 Comps are seeded demo data and labeled as such; there is no live MLS feed.
+
+Stage 1: the pipeline calls the Meta Model API via `meta_client.py` — SAM 3.1
+privacy/structure masks, face/document blur into publishable frames (raw frames
+never served), Wonder room classification, Muse Image staging, Spark copy with
+per-claim evidence. A checklist is generated per job and an independent verifier
+(`backend/verify/`) re-checks everything with its own model calls; the broker
+console must clear every item before approve, and publish re-verifies.

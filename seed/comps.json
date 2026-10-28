@@ -11,10 +11,10 @@
     {"label": "Demo comp C", "area": "Beverly Crest", "beds": 4, "baths": 4.5, "sqft": 4100, "price": 8200000, "currency": "USD", "status": "Sold", "date": "2026-08"},
     {"label": "Demo comp D", "area": "Hollywood Hills", "beds": 3, "baths": 3.5, "sqft": 3200, "price": 7400000, "currency": "USD", "status": "Sold", "date": "2026-09"}
   ],
-  "london": [
-    {"label": "Demo comp A", "area": "Bankside", "beds": 3, "baths": 3, "sqft": 2050, "price": 4600000, "currency": "GBP", "status": "Sold", "date": "2026-07"},
-    {"label": "Demo comp B", "area": "South Bank", "beds": 3, "baths": 2.5, "sqft": 2300, "price": 4250000, "currency": "GBP", "status": "Sold", "date": "2026-06"},
-    {"label": "Demo comp C", "area": "Blackfriars", "beds": 2, "baths": 2, "sqft": 1700, "price": 3900000, "currency": "GBP", "status": "Sold", "date": "2026-08"},
-    {"label": "Demo comp D", "area": "Bankside", "beds": 4, "baths": 3.5, "sqft": 2900, "price": 6800000, "currency": "GBP", "status": "Sold", "date": "2026-09"}
+  "new-york": [
+    {"label": "Demo comp A", "area": "Greenwich Village", "beds": 3, "baths": 3, "sqft": 3400, "price": 7600000, "currency": "USD", "status": "Sold", "date": "2026-07"},
+    {"label": "Demo comp B", "area": "West Village", "beds": 3, "baths": 3.5, "sqft": 3900, "price": 9100000, "currency": "USD", "status": "Sold", "date": "2026-06"},
+    {"label": "Demo comp C", "area": "Chelsea", "beds": 2, "baths": 2.5, "sqft": 2600, "price": 5450000, "currency": "USD", "status": "Sold", "date": "2026-08"},
+    {"label": "Demo comp D", "area": "NoMad", "beds": 4, "baths": 4.5, "sqft": 4300, "price": 9900000, "currency": "USD", "status": "Sold", "date": "2026-09"}
   ]
 }

@@ -1,9 +1,9 @@
-"""Stage 0 acceptance: upload -> job -> status polling -> broker review -> publish -> page."""
+"""Stage 0 acceptance, updated to Stage 1 shapes: upload -> job -> review -> publish -> page."""
 
 from dataclasses import replace
 
 import config
-from tests.conftest import PNG_1PX, wait_for_job
+from tests.conftest import make_photo, wait_for_job
 
 FACTS = {"address": "Test unit", "city": "Miami", "beds": "3", "baths": "2.5", "sqft": "2,400", "price": "4250000"}
 
@@ -11,6 +11,13 @@ FACTS = {"address": "Test unit", "city": "Miami", "beds": "3", "baths": "2.5", "
 def upload_video(client, video, **facts):
     with video.open("rb") as fh:
         res = client.post("/api/listings", data={**FACTS, **facts}, files=[("files", ("walk.mp4", fh, "video/mp4"))])
+    assert res.status_code == 202, res.text
+    return res.json()
+
+
+def upload_photos(client, count=2, **facts):
+    files = [("files", (f"shot{i}.png", make_photo(i + 1), "image/png")) for i in range(count)]
+    res = client.post("/api/listings", data={**FACTS, **facts}, files=files)
     assert res.status_code == 202, res.text
     return res.json()
 
@@ -24,10 +31,11 @@ def test_upload_to_published_page(client, walkthrough_video):
     listing = client.get(f"/api/listings/{ids['listing_id']}").json()
     assert listing["status"] == "draft"
     assert listing["facts"]["sqft"] == 2400 and listing["facts"]["beds"] == 3
+    frame_ids = {f["id"] for f in listing["frames"]}
     assert 1 <= len(listing["rooms"]) <= config.settings.max_rooms
     for room in listing["rooms"]:
-        assert room["before"] == room["source_frame"]
-        assert (config.settings.media_dir / room["source_frame"]).is_file()
+        assert room["source_frame"] in frame_ids
+        assert room["before"] and (config.settings.media_dir / room["before"]).is_file()
         assert client.get(f"/api/media/{room['before']}").status_code == 200
 
     for claim in listing["copy"]["highlights"]:
@@ -61,8 +69,8 @@ def test_upload_to_published_page(client, walkthrough_video):
 def test_photo_fallback(client):
     res = client.post(
         "/api/listings",
-        data={"city": "London", "estimate_price": "true", "price": "999", "sqft": "2150", "currency": "GBP"},
-        files=[("files", ("living.png", PNG_1PX, "image/png")), ("files", ("kitchen.png", PNG_1PX, "image/png"))],
+        data={"city": "New York", "estimate_price": "true", "price": "999", "sqft": "3850", "currency": "USD"},
+        files=[("files", ("living.png", make_photo(1), "image/png")), ("files", ("kitchen.png", make_photo(2), "image/png"))],
     )
     assert res.status_code == 202, res.text
     job = wait_for_job(client, res.json()["job_id"])
@@ -70,21 +78,21 @@ def test_photo_fallback(client):
     listing = client.get(f"/api/listings/{res.json()['listing_id']}").json()
     assert len(listing["rooms"]) == 2
     assert listing["facts"]["price"] is None
-    assert listing["comps"]["suggested_range"]["currency"] == "GBP"
+    assert listing["comps"]["suggested_range"]["currency"] == "USD"
 
 
 def test_broker_edits_clear_approval_and_reject_rooms(client):
-    res = client.post("/api/listings", data=FACTS, files=[("files", ("a.png", PNG_1PX, "image/png"))])
-    lid = res.json()["listing_id"]
-    wait_for_job(client, res.json()["job_id"])
+    ids = upload_photos(client, count=2)
+    lid = ids["listing_id"]
+    wait_for_job(client, ids["job_id"])
 
     client.post(f"/api/listings/{lid}/review", json={"action": "approve"})
     edit = {"title": "Edited title", "description": "Broker wrote this.", "highlights": ["3 bedrooms", "Ocean view"]}
     listing = client.post(f"/api/listings/{lid}/review", json={"action": "save", "copy_edit": edit,
-                                                               "rejected_rooms": ["room_1"]}).json()
+                                                             "rejected_rooms": ["room_2"]}).json()
     assert listing["status"] == "draft"
     assert listing["review"]["decision"] is None
-    assert listing["rooms"][0]["rejected"] is True
+    assert listing["rooms"][1]["rejected"] is True
     by_text = {h["text"]: h["evidence"] for h in listing["copy"]["highlights"]}
     assert by_text["3 bedrooms"][0]["kind"] == "fact"
     assert by_text["Ocean view"][0]["kind"] == "broker"
@@ -92,14 +100,14 @@ def test_broker_edits_clear_approval_and_reject_rooms(client):
 
     client.post(f"/api/listings/{lid}/review", json={"action": "approve"})
     page_rooms = client.post(f"/api/listings/{lid}/publish").json()["published"]["rooms"]
-    assert page_rooms == []
+    assert [r["id"] for r in page_rooms] == ["room_1"]
     assert client.post(f"/api/listings/{lid}/review", json={"action": "save"}).status_code == 409
 
 
 def test_reject_and_unknown_rooms(client):
-    res = client.post("/api/listings", data=FACTS, files=[("files", ("a.png", PNG_1PX, "image/png"))])
-    lid = res.json()["listing_id"]
-    wait_for_job(client, res.json()["job_id"])
+    ids = upload_photos(client, count=1)
+    lid = ids["listing_id"]
+    wait_for_job(client, ids["job_id"])
     assert client.post(f"/api/listings/{lid}/review", json={"action": "reject"}).json()["status"] == "rejected"
     bad = client.post(f"/api/listings/{lid}/review", json={"action": "save", "rejected_rooms": ["room_99"]})
     assert bad.status_code == 422
@@ -121,9 +129,25 @@ def test_video_over_length_limit_fails_job(client, walkthrough_video, monkeypatc
 
 def test_seeded_inventory(client):
     seeds = [item for item in client.get("/api/listings").json() if item["source"] == "seed"]
-    assert sorted(item["city"] for item in seeds) == ["London", "Los Angeles", "Miami"]
-    assert sorted(item["title"] for item in seeds) == ["The Hillside Residence", "The Ocean Residence", "The Thames Residence"]
-    london = client.get("/api/listings/seed_london").json()
-    assert london["copy"]["evidence"]["title"] == [{"kind": "fact", "ref": "name", "value": "The Thames Residence"}]
-    assert london["comps"]["source"] == "demo"
-    assert london["comps"]["suggested_range"]["currency"] == "GBP"
+    assert sorted(item["city"] for item in seeds) == ["Los Angeles", "Miami", "New York"]
+    assert sorted(item["title"] for item in seeds) == ["The Greenwich Penthouse", "The Hillside Residence", "The Ocean Residence"]
+    new_york = client.get("/api/listings/seed_new_york").json()
+    assert new_york["copy"]["evidence"]["title"] == [{"kind": "fact", "ref": "name", "value": "The Greenwich Penthouse"}]
+    assert new_york["comps"]["source"] == "demo"
+    assert new_york["comps"]["suggested_range"]["currency"] == "USD"
+    # Seeds are placeholders with no footage: checklist stays open, approval refused.
+    frames_item = next(i for i in new_york["checklist"]["items"] if i["id"] == "frames")
+    assert frames_item["status"] == "open" and frames_item["detail"] == "No walkthrough footage yet"
+    assert client.post("/api/listings/seed_new_york/review", json={"action": "approve"}).status_code == 409
+
+
+def test_seeds_dropped_from_seed_file_are_removed(client):
+    import db
+    import listings
+
+    stale = listings.new_listing("seed_retired", source="seed", facts={"city": "London"}, uploads=[], status="draft")
+    with db.connect() as conn:
+        db.insert_listing(conn, stale)
+    listings.seed_inventory()
+    assert db.get_listing("seed_retired") is None
+    assert db.get_listing("seed_new_york") is not None

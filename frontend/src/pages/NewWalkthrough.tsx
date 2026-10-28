@@ -3,7 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 
 const ACCEPT = "video/mp4,video/quicktime,video/x-m4v,video/webm,image/jpeg,image/png,image/webp";
-const CITIES = ["Miami", "Los Angeles", "London"];
+const CITIES = ["Miami", "Los Angeles", "New York"];
+const STYLES = [
+  { value: "modern-luxury", label: "Modern luxury" },
+  { value: "coastal", label: "Coastal" },
+  { value: "minimal", label: "Minimal" },
+];
 
 function Field({ label, children, className = "" }: { label: string; children: ReactNode; className?: string }) {
   return (
@@ -24,6 +29,7 @@ export default function NewWalkthrough() {
   const [files, setFiles] = useState<File[]>([]);
   const [dragging, setDragging] = useState(false);
   const [estimate, setEstimate] = useState(false);
+  const [style, setStyle] = useState("modern-luxury");
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState("");
 
@@ -41,6 +47,7 @@ export default function NewWalkthrough() {
     const form = new FormData(e.currentTarget);
     files.forEach((f) => form.append("files", f));
     form.set("estimate_price", String(estimate));
+    form.set("style", style);
     setError("");
     setProgress(0);
     try {
@@ -156,6 +163,23 @@ export default function NewWalkthrough() {
             <input type="checkbox" checked={estimate} onChange={(e) => setEstimate(e.target.checked)} className="h-4 w-4 accent-[#9be6ef]" />
             Estimate the price from comparable sales
           </label>
+
+          <fieldset>
+            <legend className="eyebrow mb-2">Staging style</legend>
+            <div className="glass flex w-fit gap-0.5 rounded-full! p-1 text-sm">
+              {STYLES.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  aria-pressed={style === s.value}
+                  onClick={() => setStyle(s.value)}
+                  className={`rounded-full px-4 py-1.5 transition ${style === s.value ? "bg-ivory/90 text-night" : "text-ivory/80 hover:text-ivory"}`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
 
           {error && (
             <p role="alert" className="text-sm text-rose">

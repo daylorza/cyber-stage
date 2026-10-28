@@ -14,6 +14,7 @@ from pydantic import BaseModel
 import config
 import db
 import listings
+import meta_client
 from jobs import Worker
 from pipeline import runner
 
@@ -55,7 +56,7 @@ def _listing_or_404(listing_id: str) -> dict[str, Any]:
     listing = db.get_listing(listing_id)
     if listing is None:
         raise HTTPException(404, "Listing not found.")
-    return listing
+    return listings.normalize(listing)
 
 
 def _review_call(fn, *args, **kwargs) -> dict[str, Any]:
@@ -70,6 +71,11 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@router.get("/meta/status")
+def meta_status() -> dict[str, Any]:
+    return meta_client.meta_status()
+
+
 @router.post("/listings", status_code=202)
 async def create_listing(
     files: list[UploadFile] = File(...),
@@ -81,10 +87,13 @@ async def create_listing(
     price: str = Form(""),
     currency: str = Form("USD"),
     estimate_price: bool = Form(False),
+    style: str = Form(listings.DEFAULT_STYLE),
 ) -> dict[str, str]:
     kinds = [_kind(f.filename or "") for f in files]
     if currency not in CURRENCIES:
         raise HTTPException(422, f"Currency must be one of {', '.join(sorted(CURRENCIES))}.")
+    if style not in listings.STYLES:
+        raise HTTPException(422, f"Style must be one of {', '.join(sorted(listings.STYLES))}.")
     facts = {
         "address": address.strip(),
         "city": city.strip(),
@@ -117,7 +126,8 @@ async def create_listing(
         shutil.rmtree(upload_dir, ignore_errors=True)
         raise
 
-    listing = listings.new_listing(listing_id, source="upload", facts=facts, uploads=uploads, job_id=job_id)
+    listing = listings.new_listing(listing_id, source="upload", facts=facts, uploads=uploads, job_id=job_id,
+                                   style=style)
     with db.connect() as conn:
         db.insert_listing(conn, listing)
         db.insert_job(conn, job_id, listing_id, "listing")
@@ -134,7 +144,7 @@ def get_job(job_id: str) -> dict[str, Any]:
 
 @router.get("/listings")
 def list_listings() -> list[dict[str, Any]]:
-    return [listings.summary(item) for item in db.list_listings()]
+    return [listings.summary(listings.normalize(item)) for item in db.list_listings()]
 
 
 @router.get("/listings/{listing_id}")
@@ -172,6 +182,41 @@ def review_listing(listing_id: str, body: ReviewBody) -> dict[str, Any]:
 @router.post("/listings/{listing_id}/publish")
 def publish_listing(listing_id: str) -> dict[str, Any]:
     return _review_call(listings.publish, _listing_or_404(listing_id))
+
+
+@router.post("/listings/{listing_id}/reprocess", status_code=202)
+def reprocess_listing(listing_id: str) -> dict[str, str]:
+    """Re-run the full pipeline from the stored uploads. Starts the listing over:
+    fresh checklist and trace, generated copy replaces broker edits."""
+    listing = _listing_or_404(listing_id)
+    if listing["source"] != "upload" or listing["status"] not in {"draft", "approved", "rejected", "failed"}:
+        raise HTTPException(409, "This listing can't be reprocessed right now.")
+    job_id = db.new_id("job")
+    listing["status"] = "processing"
+    listing["job_id"] = job_id
+    listing["verification"] = None
+    listing.pop("published", None)
+    listing["review"] = {"decision": None, "decided_at": None, "notes": "", "edited_fields": []}
+    db.save_listing(listing)
+    with db.connect() as conn:
+        db.insert_job(conn, job_id, listing_id, "listing")
+    return {"listing_id": listing_id, "job_id": job_id}
+
+
+@router.post("/listings/{listing_id}/verify", status_code=202)
+def verify_listing(listing_id: str) -> dict[str, str]:
+    """Re-run only the independent verifier with live Meta calls.
+    Preserves content, broker edits, and the existing checklist."""
+    listing = _listing_or_404(listing_id)
+    if listing["source"] != "upload" or listing["status"] not in {"draft", "approved", "rejected"}:
+        raise HTTPException(409, "This listing can't be verified right now.")
+    job_id = db.new_id("job")
+    listing["status"] = "processing"
+    listing["job_id"] = job_id
+    db.save_listing(listing)
+    with db.connect() as conn:
+        db.insert_job(conn, job_id, listing_id, "verify")
+    return {"listing_id": listing_id, "job_id": job_id}
 
 
 @router.get("/listings/{listing_id}/page")

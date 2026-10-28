@@ -21,7 +21,7 @@ export default function PublishedPage() {
       </div>
     );
 
-  const hero = page.rooms[0];
+  const heroSrc = page.rooms[0]?.after ?? page.rooms[0]?.before;
   const range = page.comps.suggested_range;
   const price =
     page.price_display ?? (range ? `Guide ${money(range.low, range.currency)} – ${money(range.high, range.currency)}` : null);
@@ -33,7 +33,7 @@ export default function PublishedPage() {
       </header>
 
       <section className="relative min-h-[88dvh] overflow-hidden">
-        {hero && <img src={media(hero.after ?? hero.before)} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+        {heroSrc && <img src={media(heroSrc)} alt="" className="absolute inset-0 h-full w-full object-cover" />}
         <div className="absolute inset-0 bg-gradient-to-t from-night via-night/55 to-night/10" />
         <div className="relative mx-auto flex min-h-[88dvh] max-w-7xl flex-col justify-end px-6 pb-16 sm:px-10">
           <p className="eyebrow text-ivory/70!">{page.facts.city}</p>
@@ -45,6 +45,12 @@ export default function PublishedPage() {
               <span className="ice-dot" />
               Broker approved {shortDate(page.approved_at)}
             </span>
+            {page.verification?.passed && (
+              <span className="eyebrow inline-flex items-center gap-2.5 text-ivory/80!">
+                <span className="ice-dot" />
+                Independently verified · {page.verification.checks} checks
+              </span>
+            )}
           </div>
         </div>
       </section>
