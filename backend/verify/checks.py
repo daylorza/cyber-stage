@@ -190,8 +190,13 @@ def _claim_code(text: str, evidences: list[dict[str, Any]], facts: dict[str, Any
             return "fail", f"Evidence '{ev.get('ref')}' could not be resolved."
     if attested:
         return "pass", "Broker attested."
-    cited = [e["value"] for e in evidences
-             if e.get("kind") == "fact" and isinstance(e.get("value"), (int, float))]
+    cited: list[float] = []
+    for e in evidences:
+        value = e.get("value") if e.get("kind") == "fact" else None
+        if isinstance(value, (int, float)):
+            cited.append(value)
+        elif isinstance(value, str):
+            cited.extend(numbers_in(value))
     has_visual = any(e.get("kind") == "visual" for e in evidences)
     unmatched = [
         n for n in numbers_in(text)
@@ -326,8 +331,10 @@ def _structure_check(ctx, room: dict[str, Any], src: Path, dst: Path) -> tuple[s
             compared += 1
             if not any(_iou(box, d) >= STRUCTURE_IOU for d in dst_norm):
                 problems.append(f"{concept} #{i} moved or removed")
-        if len(dst_norm) > len(src_norm) + STRUCTURE_EXTRA_ALLOWED:
-            problems.append(f"{len(dst_norm) - len(src_norm)} extra {concept}(s) added")
+        in_src = sum(not _cut_off(b) for b in src_norm)
+        in_dst = sum(not _cut_off(b) for b in dst_norm)
+        if in_dst > in_src + STRUCTURE_EXTRA_ALLOWED:
+            problems.append(f"{in_dst - in_src} extra {concept}(s) added")
     note = f" Not compared (cut off at the photo edge): {', '.join(skipped)}." if skipped else ""
     if problems:
         return "fail", f"Staging changed structure: {'; '.join(problems)}.{note}"

@@ -52,12 +52,21 @@ def test_only_edge_boxes_never_claims_preserved(tmp_path):
     assert reason == "No windows or doors fully in frame to compare. Not compared (cut off at the photo edge): door #1."
 
 
-def test_extra_doors_rule_still_counts_every_source_box(tmp_path):
+def test_extra_doors_rule_still_catches_added_in_frame_doors(tmp_path):
     status, reason = _run(tmp_path,
                           {"door": [EDGE_DOOR]},
                           {"door": [EDGE_DOOR, INNER_DOOR, [150, 50, 190, 120]]})
     assert status == "fail"
     assert "2 extra door(s) added" in reason
+
+
+def test_extra_doors_rule_ignores_cut_off_doors_on_both_sides(tmp_path):
+    # Like Bathroom 2: a newly detected door at the right edge plus a double door split in two.
+    status, reason = _run(tmp_path,
+                          {"door": [EDGE_DOOR, INNER_DOOR]},
+                          {"door": [EDGE_DOOR, INNER_DOOR, [45, 230, 69, 260], [182, 150, 200, 370]]})
+    assert status == "pass", reason
+    assert "extra" not in reason
 
 
 def test_no_edge_boxes_keeps_original_wording(tmp_path):
