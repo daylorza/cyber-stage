@@ -56,11 +56,13 @@ function Processing({ listing, job }: { listing: Listing; job: Job | null }) {
 function Review({
   listing,
   meta,
+  gates,
   onChange,
   reload,
 }: {
   listing: Listing;
   meta: MetaStatus | null;
+  gates: boolean;
   onChange: (l: Listing) => void;
   reload: () => void;
 }) {
@@ -95,7 +97,7 @@ function Review({
     (roomIssues(checks, room.id).some((c) => c.item === "staging_geometry") || !!room.staging?.error);
   const restageLevel = room?.staging?.level ?? 0;
   const open = openItems(listing);
-  const blocked = open.length > 0;
+  const blocked = open.length > 0 && gates;
   const descriptionClean = description.trim() === copy.description;
   const blockedHint = `Resolve first: ${open.map((i) => i.label).join(", ")}${dirty ? ". Save your edits to re-run the checks." : ""}`;
   const publishHint =
@@ -105,7 +107,7 @@ function Review({
         ? "Save your edits first"
         : blocked
           ? blockedHint
-          : !listing.verification?.passed
+          : gates && !listing.verification?.passed
             ? "Independent verification has not passed"
             : undefined;
 
@@ -165,12 +167,12 @@ function Review({
         <div className="space-y-10">
           <Header listing={listing} />
           {listing.source === "upload" ? (
-            <AttentionList listing={listing} onClaim={focusClaim} onRoom={pickRoom} />
+            <AttentionList listing={listing} blocking={gates} onClaim={focusClaim} onRoom={pickRoom} />
           ) : (
             <p className="max-w-md text-sm text-ash">Seeded placeholder. The pipeline has not run on footage, so publishing stays blocked.</p>
           )}
         </div>
-        <ChecklistPanel listing={listing} meta={meta} onRerun={reload} />
+        <ChecklistPanel listing={listing} meta={meta} blocking={gates} onRerun={reload} />
       </div>
 
       <div className="mt-12 grid gap-12 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
@@ -411,6 +413,7 @@ export default function ListingConsole() {
   const [listing, setListing] = useState<Listing | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [meta, setMeta] = useState<MetaStatus | null>(null);
+  const [blockingChecks, setBlockingChecks] = useState(true);
   const [error, setError] = useState("");
 
   const load = useCallback(
@@ -428,6 +431,7 @@ export default function ListingConsole() {
 
   useEffect(() => {
     api.metaStatus().then(setMeta).catch(() => setMeta(null));
+    api.settings().then((s) => setBlockingChecks(s.blocking_checks)).catch(() => setBlockingChecks(true));
   }, []);
 
   const jobId = listing?.status === "processing" ? listing.job?.id : undefined;
@@ -494,7 +498,7 @@ export default function ListingConsole() {
           </Link>
         </section>
       )}
-      {reviewing && <Review listing={listing} meta={meta} onChange={setListing} reload={() => load().catch((e: Error) => setError(e.message))} />}
+      {reviewing && <Review listing={listing} meta={meta} gates={blockingChecks || listing.source !== "upload"} onChange={setListing} reload={() => load().catch((e: Error) => setError(e.message))} />}
     </>
   );
 }

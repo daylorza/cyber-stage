@@ -151,7 +151,7 @@ export type PublishedPage = {
   comps: Comps;
   approved_at: string;
   published_at: string;
-  verification: { passed: boolean; ran_at: string; checks: number };
+  verification: { passed: boolean; ran_at: string; checks: number; open?: number };
 };
 
 export type Listing = {
@@ -168,7 +168,13 @@ export type Listing = {
   trace: TraceEntry[];
   copy?: Copy;
   comps?: Comps;
-  review: { decision: "approved" | "rejected" | null; decided_at: string | null; notes: string; edited_fields: string[] };
+  review: {
+    decision: "approved" | "rejected" | null;
+    decided_at: string | null;
+    notes: string;
+    edited_fields: string[];
+    open_checks?: string[];
+  };
   job: Job | null;
   error?: string;
   note?: string;
@@ -306,6 +312,7 @@ export const api = {
   publish: (id: string) => request<Listing>(`/listings/${id}/publish`, { method: "POST" }),
   page: (id: string) => request<PublishedPage>(`/listings/${id}/page`),
   metaStatus: () => request<MetaStatus>("/meta/status"),
+  settings: () => request<{ blocking_checks: boolean }>("/settings"),
   reprocess: (id: string) => request<{ listing_id: string; job_id: string }>(`/listings/${id}/reprocess`, { method: "POST" }),
   live: (id: string) => request<LivePayload>(`/listings/${id}/live`),
   prepareLive: (id: string, residence = "seed_miami") =>

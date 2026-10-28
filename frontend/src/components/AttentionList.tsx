@@ -13,10 +13,12 @@ export function uniqueFlags(flags: Flag[]): Flag[] {
 
 export default function AttentionList({
   listing,
+  blocking = true,
   onClaim,
   onRoom,
 }: {
   listing: Listing;
+  blocking?: boolean;
   onClaim: (claimId: string) => void;
   onRoom: (roomId: string) => void;
 }) {
@@ -27,6 +29,7 @@ export default function AttentionList({
     <section aria-labelledby="attention-heading" className="glass bg-rose/[0.05]! p-6">
       <h2 id="attention-heading" className="eyebrow text-rose!">
         Needs your attention · {flags.length}
+        {!blocking && <span className="text-ash!"> · warnings only, won't block Approve or Publish</span>}
       </h2>
       <ul className="mt-4 space-y-4">
         {flags.map((f) => {

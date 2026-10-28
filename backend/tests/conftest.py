@@ -32,10 +32,11 @@ def make_photo(seed: int, size: tuple[int, int] = (320, 180)) -> bytes:
 
 @pytest.fixture
 def client(tmp_path: Path, request):
-    knobs = getattr(request, "param", None) or {}
+    knobs = dict(getattr(request, "param", None) or {})
+    blocking = knobs.pop("blocking_checks", True)
     fake = FakeMeta(**knobs)
     meta_client.set_client(fake)
-    app = create_app(data_dir=tmp_path / "data", stage_delay=0)
+    app = create_app(data_dir=tmp_path / "data", stage_delay=0, blocking_checks=blocking)
     with TestClient(app) as c:
         c.fake_meta = fake
         yield c
@@ -45,7 +46,7 @@ def client(tmp_path: Path, request):
 @pytest.fixture
 def client_no_meta(tmp_path: Path):
     meta_client.set_client(meta_client.MetaClient(api_key=None))
-    app = create_app(data_dir=tmp_path / "data", stage_delay=0)
+    app = create_app(data_dir=tmp_path / "data", stage_delay=0, blocking_checks=True)
     with TestClient(app) as c:
         yield c
     meta_client.set_client(None)

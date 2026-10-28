@@ -79,6 +79,11 @@ def meta_status() -> dict[str, Any]:
     return meta_client.meta_status()
 
 
+@router.get("/settings")
+def app_settings() -> dict[str, Any]:
+    return {"blocking_checks": config.settings.blocking_checks}
+
+
 @router.post("/listings", status_code=202)
 async def create_listing(
     files: list[UploadFile] = File(...),

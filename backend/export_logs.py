@@ -12,6 +12,7 @@ import subprocess
 from datetime import datetime
 from typing import Any
 
+import checklist
 import config
 from pipeline.stage import STYLE_PRESETS
 
@@ -220,6 +221,8 @@ def _summary_line(listing: dict[str, Any]) -> str:
         return f"All checks passed · {verification.get('ran_at')}"
     if not open_items:
         return "Awaiting verification"
+    if not checklist.checks_block(listing):
+        return f"{len(open_items)} open · warnings only (demo mode, not blocking Approve/Publish)"
     return f"Publish blocked · {len(open_items)} open"
 
 
@@ -254,6 +257,9 @@ def _section_listing(listing: dict[str, Any], meta: dict[str, Any], lines: list[
         f"Review: decision={review.get('decision') or 'none'} · "
         f"decided_at={review.get('decided_at') or 'none'}"
     )
+    if review.get("open_checks"):
+        lines.append(f"Approved with open checks: {', '.join(review['open_checks'])}")
+    lines.append(f"Checks mode: {'blocking' if checklist.checks_block(listing) else 'warnings only (demo mode)'}")
     lines.append(f"Edited fields: {', '.join(review.get('edited_fields') or []) or 'none'}")
     lines.append(f"Broker notes: {review.get('notes') or 'none'}")
     lines.append(f"Style preset: {style} ({preset.get('label', 'unknown preset')})")

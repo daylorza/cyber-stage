@@ -184,11 +184,12 @@ def apply_review(listing: dict[str, Any], *, action: str, copy_edit: dict[str, A
         if not listing["copy"]["title"]:
             raise ReviewError(422, "Add a title before approving.")
         blocked = checklist.blocking(listing)
-        if blocked:
+        if blocked and checklist.checks_block(listing):
             labels = ", ".join(item["label"] for item in blocked)
             raise ReviewError(409, f"Resolve {len(blocked)} checklist items before approving: {labels}.")
         listing["status"] = "approved"
-        review.update(decision="approved", decided_at=db.now())
+        review.update(decision="approved", decided_at=db.now(),
+                      open_checks=[item["label"] for item in blocked])
     elif action == "reject":
         listing["status"] = "rejected"
         review.update(decision="rejected", decided_at=db.now())
@@ -204,14 +205,15 @@ def publish(listing: dict[str, Any]) -> dict[str, Any]:
     if listing["status"] != "approved":
         raise ReviewError(409, "Approve the listing before publishing.")
     blocked = checklist.blocking(listing)
-    if blocked:
-        labels = ", ".join(item["label"] for item in blocked)
-        raise ReviewError(409, f"Resolve {len(blocked)} checklist items before publishing: {labels}.")
     verification = listing.get("verification") or {}
-    if not verification.get("passed"):
-        flags = verification.get("flags", [])
-        detail = "; ".join(f["message"] for f in flags[:3]) or "verification did not pass"
-        raise ReviewError(409, f"Verification has open flags: {detail}")
+    if checklist.checks_block(listing):
+        if blocked:
+            labels = ", ".join(item["label"] for item in blocked)
+            raise ReviewError(409, f"Resolve {len(blocked)} checklist items before publishing: {labels}.")
+        if not verification.get("passed"):
+            flags = verification.get("flags", [])
+            detail = "; ".join(f["message"] for f in flags[:3]) or "verification did not pass"
+            raise ReviewError(409, f"Verification has open flags: {detail}")
     facts, listing_copy = listing["facts"], listing["copy"]
     published_at = db.now()
     listing["published"] = {
@@ -224,9 +226,10 @@ def publish(listing: dict[str, Any]) -> dict[str, Any]:
         "rooms": [r for r in listing["rooms"] if not r["rejected"]],
         "comps": listing["comps"],
         "verification": {
-            "passed": True,
-            "ran_at": verification["ran_at"],
+            "passed": bool(verification.get("passed")) and not blocked,
+            "ran_at": verification.get("ran_at"),
             "checks": len(verification.get("checks", [])),
+            "open": len(blocked),
         },
         "approved_at": listing["review"]["decided_at"],
         "published_at": published_at,
