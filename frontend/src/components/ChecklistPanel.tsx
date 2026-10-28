@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, shortTime, type Listing, type MetaStatus } from "../api";
+import { api, exportLogsUrl, shortTime, type Listing, type MetaStatus } from "../api";
 import { StatusDot, STATUS_TEXT, STATUS_WORD } from "./trust";
 
 export const openItems = (listing: Listing) => listing.checklist.items.filter((i) => i.status !== "done");
@@ -81,14 +81,21 @@ export default function ChecklistPanel({
         <p className="mt-5 text-xs text-ash">Meta Model API not configured. Meta steps can't run, so publishing stays blocked.</p>
       )}
 
-      {canAct && (
+      {!live && (
         <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-1">
-          <button type="button" disabled={!!busy} onClick={() => act("verify")} className="text-xs text-ash transition hover:text-ivory disabled:opacity-40">
-            {busy === "verify" ? "Starting checks" : "Re-run checks"}
-          </button>
-          <button type="button" disabled={!!busy} onClick={() => act("reprocess")} className="text-xs text-ash transition hover:text-ivory disabled:opacity-40">
-            {busy === "reprocess" ? "Starting" : "Reprocess walkthrough"}
-          </button>
+          {canAct && (
+            <>
+              <button type="button" disabled={!!busy} onClick={() => act("verify")} className="text-xs text-ash transition hover:text-ivory disabled:opacity-40">
+                {busy === "verify" ? "Starting checks" : "Re-run checks"}
+              </button>
+              <button type="button" disabled={!!busy} onClick={() => act("reprocess")} className="text-xs text-ash transition hover:text-ivory disabled:opacity-40">
+                {busy === "reprocess" ? "Starting" : "Reprocess walkthrough"}
+              </button>
+            </>
+          )}
+          <a href={exportLogsUrl(listing.id)} download className="text-xs text-ash transition hover:text-ivory">
+            Export logs
+          </a>
         </div>
       )}
       {error && (

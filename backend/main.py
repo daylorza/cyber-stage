@@ -3,16 +3,18 @@
 import re
 import shutil
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import config
 import db
+import export_logs
 import listings
 import meta_client
 from jobs import Worker
@@ -217,6 +219,26 @@ def verify_listing(listing_id: str) -> dict[str, str]:
     with db.connect() as conn:
         db.insert_job(conn, job_id, listing_id, "verify")
     return {"listing_id": listing_id, "job_id": job_id}
+
+
+@router.get("/listings/{listing_id}/export")
+def export_listing_logs(listing_id: str) -> Response:
+    """Download the full debug log for one listing as one text file. Read-only."""
+    listing = _listing_or_404(listing_id)
+    exported_at = datetime.now(UTC)
+    text = export_logs.render(
+        listing, db.list_jobs(listing_id),
+        meta=meta_client.meta_status(), commit=export_logs.app_commit(),
+        exported_at=exported_at,
+    )
+    return Response(
+        text,
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{export_logs.filename(listing_id, exported_at)}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @router.get("/listings/{listing_id}/page")

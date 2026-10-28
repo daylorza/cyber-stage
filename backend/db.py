@@ -129,6 +129,14 @@ def get_job(job_id: str) -> dict[str, Any] | None:
     return dict(row) if row else None
 
 
+def list_jobs(listing_id: str) -> list[dict[str, Any]]:
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM jobs WHERE listing_id = ? ORDER BY created_at, id", (listing_id,)
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def claim_next_job() -> dict[str, Any] | None:
     with connect() as conn:
         row = conn.execute(

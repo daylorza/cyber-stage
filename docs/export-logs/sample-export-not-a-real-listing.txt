@@ -1,0 +1,418 @@
+NOT A REAL LISTING. Sample output of the Export logs button, for PR review.
+Source: demo video run (Stage 1 placeholder footage already cleared for public screenshots).
+Redaction check: no address or facts were supplied for this demo; upload names/paths are withheld by the
+exporter itself; scanned for API keys/tokens and raw-frame paths (none). Text is otherwise unedited.
+================================================================================
+
+LISTING LOGS EXPORT · lst_626a3cf0e706
+Exported at: 2026-10-28T19:52:42+00:00 UTC
+App commit: 724a2a3
+This file contains no API keys, no raw frames and no raw uploads; images are referenced by blurred/staged media path only. It covers one listing only.
+
+## 1. Listing
+
+ID: lst_626a3cf0e706
+Title: Wood-Paneled Interior with Stone Fireplace
+Status: draft
+Source: upload
+Review: decision=none · decided_at=none
+Edited fields: none
+Broker notes: none
+Style preset: minimal (Minimal)
+Supplied facts:
+  address = 
+  city = 
+  beds = (not supplied)
+  baths = (not supplied)
+  sqft = (not supplied)
+  price = (not supplied)
+  currency = USD
+  estimate_price = False
+Uploads: 1 file(s) · kinds: video x1 (names and paths withheld)
+created_at: 2026-10-27T22:17:53+00:00
+updated_at: 2026-10-27T22:20:04+00:00
+Current job: job_1c7772103031
+Listing error: none
+Meta status: configured=yes · models: spark=muse-spark-1.3, wonder=muse-wonder-1.0, image=muse-image-1.0, sam=sam-3.1
+Published snapshot: not published
+
+## 2. Pipeline checks
+
+Publish blocked · 1 open
+Checklist created_at: 2026-10-27T22:17:53+00:00
+[done] Frames extracted — 12 frames on disk. (updated 2026-10-27T22:20:04+00:00)
+[done] SAM 3.1 masks — 12 included frames masked. (updated 2026-10-27T22:20:04+00:00)
+[done] Wonder room classification — 12 included frames classified. (updated 2026-10-27T22:20:04+00:00)
+[done] Staging geometry preserved — 4 checks passed, 2 by independent model calls (updated 2026-10-27T22:20:04+00:00)
+[flagged] Every claim has evidence — The image shows a wood-paneled ceiling and polished light floor, but the glazed openings are windows, not glass doors. (updated 2026-10-27T22:20:04+00:00)
+[done] Comps labeled demo — Demo comps: seeded sample data, not a live MLS feed (updated 2026-10-27T22:20:04+00:00)
+[done] Faces and personal items blurred — 5 checks passed, 4 by independent model calls (updated 2026-10-27T22:20:04+00:00)
+
+Verification: ran_at=2026-10-27T22:20:04+00:00 · passed=no · checks=31 · flags=1
+Checks:
+- frames · frames · code · code · pass · - · 12 frames on disk.
+- sam_masks · sam_masks · code · code · pass · - · 12 included frames masked.
+- wonder_classification · wonder_classification · code · code · pass · - · 12 included frames classified.
+- claim_evidence:title · claim_evidence · code · code · pass · Wood-Paneled Interior with Stone Fireplace · Evidence resolves.
+- claim_evidence:title:wonder · claim_evidence · meta · muse-wonder-1.0 · pass · Wood-Paneled Interior with Stone Fireplace · The images clearly show wood-paneled walls and ceiling surrounding a light stone fireplace with a black firebox.
+- claim_evidence:c1 · claim_evidence · code · code · pass · The interior features a wood-paneled ceiling, polished light tile floor, and glass doors. · Evidence resolves.
+- claim_evidence:c1:wonder · claim_evidence · meta · muse-wonder-1.0 · fail · The interior features a wood-paneled ceiling, polished light tile floor, and glass doors. · The image shows a wood-paneled ceiling and polished light floor, but the glazed openings are windows, not glass doors.
+- claim_evidence:c2 · claim_evidence · code · code · pass · Large windows dressed with dark curtains allow sunlight to reflect across the floor. · Evidence resolves.
+- claim_evidence:c2:wonder · claim_evidence · meta · muse-wonder-1.0 · pass · Large windows dressed with dark curtains allow sunlight to reflect across the floor. · Large windows with dark curtains are visible with bright sunlight patches and reflections across the polished floor.
+- claim_evidence:c3 · claim_evidence · code · code · pass · A light stone fireplace with black inset sits beneath a large abstract painting. · Evidence resolves.
+- claim_evidence:c3:wonder · claim_evidence · meta · muse-wonder-1.0 · pass · A light stone fireplace with black inset sits beneath a large abstract painting. · A light stone structure with a black rectangular inset is visible directly beneath a large abstract painting.
+- claim_evidence:c4 · claim_evidence · code · code · pass · The dining area presents a dark dining table on a patterned rug with wood-paneled wall and ceiling. · Evidence resolves.
+- claim_evidence:c4:wonder · claim_evidence · meta · muse-wonder-1.0 · pass · The dining area presents a dark dining table on a patterned rug with wood-paneled wall and ceiling. · The images show a dark oval dining table on a light patterned rug in a room with brown wood-paneled walls and ceiling.
+- claim_evidence:c5 · claim_evidence · code · code · pass · Wood-paneled ceiling · Evidence resolves.
+- claim_evidence:c5:wonder · claim_evidence · meta · muse-wonder-1.0 · pass · Wood-paneled ceiling · The ceiling is covered in large light-brown wood panels visible at the top of the image.
+- claim_evidence:c6 · claim_evidence · code · code · pass · Polished light tile floor · Evidence resolves.
+- claim_evidence:c6:wonder · claim_evidence · meta · muse-wonder-1.0 · pass · Polished light tile floor · The foreground shows a glossy light-beige tiled floor reflecting the windows.
+- claim_evidence:c7 · claim_evidence · code · code · pass · Stone fireplace with black inset · Evidence resolves.
+- claim_evidence:c7:wonder · claim_evidence · meta · muse-wonder-1.0 · pass · Stone fireplace with black inset · A light-colored stone fireplace with a black rectangular inset is clearly visible below the artwork.
+- claim_evidence:c8 · claim_evidence · code · code · pass · Patterned rug in dining area · Evidence resolves.
+- claim_evidence:c8:wonder · claim_evidence · meta · muse-wonder-1.0 · pass · Patterned rug in dining area · A light mottled rug is visible under the dining table and chairs.
+- staging_geometry:room_1 · staging_geometry · code · code · pass · Living room · Geometry preserved (correlation 0.30, aspect deviation 0.0%).
+- staging_geometry:room_1:sam · staging_geometry · meta · sam-3.1 · pass · Living room · Windows and doors preserved.
+- staging_geometry:room_2 · staging_geometry · code · code · pass · Dining room · Geometry preserved (correlation 0.51, aspect deviation 0.0%).
+- staging_geometry:room_2:sam · staging_geometry · meta · sam-3.1 · pass · Dining room · Windows and doors preserved.
+- comps_demo · comps_demo · code · code · pass · - · Demo comps: seeded sample data, not a live MLS feed
+- blur_pass · blur_pass · code · code · pass · - · All publishable frames blurred.
+- blur_pass:faces:room_1:before · blur_pass · meta · sam-3.1 · pass · Living room · before · No faces in before.
+- blur_pass:faces:room_1:after · blur_pass · meta · sam-3.1 · pass · Living room · after · No faces in after.
+- blur_pass:faces:room_2:before · blur_pass · meta · sam-3.1 · pass · Dining room · before · No faces in before.
+- blur_pass:faces:room_2:after · blur_pass · meta · sam-3.1 · pass · Dining room · after · No faces in after.
+
+## 3. Needs your attention · 1
+
+- flag_1 · item=claim_evidence · The interior features a wood-paneled ceiling, polished light tile floor, and glass doors. (claim: c1)
+  message: The image shows a wood-paneled ceiling and polished light floor, but the glazed openings are windows, not glass doors.
+  resolution: Remove or reword the claim, or attest it with a broker edit.
+
+## 4. Rooms · 2
+
+- Living room (room_1) · type=living · excluded: no
+  hero frame: f07 · coverage 60% · sharpest of 9 frames, coverage 0.6
+  frames: f01, f02, f03, f04, f05, f06, f07, f08, f09
+  before: frames/lst_626a3cf0e706/f07.jpg · after: staged/lst_626a3cf0e706/room_1_minimal.jpg
+  staged style: minimal · model: muse-image-1.0
+  staging error: none
+  staging prompt: Restyle this room as a warm minimal interior: few sculptural pieces, pale plaster tones, negative space, soft daylight. This must remain the exact same room photographed from the exact same camera position, perspective and lens. Keep every wall, window, door, ceiling, floor and built-in exactly where it is; do not move, resize, add or remove any architectural feature. Change only furniture, lighting and decor. No people, no text, no logos, no personal photographs.
+  checks needing attention: none
+- Dining room (room_2) · type=dining · excluded: no
+  hero frame: f12 · coverage 70% · sharpest of 3 frames, coverage 0.7
+  frames: f10, f11, f12
+  before: frames/lst_626a3cf0e706/f12.jpg · after: staged/lst_626a3cf0e706/room_2_minimal.jpg
+  staged style: minimal · model: muse-image-1.0
+  staging error: none
+  staging prompt: Restyle this room as a warm minimal interior: few sculptural pieces, pale plaster tones, negative space, soft daylight. This must remain the exact same room photographed from the exact same camera position, perspective and lens. Keep every wall, window, door, ceiling, floor and built-in exactly where it is; do not move, resize, add or remove any architectural feature. Change only furniture, lighting and decor. No people, no text, no logos, no personal photographs.
+  checks needing attention: none
+
+## 5. Listing copy
+
+Generator: muse-spark-1.3 · Spark drafted; every claim cites supplied facts or Wonder observations.
+- [title] title: Wood-Paneled Interior with Stone Fireplace
+  evidence:
+    Seen · Living room · wood-paneled ceiling · 0:00 (ref=o_f01_1, frame=f01, room=room_1)
+    Seen · Living room · light stone fireplace with black inset · 0:05 (ref=o_f05_1, frame=f05, room=room_1)
+  check: Verified by Wonder
+
+Description:
+The interior features a wood-paneled ceiling, polished light tile floor, and glass doors. Large windows dressed with dark curtains allow sunlight to reflect across the floor. A light stone fireplace with black inset sits beneath a large abstract painting. The dining area presents a dark dining table on a patterned rug with wood-paneled wall and ceiling.
+
+Sentences:
+- [sentence] c1: The interior features a wood-paneled ceiling, polished light tile floor, and glass doors.
+  evidence:
+    Seen · Living room · wood-paneled ceiling · 0:00 (ref=o_f01_1, frame=f01, room=room_1)
+    Seen · Living room · polished light tile floor · 0:00 (ref=o_f01_2, frame=f01, room=room_1)
+    Seen · Living room · glass double doors · 0:00 (ref=o_f01_5, frame=f01, room=room_1)
+  check: Not supported · The image shows a wood-paneled ceiling and polished light floor, but the glazed openings are windows, not glass doors.
+- [sentence] c2: Large windows dressed with dark curtains allow sunlight to reflect across the floor.
+  evidence:
+    Seen · Living room · large windows with dark curtains · 0:00 (ref=o_f01_4, frame=f01, room=room_1)
+    Seen · Living room · sunlight reflections on floor · 0:02 (ref=o_f02_6, frame=f02, room=room_1)
+  check: Verified by Wonder
+- [sentence] c3: A light stone fireplace with black inset sits beneath a large abstract painting.
+  evidence:
+    Seen · Living room · light stone fireplace with black inset · 0:05 (ref=o_f05_1, frame=f05, room=room_1)
+    Seen · Living room · large abstract painting above fireplace · 0:05 (ref=o_f05_2, frame=f05, room=room_1)
+  check: Verified by Wonder
+- [sentence] c4: The dining area presents a dark dining table on a patterned rug with wood-paneled wall and ceiling.
+  evidence:
+    Seen · Dining room · dark oval dining table · 0:10 (ref=o_f10_1, frame=f10, room=room_2)
+    Seen · Dining room · patterned area rug · 0:10 (ref=o_f10_3, frame=f10, room=room_2)
+    Seen · Dining room · wood-paneled wall and ceiling · 0:12 (ref=o_f12_5, frame=f12, room=room_2)
+  check: Verified by Wonder
+Highlights:
+- [highlight] c5: Wood-paneled ceiling
+  evidence:
+    Seen · Living room · wood-paneled ceiling · 0:00 (ref=o_f01_1, frame=f01, room=room_1)
+  check: Verified by Wonder
+- [highlight] c6: Polished light tile floor
+  evidence:
+    Seen · Living room · polished light tile floor · 0:00 (ref=o_f01_2, frame=f01, room=room_1)
+  check: Verified by Wonder
+- [highlight] c7: Stone fireplace with black inset
+  evidence:
+    Seen · Living room · light stone fireplace with black inset · 0:05 (ref=o_f05_1, frame=f05, room=room_1)
+  check: Verified by Wonder
+- [highlight] c8: Patterned rug in dining area
+  evidence:
+    Seen · Dining room · patterned area rug · 0:10 (ref=o_f10_3, frame=f10, room=room_2)
+  check: Verified by Wonder
+
+## 6. What the model saw and decided
+
+### Saw · 12 frames
+- f01 · 0:00 · living (living_1) in Living room (room_1) · coverage 80% · usable · condition: well kept
+  media: frames/lst_626a3cf0e706/f01.jpg
+  sam: privacy boxes=0 · structure boxes=2
+  blur regions: 0
+  observations:
+    o_f01_1: wood-paneled ceiling
+    o_f01_2: polished light tile floor
+    o_f01_3: dark wood floor at far end
+    o_f01_4: large windows with dark curtains
+    o_f01_5: glass double doors
+    o_f01_6: fireplace inset in wood-paneled wall
+- f02 · 0:02 · living (living_1) in Living room (room_1) · coverage 80% · usable · condition: well kept
+  media: frames/lst_626a3cf0e706/f02.jpg
+  sam: privacy boxes=0 · structure boxes=3
+  blur regions: 0
+  observations:
+    o_f02_1: wood-paneled ceiling
+    o_f02_2: polished light tile floor
+    o_f02_3: dark wood floor at far end
+    o_f02_4: large window with dark curtains
+    o_f02_5: glass double doors
+    o_f02_6: sunlight reflections on floor
+- f03 · 0:03 · living (living_1) in Living room (room_1) · coverage 70% · usable · condition: well kept
+  media: frames/lst_626a3cf0e706/f03.jpg
+  sam: privacy boxes=0 · structure boxes=5
+  blur regions: 0
+  observations:
+    o_f03_1: wood-paneled ceiling
+    o_f03_2: polished light tile floor
+    o_f03_3: central large window
+    o_f03_4: dark floor-length curtains
+    o_f03_5: glass doors at left and right
+    o_f03_6: dark wood floor
+- f04 · 0:04 · living (living_1) in Living room (room_1) · coverage 70% · usable · condition: well kept
+  media: frames/lst_626a3cf0e706/f04.jpg
+  sam: privacy boxes=0 · structure boxes=3
+  blur regions: 0
+  observations:
+    o_f04_1: glass double doors with sidelights
+    o_f04_2: wood-paneled ceiling
+    o_f04_3: polished reflective floor
+    o_f04_4: large window on right
+    o_f04_5: dark curtain
+    o_f04_6: window on left in background
+- f05 · 0:05 · living (living_1) in Living room (room_1) · coverage 40% · usable · condition: well kept
+  media: frames/lst_626a3cf0e706/f05.jpg
+  sam: privacy boxes=0 · structure boxes=0
+  blur regions: 0
+  observations:
+    o_f05_1: light stone fireplace with black inset
+    o_f05_2: large abstract painting above fireplace
+    o_f05_3: black vase with greenery
+    o_f05_4: wood-paneled wall and ceiling
+    o_f05_5: recessed ceiling lights
+    o_f05_6: gray area rug
+- f06 · 0:06 · living (living_1) in Living room (room_1) · coverage 50% · usable · condition: well kept
+  media: frames/lst_626a3cf0e706/f06.jpg
+  sam: privacy boxes=0 · structure boxes=0
+  blur regions: 0
+  observations:
+    o_f06_1: light stone fireplace with black inset
+    o_f06_2: large abstract painting
+    o_f06_3: black vase with greenery
+    o_f06_4: metal shelving unit with books
+    o_f06_5: gray area rug
+    o_f06_6: dark wood floor
+- f07 · 0:07 · living (living_1) in Living room (room_1) · coverage 60% · usable · condition: well kept
+  media: frames/lst_626a3cf0e706/f07.jpg
+  sam: privacy boxes=0 · structure boxes=2
+  blur regions: 0
+  observations:
+    o_f07_1: cream sofa with black and striped pillows
+    o_f07_2: black round coffee table with books
+    o_f07_3: glass side table with black lamp
+    o_f07_4: metal shelving unit
+    o_f07_5: glass double doors with curtains
+    o_f07_6: gray area rug
+- f08 · 0:08 · living (living_1) in Living room (room_1) · coverage 60% · usable · condition: well kept
+  media: frames/lst_626a3cf0e706/f08.jpg
+  sam: privacy boxes=0 · structure boxes=2
+  blur regions: 0
+  observations:
+    o_f08_1: cream sofa with black and striped pillows
+    o_f08_2: large window on left
+    o_f08_3: glass doors on right
+    o_f08_4: dark curtains
+    o_f08_5: black round coffee table
+    o_f08_6: textured area rug
+- f09 · 0:09 · living (living_1) in Living room (room_1) · coverage 50% · usable · condition: well kept
+  media: frames/lst_626a3cf0e706/f09.jpg
+  sam: privacy boxes=0 · structure boxes=3
+  blur regions: 0
+  observations:
+    o_f09_1: beige armchairs
+    o_f09_2: small black side tables
+    o_f09_3: glass side table with lamp
+    o_f09_4: potted plant by curtain
+    o_f09_5: glass doors with railing beyond
+    o_f09_6: polished light tile floor
+- f10 · 0:10 · dining (dining_1) in Dining room (room_2) · coverage 50% · usable · condition: well kept
+  media: frames/lst_626a3cf0e706/f10.jpg
+  sam: privacy boxes=0 · structure boxes=2
+  blur regions: 0
+  observations:
+    o_f10_1: dark oval dining table
+    o_f10_2: dining chairs with metal frames
+    o_f10_3: patterned area rug
+    o_f10_4: glass double doors with sidelights
+    o_f10_5: window with dark curtain
+    o_f10_6: polished light tile floor
+- f11 · 0:11 · dining (dining_1) in Dining room (room_2) · coverage 70% · usable · condition: well kept
+  media: frames/lst_626a3cf0e706/f11.jpg
+  sam: privacy boxes=0 · structure boxes=2
+  blur regions: 0
+  observations:
+    o_f11_1: dark oval dining table
+    o_f11_2: gold bowl centerpiece
+    o_f11_3: dining chairs around table
+    o_f11_4: patterned area rug
+    o_f11_5: abstract painting in background
+    o_f11_6: window with dark curtain
+- f12 · 0:12 · dining (dining_1) in Dining room (room_2) · coverage 70% · usable · condition: well kept
+  media: frames/lst_626a3cf0e706/f12.jpg
+  sam: privacy boxes=0 · structure boxes=2
+  blur regions: 0
+  observations:
+    o_f12_1: dark oval dining table with gold bowl
+    o_f12_2: dining chairs along table
+    o_f12_3: dark sideboard with two white lamps
+    o_f12_4: large abstract painting above sideboard
+    o_f12_5: wood-paneled wall and ceiling
+    o_f12_6: patterned area rug
+
+### Decided
+Rooms:
+- Living room (room_1): hero f07 · sharpest of 9 frames, coverage 0.6 · staged minimal by muse-image-1.0
+  staging prompt: Restyle this room as a warm minimal interior: few sculptural pieces, pale plaster tones, negative space, soft daylight. This must remain the exact same room photographed from the exact same camera position, perspective and lens. Keep every wall, window, door, ceiling, floor and built-in exactly where it is; do not move, resize, add or remove any architectural feature. Change only furniture, lighting and decor. No people, no text, no logos, no personal photographs.
+- Dining room (room_2): hero f12 · sharpest of 3 frames, coverage 0.7 · staged minimal by muse-image-1.0
+  staging prompt: Restyle this room as a warm minimal interior: few sculptural pieces, pale plaster tones, negative space, soft daylight. This must remain the exact same room photographed from the exact same camera position, perspective and lens. Keep every wall, window, door, ceiling, floor and built-in exactly where it is; do not move, resize, add or remove any architectural feature. Change only furniture, lighting and decor. No people, no text, no logos, no personal photographs.
+Claims:
+- [title] "Wood-Paneled Interior with Stone Fireplace" · evidence: o_f01_1, o_f05_1 · check: Verified by Wonder
+- [highlight] "Wood-paneled ceiling" · evidence: o_f01_1 · check: Verified by Wonder
+- [highlight] "Polished light tile floor" · evidence: o_f01_2 · check: Verified by Wonder
+- [highlight] "Stone fireplace with black inset" · evidence: o_f05_1 · check: Verified by Wonder
+- [highlight] "Patterned rug in dining area" · evidence: o_f10_3 · check: Verified by Wonder
+- [sentence] "The interior features a wood-paneled ceiling, polished light tile floor, and glass doors." · evidence: o_f01_1, o_f01_2, o_f01_5 · check: Not supported · The image shows a wood-paneled ceiling and polished light floor, but the glazed openings are windows, not glass doors.
+- [sentence] "Large windows dressed with dark curtains allow sunlight to reflect across the floor." · evidence: o_f01_4, o_f02_6 · check: Verified by Wonder
+- [sentence] "A light stone fireplace with black inset sits beneath a large abstract painting." · evidence: o_f05_1, o_f05_2 · check: Verified by Wonder
+- [sentence] "The dining area presents a dark dining table on a patterned rug with wood-paneled wall and ceiling." · evidence: o_f10_1, o_f10_3, o_f12_5 · check: Verified by Wonder
+
+### Still open
+- checklist [flagged] Every claim has evidence — The image shows a wood-paneled ceiling and polished light floor, but the glazed openings are windows, not glass doors.
+- flag flag_1 · The interior features a wood-paneled ceiling, polished light tile floor, and glass doors. (claim: c1): The image shows a wood-paneled ceiling and polished light floor, but the glazed openings are windows, not glass doors.
+  resolution: Remove or reword the claim, or attest it with a broker edit.
+
+## 7. Meta calls · 87 total · 21 independent · 0 cached
+
+### Generator · 66
+  1. sam.privacy (SAM privacy masks) · sam-3.1 · f01 · face · 1162 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:17:54+00:00 · tr_0c9bc25fe6
+  2. sam.structure (SAM structure) · sam-3.1 · f01 · window · 1223 ms · cached: no · ok · 2 window box(es) · at 2026-10-27T22:17:54+00:00 · tr_7f746ede66
+  3. sam.privacy (SAM privacy masks) · sam-3.1 · f01 · photograph · 1158 ms · cached: no · ok · 0 photograph box(es) · at 2026-10-27T22:17:54+00:00 · tr_dadf2b1b9c
+  4. sam.privacy (SAM privacy masks) · sam-3.1 · f01 · document · 1297 ms · cached: no · ok · 0 document box(es) · at 2026-10-27T22:17:54+00:00 · tr_b5c77f53c6
+  5. sam.structure (SAM structure) · sam-3.1 · f01 · door · 634 ms · cached: no · ok · 0 door box(es) · at 2026-10-27T22:17:55+00:00 · tr_d22daf0ffc
+  6. sam.privacy (SAM privacy masks) · sam-3.1 · f02 · face · 1752 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:17:55+00:00 · tr_d54be239d1
+  7. sam.privacy (SAM privacy masks) · sam-3.1 · f02 · photograph · 2762 ms · cached: no · ok · 0 photograph box(es) · at 2026-10-27T22:17:56+00:00 · tr_55564075ab
+  8. sam.privacy (SAM privacy masks) · sam-3.1 · f02 · document · 2121 ms · cached: no · ok · 0 document box(es) · at 2026-10-27T22:17:56+00:00 · tr_b7616affa5
+  9. sam.structure (SAM structure) · sam-3.1 · f02 · window · 2407 ms · cached: no · ok · 2 window box(es) · at 2026-10-27T22:17:56+00:00 · tr_d38d60fb63
+  10. sam.structure (SAM structure) · sam-3.1 · f02 · door · 716 ms · cached: no · ok · 1 door box(es) · at 2026-10-27T22:17:57+00:00 · tr_bc153d9b9f
+  11. sam.privacy (SAM privacy masks) · sam-3.1 · f03 · face · 454 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:17:58+00:00 · tr_21a63b7ad1
+  12. sam.privacy (SAM privacy masks) · sam-3.1 · f03 · photograph · 1197 ms · cached: no · ok · 0 photograph box(es) · at 2026-10-27T22:17:58+00:00 · tr_1e8b591387
+  13. sam.privacy (SAM privacy masks) · sam-3.1 · f03 · document · 840 ms · cached: no · ok · 0 document box(es) · at 2026-10-27T22:17:58+00:00 · tr_4c142a7f2e
+  14. sam.structure (SAM structure) · sam-3.1 · f03 · window · 924 ms · cached: no · ok · 3 window box(es) · at 2026-10-27T22:17:58+00:00 · tr_45e174090a
+  15. sam.structure (SAM structure) · sam-3.1 · f03 · door · 626 ms · cached: no · ok · 2 door box(es) · at 2026-10-27T22:17:59+00:00 · tr_b399709055
+  16. sam.privacy (SAM privacy masks) · sam-3.1 · f04 · face · 460 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:17:59+00:00 · tr_6b6dd7bc10
+  17. sam.privacy (SAM privacy masks) · sam-3.1 · f04 · photograph · 871 ms · cached: no · ok · 0 photograph box(es) · at 2026-10-27T22:17:59+00:00 · tr_90f1cfa5c8
+  18. sam.privacy (SAM privacy masks) · sam-3.1 · f04 · document · 497 ms · cached: no · ok · 0 document box(es) · at 2026-10-27T22:17:59+00:00 · tr_2bcb953e95
+  19. sam.structure (SAM structure) · sam-3.1 · f04 · window · 537 ms · cached: no · ok · 2 window box(es) · at 2026-10-27T22:17:59+00:00 · tr_796053f15e
+  20. sam.structure (SAM structure) · sam-3.1 · f04 · door · 638 ms · cached: no · ok · 1 door box(es) · at 2026-10-27T22:18:00+00:00 · tr_7fd9955437
+  21. sam.privacy (SAM privacy masks) · sam-3.1 · f05 · face · 330 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:18:00+00:00 · tr_afff04f55b
+  22. sam.privacy (SAM privacy masks) · sam-3.1 · f05 · photograph · 517 ms · cached: no · ok · 0 photograph box(es) · at 2026-10-27T22:18:00+00:00 · tr_1540ff1add
+  23. sam.privacy (SAM privacy masks) · sam-3.1 · f05 · document · 1235 ms · cached: no · ok · 0 document box(es) · at 2026-10-27T22:18:00+00:00 · tr_a7791f00fc
+  24. sam.structure (SAM structure) · sam-3.1 · f05 · window · 406 ms · cached: no · ok · 0 window box(es) · at 2026-10-27T22:18:00+00:00 · tr_3f016edd37
+  25. sam.structure (SAM structure) · sam-3.1 · f05 · door · 711 ms · cached: no · ok · 0 door box(es) · at 2026-10-27T22:18:00+00:00 · tr_b5c85d94d6
+  26. sam.privacy (SAM privacy masks) · sam-3.1 · f06 · face · 939 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:18:00+00:00 · tr_a283ae45df
+  27. sam.privacy (SAM privacy masks) · sam-3.1 · f06 · photograph · 433 ms · cached: no · ok · 0 photograph box(es) · at 2026-10-27T22:18:01+00:00 · tr_c2ee3aaa5d
+  28. sam.privacy (SAM privacy masks) · sam-3.1 · f06 · document · 618 ms · cached: no · ok · 0 document box(es) · at 2026-10-27T22:18:01+00:00 · tr_4e3802bedc
+  29. sam.structure (SAM structure) · sam-3.1 · f06 · window · 815 ms · cached: no · ok · 0 window box(es) · at 2026-10-27T22:18:01+00:00 · tr_cebd1632ba
+  30. sam.structure (SAM structure) · sam-3.1 · f06 · door · 781 ms · cached: no · ok · 0 door box(es) · at 2026-10-27T22:18:01+00:00 · tr_92c227eb53
+  31. sam.privacy (SAM privacy masks) · sam-3.1 · f07 · face · 500 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:18:01+00:00 · tr_7c08f8dad4
+  32. sam.privacy (SAM privacy masks) · sam-3.1 · f07 · photograph · 376 ms · cached: no · ok · 0 photograph box(es) · at 2026-10-27T22:18:02+00:00 · tr_5be4642820
+  33. sam.privacy (SAM privacy masks) · sam-3.1 · f07 · document · 2071 ms · cached: no · ok · 0 document box(es) · at 2026-10-27T22:18:02+00:00 · tr_6ba6f033b9
+  34. sam.structure (SAM structure) · sam-3.1 · f07 · window · 501 ms · cached: no · ok · 1 window box(es) · at 2026-10-27T22:18:02+00:00 · tr_473c84c03d
+  35. sam.structure (SAM structure) · sam-3.1 · f07 · door · 492 ms · cached: no · ok · 1 door box(es) · at 2026-10-27T22:18:02+00:00 · tr_d2c27faf60
+  36. sam.privacy (SAM privacy masks) · sam-3.1 · f08 · face · 781 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:18:02+00:00 · tr_d95eae6dc1
+  37. sam.privacy (SAM privacy masks) · sam-3.1 · f08 · photograph · 464 ms · cached: no · ok · 0 photograph box(es) · at 2026-10-27T22:18:02+00:00 · tr_55473c23f1
+  38. sam.privacy (SAM privacy masks) · sam-3.1 · f08 · document · 1697 ms · cached: no · ok · 0 document box(es) · at 2026-10-27T22:18:03+00:00 · tr_89a6eab506
+  39. sam.structure (SAM structure) · sam-3.1 · f08 · window · 1547 ms · cached: no · ok · 2 window box(es) · at 2026-10-27T22:18:03+00:00 · tr_55b7d5e513
+  40. sam.structure (SAM structure) · sam-3.1 · f08 · door · 664 ms · cached: no · ok · 0 door box(es) · at 2026-10-27T22:18:03+00:00 · tr_9416963d6e
+  41. sam.privacy (SAM privacy masks) · sam-3.1 · f09 · face · 1487 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:18:04+00:00 · tr_a33c680059
+  42. sam.privacy (SAM privacy masks) · sam-3.1 · f09 · photograph · 1083 ms · cached: no · ok · 0 photograph box(es) · at 2026-10-27T22:18:04+00:00 · tr_970a191616
+  43. sam.privacy (SAM privacy masks) · sam-3.1 · f09 · document · 407 ms · cached: no · ok · 0 document box(es) · at 2026-10-27T22:18:04+00:00 · tr_d7821be49c
+  44. sam.structure (SAM structure) · sam-3.1 · f09 · window · 1021 ms · cached: no · ok · 2 window box(es) · at 2026-10-27T22:18:04+00:00 · tr_da03ded94c
+  45. sam.structure (SAM structure) · sam-3.1 · f09 · door · 991 ms · cached: no · ok · 1 door box(es) · at 2026-10-27T22:18:05+00:00 · tr_65d2231be3
+  46. sam.privacy (SAM privacy masks) · sam-3.1 · f10 · face · 540 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:18:05+00:00 · tr_60c7e8d110
+  47. sam.privacy (SAM privacy masks) · sam-3.1 · f10 · photograph · 581 ms · cached: no · ok · 0 photograph box(es) · at 2026-10-27T22:18:05+00:00 · tr_79bc2758bb
+  48. sam.privacy (SAM privacy masks) · sam-3.1 · f10 · document · 719 ms · cached: no · ok · 0 document box(es) · at 2026-10-27T22:18:05+00:00 · tr_67c224ad3b
+  49. sam.structure (SAM structure) · sam-3.1 · f10 · window · 1167 ms · cached: no · ok · 1 window box(es) · at 2026-10-27T22:18:06+00:00 · tr_22f0cc99f6
+  50. sam.structure (SAM structure) · sam-3.1 · f10 · door · 542 ms · cached: no · ok · 1 door box(es) · at 2026-10-27T22:18:06+00:00 · tr_b7d2bd189e
+  51. sam.privacy (SAM privacy masks) · sam-3.1 · f11 · face · 1035 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:18:06+00:00 · tr_9891ef1e2a
+  52. sam.privacy (SAM privacy masks) · sam-3.1 · f11 · photograph · 844 ms · cached: no · ok · 0 photograph box(es) · at 2026-10-27T22:18:06+00:00 · tr_cb8a774ea4
+  53. sam.privacy (SAM privacy masks) · sam-3.1 · f11 · document · 511 ms · cached: no · ok · 0 document box(es) · at 2026-10-27T22:18:06+00:00 · tr_aea9042887
+  54. sam.structure (SAM structure) · sam-3.1 · f11 · window · 1315 ms · cached: no · ok · 2 window box(es) · at 2026-10-27T22:18:07+00:00 · tr_360aee309f
+  55. sam.structure (SAM structure) · sam-3.1 · f11 · door · 796 ms · cached: no · ok · 0 door box(es) · at 2026-10-27T22:18:07+00:00 · tr_af7dc67be3
+  56. sam.privacy (SAM privacy masks) · sam-3.1 · f12 · face · 506 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:18:07+00:00 · tr_de4d7f55eb
+  57. sam.privacy (SAM privacy masks) · sam-3.1 · f12 · photograph · 572 ms · cached: no · ok · 0 photograph box(es) · at 2026-10-27T22:18:07+00:00 · tr_43bd19f88e
+  58. sam.privacy (SAM privacy masks) · sam-3.1 · f12 · document · 761 ms · cached: no · ok · 0 document box(es) · at 2026-10-27T22:18:07+00:00 · tr_3c846d2659
+  59. sam.structure (SAM structure) · sam-3.1 · f12 · window · 858 ms · cached: no · ok · 2 window box(es) · at 2026-10-27T22:18:08+00:00 · tr_27aa390a34
+  60. sam.structure (SAM structure) · sam-3.1 · f12 · door · 1140 ms · cached: no · ok · 0 door box(es) · at 2026-10-27T22:18:08+00:00 · tr_582d72886b
+  61. wonder.classify (Wonder room read) · muse-wonder-1.0 · 12 frames · 20200 ms · cached: no · ok · 12 frames classified · at 2026-10-27T22:18:10+00:00 · tr_ec6cafd439
+  62. image.stage (Muse Image staging) · muse-image-1.0 · Living room · 19411 ms · cached: no · ok · staged image, 316 KB · at 2026-10-27T22:18:31+00:00 · tr_f13bd8d4b8
+  63. sam.staged_faces (SAM faces on staged image) · sam-3.1 · Living room · 1095 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:18:51+00:00 · tr_f621d55770
+  64. image.stage (Muse Image staging) · muse-image-1.0 · Dining room · 13038 ms · cached: no · ok · staged image, 254 KB · at 2026-10-27T22:18:52+00:00 · tr_116e6b537e
+  65. sam.staged_faces (SAM faces on staged image) · sam-3.1 · Dining room · 852 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:19:05+00:00 · tr_402c026eb1
+  66. spark.copy (Spark copy) · muse-spark-1.3 · - · 8136 ms · cached: no · ok · 9 claims drafted · at 2026-10-27T22:19:06+00:00 · tr_cd1a542fe2
+
+### Independent checks · 21
+  67. verify.wonder.claim (Wonder claim check) · muse-wonder-1.0 · Wood-Paneled Interior with Stone Fireplace · 5151 ms · cached: no · ok · supported · at 2026-10-27T22:19:16+00:00 · tr_bf650037d2
+  68. verify.wonder.claim (Wonder claim check) · muse-wonder-1.0 · The interior features a wood-paneled ceiling, polished light tile floor, and glass doors. · 9154 ms · cached: no · ok · unsupported · at 2026-10-27T22:19:21+00:00 · tr_94e66e84eb
+  69. verify.wonder.claim (Wonder claim check) · muse-wonder-1.0 · Large windows dressed with dark curtains allow sunlight to reflect across the floor. · 2860 ms · cached: no · ok · supported · at 2026-10-27T22:19:30+00:00 · tr_06e515ec89
+  70. verify.wonder.claim (Wonder claim check) · muse-wonder-1.0 · A light stone fireplace with black inset sits beneath a large abstract painting. · 3414 ms · cached: no · ok · supported · at 2026-10-27T22:19:33+00:00 · tr_d785fb2ea4
+  71. verify.wonder.claim (Wonder claim check) · muse-wonder-1.0 · The dining area presents a dark dining table on a patterned rug with wood-paneled wall and ceiling. · 3882 ms · cached: no · ok · supported · at 2026-10-27T22:19:37+00:00 · tr_ab024a268a
+  72. verify.wonder.claim (Wonder claim check) · muse-wonder-1.0 · Wood-paneled ceiling · 3215 ms · cached: no · ok · supported · at 2026-10-27T22:19:40+00:00 · tr_e72f046235
+  73. verify.wonder.claim (Wonder claim check) · muse-wonder-1.0 · Polished light tile floor · 2625 ms · cached: no · ok · supported · at 2026-10-27T22:19:44+00:00 · tr_463050ac47
+  74. verify.wonder.claim (Wonder claim check) · muse-wonder-1.0 · Stone fireplace with black inset · 3081 ms · cached: no · ok · supported · at 2026-10-27T22:19:46+00:00 · tr_af89a71aaf
+  75. verify.wonder.claim (Wonder claim check) · muse-wonder-1.0 · Patterned rug in dining area · 2649 ms · cached: no · ok · supported · at 2026-10-27T22:19:50+00:00 · tr_e2daaa8483
+  76. verify.sam.structure (SAM geometry check) · sam-3.1 · Living room · window · before · 1465 ms · cached: no · ok · 1 window box(es) · at 2026-10-27T22:19:52+00:00 · tr_d59ea38efa
+  77. verify.sam.structure (SAM geometry check) · sam-3.1 · Living room · window · after · 491 ms · cached: no · ok · 1 window box(es) · at 2026-10-27T22:19:54+00:00 · tr_de0273c69e
+  78. verify.sam.structure (SAM geometry check) · sam-3.1 · Living room · door · before · 633 ms · cached: no · ok · 1 door box(es) · at 2026-10-27T22:19:54+00:00 · tr_674478f110
+  79. verify.sam.structure (SAM geometry check) · sam-3.1 · Living room · door · after · 1428 ms · cached: no · ok · 1 door box(es) · at 2026-10-27T22:19:55+00:00 · tr_09204c42fb
+  80. verify.sam.structure (SAM geometry check) · sam-3.1 · Dining room · window · before · 430 ms · cached: no · ok · 2 window box(es) · at 2026-10-27T22:19:56+00:00 · tr_68ffd9b497
+  81. verify.sam.structure (SAM geometry check) · sam-3.1 · Dining room · window · after · 1903 ms · cached: no · ok · 2 window box(es) · at 2026-10-27T22:19:57+00:00 · tr_7cb77568c0
+  82. verify.sam.structure (SAM geometry check) · sam-3.1 · Dining room · door · before · 1080 ms · cached: no · ok · 0 door box(es) · at 2026-10-27T22:19:59+00:00 · tr_5eb284a77e
+  83. verify.sam.structure (SAM geometry check) · sam-3.1 · Dining room · door · after · 568 ms · cached: no · ok · 0 door box(es) · at 2026-10-27T22:20:00+00:00 · tr_074e4d0015
+  84. verify.sam.faces (SAM face check) · sam-3.1 · Living room · before · 593 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:20:01+00:00 · tr_96f9238f4f
+  85. verify.sam.faces (SAM face check) · sam-3.1 · Living room · after · 682 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:20:01+00:00 · tr_468a73c57e
+  86. verify.sam.faces (SAM face check) · sam-3.1 · Dining room · before · 1196 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:20:02+00:00 · tr_45f1baa8c9
+  87. verify.sam.faces (SAM face check) · sam-3.1 · Dining room · after · 664 ms · cached: no · ok · 0 face box(es) · at 2026-10-27T22:20:03+00:00 · tr_bbf396b4cd
+
+## 8. Job history · 1
+
+- job_1c7772103031 · kind=listing · status=done · stage=ready · progress=100 · error=- · created=2026-10-27T22:17:53+00:00 · updated=2026-10-27T22:20:04+00:00 · CURRENT
+
+-- end of export · lst_626a3cf0e706 --
