@@ -14,6 +14,7 @@ GEOMETRY_MIN_CORR = 0.25
 ASPECT_MAX_DEVIATION = 0.03
 STRUCTURE_IOU = 0.3
 STRUCTURE_EXTRA_ALLOWED = 1
+STRUCTURE_EDGE_MARGIN = 0.01
 MIN_REGION_DIFF = 8.0
 FACE_MIN_AREA = 0.001
 
@@ -297,8 +298,16 @@ def check_staging(ctx, listing: dict[str, Any]) -> None:
                  resolution="Exclude the room or re-stage it; staging must not move windows or doors.")
 
 
+def _cut_off(box: list[float]) -> bool:
+    """A source box touching the photo edge is only partly in frame; SAM detects such
+    partial doors/windows inconsistently, so they are reported as not compared."""
+    return min(box[0], box[1], 1 - box[2], 1 - box[3]) <= STRUCTURE_EDGE_MARGIN
+
+
 def _structure_check(ctx, room: dict[str, Any], src: Path, dst: Path) -> tuple[str, str]:
     problems: list[str] = []
+    skipped: list[str] = []
+    compared = 0
     with Image.open(src) as si, Image.open(dst) as di:
         src_size, dst_size = si.size, di.size
     for concept in ("window", "door"):
@@ -311,13 +320,20 @@ def _structure_check(ctx, room: dict[str, Any], src: Path, dst: Path) -> tuple[s
         src_norm = [_normalized(b["box"], src_size) for b in src_boxes]
         dst_norm = [_normalized(b["box"], dst_size) for b in dst_boxes]
         for i, box in enumerate(src_norm, start=1):
+            if _cut_off(box):
+                skipped.append(f"{concept} #{i}")
+                continue
+            compared += 1
             if not any(_iou(box, d) >= STRUCTURE_IOU for d in dst_norm):
                 problems.append(f"{concept} #{i} moved or removed")
         if len(dst_norm) > len(src_norm) + STRUCTURE_EXTRA_ALLOWED:
             problems.append(f"{len(dst_norm) - len(src_norm)} extra {concept}(s) added")
+    note = f" Not compared (cut off at the photo edge): {', '.join(skipped)}." if skipped else ""
     if problems:
-        return "fail", f"Staging changed structure: {'; '.join(problems)}."
-    return "pass", "Windows and doors preserved."
+        return "fail", f"Staging changed structure: {'; '.join(problems)}.{note}"
+    if skipped and not compared:
+        return "pass", f"No windows or doors fully in frame to compare.{note}"
+    return "pass", f"Windows and doors preserved.{note}"
 
 
 def check_comps(ctx, listing: dict[str, Any]) -> None:
