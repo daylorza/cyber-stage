@@ -28,6 +28,16 @@ export type Frame = {
   blur: { regions: number } | null;
 };
 
+export type Staging = {
+  model: string | null;
+  prompt: string;
+  style: string;
+  error: string | null;
+  level?: number;
+  purpose?: string;
+  at?: string;
+};
+
 export type Room = {
   id: string;
   name: string;
@@ -38,7 +48,9 @@ export type Room = {
   style: string | null;
   frames: string[];
   hero_reason: string;
-  staging: { model: string | null; prompt: string; style: string; error: string | null } | null;
+  staging: Staging | null;
+  staging_history?: (Staging & { after: string | null; replaced_at: string })[];
+  restage_error?: { level: number; error: string; at: string };
   rejected: boolean;
 };
 
@@ -119,7 +131,7 @@ export type Copy = {
 export type Job = {
   id: string;
   listing_id: string;
-  kind: "listing" | "verify";
+  kind: "listing" | "verify" | "restage";
   status: "queued" | "running" | "done" | "failed";
   stage: string | null;
   progress: number;
@@ -302,6 +314,11 @@ export const api = {
     request<{ listing_id: string; status: "preparing" | "ready" | "failed" }>(`/residences/${residenceId}/live`),
   reserve: (id: string) => request<Reservation>(`/listings/${id}/reserve`, { method: "POST" }),
   verify: (id: string) => request<{ listing_id: string; job_id: string }>(`/listings/${id}/verify`, { method: "POST" }),
+  restage: (id: string, roomId: string) =>
+    request<{ listing_id: string; job_id: string; room_id: string; level: number }>(
+      `/listings/${id}/rooms/${roomId}/restage`,
+      { method: "POST" },
+    ),
 };
 
 export const media = (path: string) => `/api/media/${path}`;

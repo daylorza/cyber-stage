@@ -9,6 +9,7 @@ const PURPOSE: Record<string, string> = {
   "sam.structure": "SAM structure",
   "wonder.classify": "Wonder room read",
   "image.stage": "Muse Image staging",
+  "image.restage": "Muse Image re-stage (stricter)",
   "sam.staged_faces": "SAM faces on staged image",
   "spark.copy": "Spark copy",
   "verify.wonder.claim": "Wonder claim check",
@@ -158,7 +159,11 @@ function RoomDecision({ room }: { room: Room }) {
         {st && (
           <p className="mt-0.5 text-sm text-ash">
             Staged <span className="text-ivory/80">{st.style}</span> · <span className="font-mono text-xs">{st.model ?? "no model"}</span>
+            {st.level ? ` · stricter re-stage, attempt ${st.level}` : ""}
           </p>
+        )}
+        {room.staging_history && room.staging_history.length > 0 && (
+          <p className="mt-0.5 text-xs text-ash">Replaced {room.staging_history.length} earlier staging(s)</p>
         )}
         {st?.error && <p className="mt-1 text-sm text-rose">{st.error}</p>}
         {!st && <p className="mt-0.5 text-sm text-ash">Not staged</p>}

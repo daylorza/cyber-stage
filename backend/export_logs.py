@@ -29,6 +29,7 @@ PURPOSE = {
     "sam.structure": "SAM structure",
     "wonder.classify": "Wonder room read",
     "image.stage": "Muse Image staging",
+    "image.restage": "Muse Image re-stage (stricter)",
     "sam.staged_faces": "SAM faces on staged image",
     "spark.copy": "Spark copy",
     "verify.wonder.claim": "Wonder claim check",
@@ -367,11 +368,26 @@ def _room_lines(listing: dict[str, Any], room: dict[str, Any], lines: list[str])
     lines.append(f"  before: {_media(room.get('before'))} · after: {_media(room.get('after'))}")
     if staging:
         lines.append(f"  staged style: {staging.get('style') or room.get('style') or 'none'} · "
-                     f"model: {staging.get('model') or 'none'}")
+                     f"model: {staging.get('model') or 'none'}"
+                     + (f" · stricter re-stage, level {staging['level']}"
+                        if staging.get("level") else ""))
         lines.append(f"  staging error: {staging.get('error') or 'none'}")
         lines.append(f"  staging prompt: {staging.get('prompt') or 'none'}")
     else:
         lines.append("  staging: not staged")
+    for entry in room.get("staging_history") or []:
+        lines.append(
+            f"  earlier staging: level {entry.get('level') or 'initial'} · "
+            f"after: {_media(entry.get('after'))} · "
+            f"replaced_at: {entry.get('replaced_at') or 'none'} · "
+            f"error: {entry.get('error') or 'none'}"
+        )
+    restage_error = room.get("restage_error")
+    if restage_error:
+        lines.append(
+            f"  re-stage error: level {restage_error.get('level')} · "
+            f"{restage_error.get('error')} · at {restage_error.get('at') or 'none'}"
+        )
     issues = _room_issues(listing, room.get("id"))
     if issues:
         lines.append("  checks needing attention:")

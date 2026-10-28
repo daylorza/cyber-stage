@@ -27,7 +27,8 @@ class FakeMeta(meta_client._ClientBase):
                  fail_concept: str | None = None, fail_frame: str | None = None,
                  fail_staged_faces: bool = False, furnished_before: bool = False,
                  warp_live: bool = False, warp_live_once: bool = False,
-                 fail_live_image: bool = False):
+                 fail_live_image: bool = False, warp_room: str | None = None,
+                 fix_at_level: int = 1, fail_restage: bool = False):
         super().__init__()
         self.bad_claim = bad_claim
         self.warp_staging = warp_staging
@@ -40,6 +41,9 @@ class FakeMeta(meta_client._ClientBase):
         self.warp_live = warp_live
         self.warp_live_once = warp_live_once
         self.fail_live_image = fail_live_image
+        self.warp_room = warp_room
+        self.fix_at_level = fix_at_level
+        self.fail_restage = fail_restage
         self.base_url = "fake://meta"
         self.spark_model = "muse-spark-1.3"
         self.wonder_model = "muse-wonder-1.0"
@@ -128,11 +132,19 @@ class FakeMeta(meta_client._ClientBase):
         def fn():
             if self.fail_live_image and purpose == "live.image.stage":
                 raise meta_client.MetaError("boom: live image stage")
+            if self.fail_restage and purpose == "image.restage":
+                raise meta_client.MetaError("boom: image restage")
             img = Image.open(image_path).convert("RGB")
-            if self.warp_staging and (target or {}).get("room") == "room_2":
+            room = (target or {}).get("room")
+            if self.warp_staging and room == "room_2":
                 img = ImageOps.mirror(img)
             elif (self.warp_live or (self.warp_live_once and "Critical:" not in style_prompt)) \
                     and purpose == "live.image.stage" and (target or {}).get("style") == "coastal":
+                img = ImageOps.mirror(img)
+            elif self.warp_room is not None and room == self.warp_room and (
+                    purpose == "image.stage"
+                    or (purpose == "image.restage"
+                        and (target or {}).get("level", 0) < self.fix_at_level)):
                 img = ImageOps.mirror(img)
             else:
                 img = Image.eval(img, lambda p: min(255, int(p * 0.96 + 8)))

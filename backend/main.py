@@ -19,7 +19,7 @@ import listings
 import live
 import meta_client
 from jobs import Worker
-from pipeline import runner
+from pipeline import runner, stage
 
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".webm"}
 PHOTO_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -220,6 +220,46 @@ def verify_listing(listing_id: str) -> dict[str, str]:
     with db.connect() as conn:
         db.insert_job(conn, job_id, listing_id, "verify")
     return {"listing_id": listing_id, "job_id": job_id}
+
+
+@router.post("/listings/{listing_id}/rooms/{room_id}/restage", status_code=202)
+def restage_room(listing_id: str, room_id: str) -> dict[str, Any]:
+    """Re-stage one flagged room with a stricter prompt: a fresh Meta Image call,
+    then the verifier re-runs so the flag clears or stays."""
+    listing = _listing_or_404(listing_id)
+    room = next((r for r in listing.get("rooms") or [] if r.get("id") == room_id), None)
+    if room is None:
+        raise HTTPException(404, "Room not found.")
+    if listing["source"] != "upload" or listing["status"] not in {"draft", "approved", "rejected"}:
+        raise HTTPException(409, "This listing can't be re-staged right now.")
+    if room.get("rejected"):
+        raise HTTPException(409, "This room is excluded from the listing.")
+    checks = (listing.get("verification") or {}).get("checks") or []
+    flagged = any(
+        c.get("item") == "staging_geometry"
+        and (c.get("target") or {}).get("room") == room_id
+        and c.get("status") != "pass"
+        for c in checks
+    ) or bool((room.get("staging") or {}).get("error"))
+    if not flagged:
+        raise HTTPException(409, "This room has no staging flag to fix.")
+    level = ((room.get("staging") or {}).get("level") or 0) + 1
+    if level > stage.MAX_RESTAGE_LEVEL:
+        raise HTTPException(
+            409,
+            f"Stricter re-staging was already tried twice for {room.get('name') or room_id}; "
+            "exclude the room or re-film it.",
+        )
+    job_id = db.new_id("job")
+    listing["restage_request"] = {
+        "job_id": job_id, "room": room_id, "level": level, "prior_status": listing["status"],
+    }
+    listing["status"] = "processing"
+    listing["job_id"] = job_id
+    db.save_listing(listing)
+    with db.connect() as conn:
+        db.insert_job(conn, job_id, listing_id, "restage")
+    return {"listing_id": listing_id, "job_id": job_id, "room_id": room_id, "level": level}
 
 
 @router.get("/listings/{listing_id}/export")

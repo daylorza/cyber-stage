@@ -41,7 +41,9 @@ function Processing({ listing, job }: { listing: Listing; job: Job | null }) {
     <section className="grid min-h-[60dvh] items-center gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
       <div className="grid content-center gap-14">
         <div aria-live="polite">
-          <p className="eyebrow">{job?.kind === "verify" ? "Re-running independent checks" : "Processing"}</p>
+          <p className="eyebrow">
+            {job?.kind === "restage" ? "Re-staging with a stricter prompt" : job?.kind === "verify" ? "Re-running independent checks" : "Processing"}
+          </p>
           <p className="mt-3 text-ash">{listing.uploads.map((u) => u.name).join(", ")}</p>
         </div>
         <PipelineIndicator job={job} />
@@ -88,6 +90,10 @@ function Review({
   const claimFor = (text: string) => copy.highlights.find((h) => h.text === text.trim());
   const room = listing.rooms[selected];
   const checks = listing.verification?.checks ?? [];
+  const stagingFlagged =
+    !!room &&
+    (roomIssues(checks, room.id).some((c) => c.item === "staging_geometry") || !!room.staging?.error);
+  const restageLevel = room?.staging?.level ?? 0;
   const open = openItems(listing);
   const blocked = open.length > 0;
   const descriptionClean = description.trim() === copy.description;
@@ -119,6 +125,26 @@ function Review({
     run(action, () =>
       api.review(listing.id, { action, copy_edit: { title, description, highlights: clean(highlights) }, rejected_rooms: rejected }),
     );
+
+  const restage = async () => {
+    if (!room) return;
+    if (
+      !window.confirm(
+        `Re-stage ${room.name} with a stricter prompt? Only this room changes. This clears approval and makes a new Meta Image call.`,
+      )
+    )
+      return;
+    setBusy("restage");
+    setError("");
+    try {
+      await api.restage(listing.id, room.id);
+      reload();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const focusClaim = (id: string) => {
     const el = document.querySelector<HTMLElement>(`[data-claim~="${id}"]`);
@@ -174,7 +200,7 @@ function Review({
                     </button>
                   )}
                 </div>
-                {(roomIssues(checks, room.id).length > 0 || room.staging?.error) && (
+                {(roomIssues(checks, room.id).length > 0 || room.staging?.error || room.restage_error) && (
                   <div className="mt-3 space-y-1.5" role="status">
                     {roomIssues(checks, room.id).map((c) => (
                       <ResultLine
@@ -185,6 +211,27 @@ function Review({
                       />
                     ))}
                     {room.staging?.error && <ResultLine tone="fail" label="Staging" reason={room.staging.error} />}
+                    {room.restage_error && <ResultLine tone="fail" label="Re-stage" reason={room.restage_error.error} />}
+                    {!locked && !rejected.includes(room.id) && stagingFlagged && (
+                      <div className="pl-3 pt-1">
+                        {restageLevel < 2 ? (
+                          <>
+                            <button
+                              type="button"
+                              className="btn-glass"
+                              disabled={!!busy || dirty}
+                              title={dirty ? "Save your edits first" : undefined}
+                              onClick={restage}
+                            >
+                              {busy === "restage" ? "Queueing" : "Re-stage with a stricter prompt"}
+                            </button>
+                            <p className="mt-1.5 text-xs text-ash">Attempt {restageLevel + 1} of 2 · only this room changes</p>
+                          </>
+                        ) : (
+                          <p className="text-xs text-ash">Stricter re-stage tried twice. Exclude this room or re-film it.</p>
+                        )}
+                      </div>
+                    )}
                     {!locked && !rejected.includes(room.id) && <p className="pl-3 text-xs text-ash">Exclude this room to remove it from the listing.</p>}
                   </div>
                 )}
