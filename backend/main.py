@@ -14,6 +14,7 @@ from pydantic import BaseModel
 import config
 import db
 import listings
+import live
 import meta_client
 from jobs import Worker
 from pipeline import runner
@@ -227,13 +228,47 @@ def published_page(listing_id: str) -> dict[str, Any]:
     return listing["published"]
 
 
+class LiveRequest(BaseModel):
+    residence: str = "seed_miami"
+
+
+@router.post("/listings/{listing_id}/live", status_code=202)
+def request_live(listing_id: str, body: LiveRequest) -> dict[str, str]:
+    """Enqueue the Live-In-It preparation job for a published listing."""
+    listing = _listing_or_404(listing_id)
+    try:
+        job_id = live.request(listing, body.residence)
+    except listings.ReviewError as exc:
+        raise HTTPException(exc.status_code, str(exc)) from None
+    return {"listing_id": listing_id, "job_id": job_id}
+
+
+@router.get("/listings/{listing_id}/live")
+def get_live(listing_id: str) -> dict[str, Any]:
+    listing = _listing_or_404(listing_id)
+    if listing["status"] != "published":
+        raise HTTPException(404, "This listing isn't published.")
+    if not listing.get("live"):
+        raise HTTPException(404, "Live-In-It hasn't been prepared for this listing.")
+    return live.payload(listing)
+
+
+@router.get("/residences/{residence_id}/live")
+def residence_live(residence_id: str) -> dict[str, Any]:
+    result = live.for_residence(residence_id)
+    if result is None:
+        raise HTTPException(404, "No published listing for this residence yet.")
+    return result
+
+
 @router.post("/listings/{listing_id}/reserve", status_code=201)
 def reserve(listing_id: str) -> dict[str, Any]:
     """SIMULATED hold for the demo. No payment provider is called and nothing is charged."""
     listing = _listing_or_404(listing_id)
     if listing["status"] != "published":
         raise HTTPException(409, "Only published listings can be reserved.")
-    return {**db.insert_reservation(listing_id), "charged": False,
+    return {**db.insert_reservation(listing_id), "charged": False, "payment_taken": False,
+            "provider": None,
             "message": "Simulated hold. No payment was taken; the broker confirms."}
 
 
@@ -250,9 +285,16 @@ def _mount_frontend(app: FastAPI, dist: Path) -> None:
         return FileResponse(root / "index.html")
 
 
+def _dispatch(job: dict[str, Any]) -> None:
+    if job.get("kind") == "live":
+        live.run(job)
+    else:
+        runner.run(job)
+
+
 def create_app(**overrides: Any) -> FastAPI:
     settings = config.configure(**overrides)
-    worker = Worker(runner.run)
+    worker = Worker(_dispatch)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):

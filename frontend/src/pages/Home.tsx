@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api, type ListingSummary } from "../api";
 import { BRAND } from "../brand";
 import FloorPlan from "../components/FloorPlan";
@@ -38,6 +38,9 @@ export default function Home() {
   const [concierge, setConcierge] = useState(false);
   const drag = useRef({ x: 0, pan: 0 });
   const closeTimer = useRef(0);
+  const enterTimer = useRef(0);
+  const navigate = useNavigate();
+  const [miamiLive, setMiamiLive] = useState<string | null>(null);
 
   const residence = RESIDENCES[index];
   const summary = listings[residence.id];
@@ -51,12 +54,20 @@ export default function Home() {
       .listings()
       .then((items) => setListings(Object.fromEntries(items.map((i) => [i.id, i]))))
       .catch(() => setListings({}));
-    return () => clearTimeout(closeTimer.current);
+    api
+      .residenceLive("seed_miami")
+      .then((r) => setMiamiLive(r.status === "ready" ? r.listing_id : null))
+      .catch(() => setMiamiLive(null));
+    return () => {
+      clearTimeout(closeTimer.current);
+      clearTimeout(enterTimer.current);
+    };
   }, []);
 
   useEffect(() => setPan((p) => clamp(p, maxPan(scale))), [scale]);
 
   const go = (next: number) => {
+    clearTimeout(enterTimer.current);
     setIndex((next + RESIDENCES.length) % RESIDENCES.length);
     setPan(0);
   };
@@ -67,6 +78,7 @@ export default function Home() {
       if (e.key === "ArrowRight") go(index + 1);
       if (e.key === "ArrowLeft") go(index - 1);
       if (e.key === "Escape") {
+        clearTimeout(enterTimer.current);
         setInside(false);
         setConcierge(false);
         setRevealed(false);
@@ -211,6 +223,10 @@ export default function Home() {
               setInside(true);
               setRevealed(false);
               setConcierge(false);
+              if (residence.id === "seed_miami" && miamiLive) {
+                clearTimeout(enterTimer.current);
+                enterTimer.current = window.setTimeout(() => navigate(`/p/${miamiLive}/live`), 900);
+              }
             }}
             className="group pointer-events-auto flex items-center gap-4 rounded-full bg-ivory/[0.08] py-2 pl-2 pr-6 text-[15px] tracking-wide text-ivory ring-1 ring-ivory/25 backdrop-blur-xl transition hover:bg-ivory/[0.14] hover:ring-ivory/40"
           >
@@ -268,7 +284,10 @@ export default function Home() {
           </div>
           <button
             type="button"
-            onClick={() => setInside(false)}
+            onClick={() => {
+              clearTimeout(enterTimer.current);
+              setInside(false);
+            }}
             className="btn-glass pointer-events-auto absolute right-6 top-6 sm:right-10 sm:top-9"
           >
             Leave

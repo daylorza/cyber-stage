@@ -39,3 +39,10 @@ never served), Wonder room classification, Muse Image staging, Spark copy with
 per-claim evidence. A checklist is generated per job and an independent verifier
 (`backend/verify/`) re-checks everything with its own model calls; the broker
 console must clear every item before approve, and publish re-verifies.
+
+Stage 2 (core, one property: The Ocean Residence, Miami): Live-In-It opens only for a
+published listing. `backend/live.py` pre-processes it as a job — every style preset per
+room (geometry + window/door checks, one stricter retry), SAM furniture pieces for the
+cascade, an AI-emptied plate when the filmed room is furnished, and coffee/sit/view moments.
+`/p/:id/live` plays it: cascade room by room, style picker, moments, floor plan inside the
+hover nav, and a simulated hold (no payment taken, no provider). Stage 1 data is never changed.

@@ -7,6 +7,7 @@ import ChecklistPanel, { openItems } from "../components/ChecklistPanel";
 import CompsTable from "../components/CompsTable";
 import DecisionPanel from "../components/DecisionPanel";
 import PipelineIndicator from "../components/PipelineIndicator";
+import LiveControl from "../components/live/LiveControl";
 import StatusMark from "../components/StatusMark";
 import { ClaimTrust, EvidenceBlock, ITEM_SHORT, ResultLine, roomIssues } from "../components/trust";
 
@@ -313,9 +314,12 @@ function Review({
 
       <div className="glass fixed bottom-6 right-6 z-30 flex flex-wrap items-center gap-1.5 rounded-full! p-1.5">
         {locked ? (
-          <Link to={`/p/${listing.id}`} className="btn-primary">
-            View published page
-          </Link>
+          <>
+            <LiveControl listingId={listing.id} city={listing.facts.city} />
+            <Link to={`/p/${listing.id}`} className="btn-primary">
+              View published page
+            </Link>
+          </>
         ) : (
           <>
             {dirty && <span className="eyebrow px-3 text-ice/80!">Unsaved edits</span>}

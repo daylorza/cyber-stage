@@ -8,6 +8,7 @@ import Inventory from "./pages/Inventory";
 import NewWalkthrough from "./pages/NewWalkthrough";
 import ListingConsole from "./pages/ListingConsole";
 import PublishedPage from "./pages/PublishedPage";
+import LiveInIt from "./pages/LiveInIt";
 
 const router = createBrowserRouter([
   { index: true, element: <Home /> },
@@ -20,6 +21,7 @@ const router = createBrowserRouter([
     ],
   },
   { path: "p/:id", element: <PublishedPage /> },
+  { path: "p/:id/live", element: <LiveInIt /> },
 ]);
 
 createRoot(document.getElementById("root")!).render(

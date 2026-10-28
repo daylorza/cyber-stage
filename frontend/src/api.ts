@@ -178,6 +178,74 @@ export type ListingSummary = {
   updated_at: string;
 };
 
+export type GeometryCheck = { status: "pass" | "fail"; reason: string; correlation: number | null };
+export type StructureCheck = { status: "pass" | "fail" | "not_checked"; reason: string };
+/** box = x1, y1, x2, y2 normalized 0..1 on the style image. */
+export type Piece = { concept: string; box: [number, number, number, number]; score: number | null };
+export type LiveStyle = {
+  label: string;
+  image: string | null;
+  source: "stage1" | "live";
+  attempts?: number;
+  available: boolean;
+  error: string | null;
+  geometry: GeometryCheck | null;
+  structure: StructureCheck | null;
+  pieces: Piece[];
+};
+export type LiveRoom = {
+  id: string;
+  name: string;
+  type: string;
+  before: string | null;
+  plate: string | null;
+  plate_source: "before" | "generated";
+  plate_check: GeometryCheck | null;
+  /** True when the plate is the as-filmed frame and SAM found furniture in it. */
+  plate_furnished?: boolean;
+  styles: Record<string, LiveStyle>;
+  window: [number, number, number, number] | null;
+  size: [number, number] | null;
+};
+export type LiveMoment = {
+  id: "coffee" | "sit" | "view";
+  label: string;
+  room_id: string;
+  focus: [number, number, number, number];
+  images: Record<string, string>;
+};
+export type LivePayload = {
+  listing_id: string;
+  residence: string | null;
+  status: "preparing" | "ready" | "failed";
+  job_id: string | null;
+  error: string | null;
+  prepared_at: string | null;
+  title: string;
+  facts: Facts;
+  price_display: string | null;
+  approved_at: string;
+  published_at: string;
+  note: string | null;
+  styles: { id: string; label: string }[];
+  default_style: string;
+  rooms: LiveRoom[];
+  moments: LiveMoment[];
+  calls: number;
+  calls_by_purpose: Record<string, number>;
+};
+export type Reservation = {
+  id: string;
+  listing_id: string;
+  status: "pending_broker_confirmation";
+  simulated: true;
+  created_at: string;
+  charged: false;
+  payment_taken: false;
+  provider: null;
+  message: string;
+};
+
 export type ReviewBody = {
   action: "save" | "approve" | "reject";
   copy_edit?: { title: string; description: string; highlights: string[] };
@@ -227,6 +295,12 @@ export const api = {
   page: (id: string) => request<PublishedPage>(`/listings/${id}/page`),
   metaStatus: () => request<MetaStatus>("/meta/status"),
   reprocess: (id: string) => request<{ listing_id: string; job_id: string }>(`/listings/${id}/reprocess`, { method: "POST" }),
+  live: (id: string) => request<LivePayload>(`/listings/${id}/live`),
+  prepareLive: (id: string, residence = "seed_miami") =>
+    request<{ listing_id: string; job_id: string }>(`/listings/${id}/live`, json({ residence })),
+  residenceLive: (residenceId: string) =>
+    request<{ listing_id: string; status: "preparing" | "ready" | "failed" }>(`/residences/${residenceId}/live`),
+  reserve: (id: string) => request<Reservation>(`/listings/${id}/reserve`, { method: "POST" }),
   verify: (id: string) => request<{ listing_id: string; job_id: string }>(`/listings/${id}/verify`, { method: "POST" }),
 };
 

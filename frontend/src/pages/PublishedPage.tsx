@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { api, factLine, media, money, shortDate, type PublishedPage as Page } from "../api";
+import { Link, useParams } from "react-router-dom";
+import { api, factLine, media, money, shortDate, type LivePayload, type PublishedPage as Page } from "../api";
 import BeforeAfter from "../components/BeforeAfter";
 import CompsTable from "../components/CompsTable";
 import { Wordmark } from "../components/Shell";
@@ -9,9 +9,22 @@ export default function PublishedPage() {
   const { id = "" } = useParams();
   const [page, setPage] = useState<Page | null>(null);
   const [error, setError] = useState("");
+  const [live, setLive] = useState<LivePayload | null>(null);
+  const liveReady = live?.status === "ready" && live.rooms.length > 0;
 
   useEffect(() => {
     api.page(id).then(setPage).catch((e: Error) => setError(e.message));
+  }, [id]);
+
+  useEffect(() => {
+    let stopped = false;
+    api
+      .live(id)
+      .then((p) => !stopped && setLive(p))
+      .catch(() => undefined);
+    return () => {
+      stopped = true;
+    };
   }, [id]);
 
   if (!page)
@@ -39,6 +52,7 @@ export default function PublishedPage() {
           <p className="eyebrow text-ivory/70!">{page.facts.city}</p>
           <h1 className="mt-4 max-w-4xl font-serif text-5xl leading-[1.04] sm:text-7xl">{page.title}</h1>
           <p className="mt-6 font-mono text-sm text-ivory/80">{factLine(page.facts)}</p>
+          {live?.note && <p className="eyebrow mt-3 text-ivory/60!">{live.note}</p>}
           <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
             {price && <span className="font-mono text-base text-champagne">{price}</span>}
             <span className="eyebrow inline-flex items-center gap-2.5 text-ivory/80!">
@@ -52,6 +66,18 @@ export default function PublishedPage() {
               </span>
             )}
           </div>
+          {liveReady && (
+            <Link
+              to={`/p/${id}/live`}
+              className="group mt-10 flex w-fit items-center gap-4 rounded-full bg-ivory/[0.08] py-2 pl-2 pr-6 text-[15px] tracking-wide text-ivory ring-1 ring-ivory/25 backdrop-blur-xl transition hover:bg-ivory/[0.14] hover:ring-ivory/40"
+            >
+              <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+                <span className="ice-dot" />
+              </span>
+              Enter residence
+              <span aria-hidden className="transition group-hover:translate-x-1">→</span>
+            </Link>
+          )}
         </div>
       </section>
 
