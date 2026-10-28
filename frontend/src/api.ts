@@ -306,6 +306,8 @@ export const api = {
 
 export const media = (path: string) => `/api/media/${path}`;
 
+export const exportLogsUrl = (id: string) => `/api/listings/${id}/export`;
+
 const SYMBOLS: Record<string, string> = { USD: "$", GBP: "£", EUR: "€" };
 
 export function money(amount: number, currency = "USD"): string {
