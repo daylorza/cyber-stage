@@ -15,6 +15,10 @@ ASPECT_MAX_DEVIATION = 0.03
 STRUCTURE_IOU = 0.3
 STRUCTURE_EXTRA_ALLOWED = 1
 STRUCTURE_EDGE_MARGIN = 0.01
+FRAMING_ANCHOR_IOU = 0.5
+FRAMING_MIN_ANCHORS = 3
+FRAMING_MAX_DRIFT = 0.05
+FRAMING_MIN_SPREAD = 0.3
 MIN_REGION_DIFF = 8.0
 FACE_MIN_AREA = 0.001
 
@@ -309,12 +313,49 @@ def _cut_off(box: list[float]) -> bool:
     return min(box[0], box[1], 1 - box[2], 1 - box[3]) <= STRUCTURE_EDGE_MARGIN
 
 
+def _fit_axis(pairs: list[tuple[list[float], list[float]]], lo: int, hi: int) -> tuple[float, float]:
+    """Stretch + shift on one axis. Stretch is only estimated when the matching doors span
+    FRAMING_MIN_SPREAD of the frame on this axis; bunched doors give a shift-only fit."""
+    xs = [s[i] for s, _ in pairs for i in (lo, hi)]
+    ys = [d[i] for _, d in pairs for i in (lo, hi)]
+    mx, my = sum(xs) / len(xs), sum(ys) / len(ys)
+    if max(xs) - min(xs) < FRAMING_MIN_SPREAD:
+        return 1.0, my - mx
+    var = sum((x - mx) ** 2 for x in xs)
+    scale = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / var
+    return scale, my - scale * mx
+
+
+def _framing(src_doors: list[list[float]], dst_doors: list[list[float]]) -> dict[str, float] | None:
+    """Global stretch/shift of the staged image vs the source, fitted (least squares, per axis)
+    on in-frame doors that already match well. None with fewer than FRAMING_MIN_ANCHORS.
+    drift = the largest stretch or edge displacement, as a fraction of the frame."""
+    anchors = []
+    for s in src_doors:
+        best = max(dst_doors, key=lambda d: _iou(s, d), default=None)
+        if not _cut_off(s) and best is not None and _iou(s, best) >= FRAMING_ANCHOR_IOU:
+            anchors.append((s, best))
+    if len(anchors) < FRAMING_MIN_ANCHORS:
+        return None
+    sx, tx = _fit_axis(anchors, 0, 2)
+    sy, ty = _fit_axis(anchors, 1, 3)
+    drift = max(abs(sx - 1), abs(sy - 1), abs(tx), abs(sx + tx - 1), abs(ty), abs(sy + ty - 1))
+    return {"sx": sx, "tx": tx, "sy": sy, "ty": ty, "drift": drift, "anchors": len(anchors)}
+
+
+def _corrected(box: list[float], f: dict[str, float]) -> list[float]:
+    return [f["sx"] * box[0] + f["tx"], f["sy"] * box[1] + f["ty"],
+            f["sx"] * box[2] + f["tx"], f["sy"] * box[3] + f["ty"]]
+
+
 def _structure_check(ctx, room: dict[str, Any], src: Path, dst: Path) -> tuple[str, str]:
     problems: list[str] = []
     skipped: list[str] = []
-    compared = 0
+    compared = rescued = 0
     with Image.open(src) as si, Image.open(dst) as di:
         src_size, dst_size = si.size, di.size
+    src_by: dict[str, list[list[float]]] = {}
+    dst_by: dict[str, list[list[float]]] = {}
     for concept in ("window", "door"):
         src_boxes = ctx.client.sam_segment(
             src, concept, trace=ctx.trace, purpose="verify.sam.structure",
@@ -322,20 +363,38 @@ def _structure_check(ctx, room: dict[str, Any], src: Path, dst: Path) -> tuple[s
         dst_boxes = ctx.client.sam_segment(
             dst, concept, trace=ctx.trace, purpose="verify.sam.structure",
             target={"room": room["id"], "concept": concept, "side": "after"})
-        src_norm = [_normalized(b["box"], src_size) for b in src_boxes]
-        dst_norm = [_normalized(b["box"], dst_size) for b in dst_boxes]
+        src_by[concept] = [_normalized(b["box"], src_size) for b in src_boxes]
+        dst_by[concept] = [_normalized(b["box"], dst_size) for b in dst_boxes]
+    # Muse Image re-frames slightly per generation; a small global drift is corrected so it
+    # doesn't read as moved doors/windows. The correction can only rescue a match, never break one.
+    framing = _framing(src_by["door"], dst_by["door"])
+    correct = framing is not None and framing["drift"] <= FRAMING_MAX_DRIFT
+    for concept in ("window", "door"):
+        src_norm, dst_norm = src_by[concept], dst_by[concept]
         for i, box in enumerate(src_norm, start=1):
             if _cut_off(box):
                 skipped.append(f"{concept} #{i}")
                 continue
             compared += 1
-            if not any(_iou(box, d) >= STRUCTURE_IOU for d in dst_norm):
-                problems.append(f"{concept} #{i} moved or removed")
+            if any(_iou(box, d) >= STRUCTURE_IOU for d in dst_norm):
+                continue
+            if correct and any(_iou(_corrected(box, framing), d) >= STRUCTURE_IOU for d in dst_norm):
+                rescued += 1
+                continue
+            problems.append(f"{concept} #{i} moved or removed")
         in_src = sum(not _cut_off(b) for b in src_norm)
         in_dst = sum(not _cut_off(b) for b in dst_norm)
         if in_dst > in_src + STRUCTURE_EXTRA_ALLOWED:
             problems.append(f"{in_dst - in_src} extra {concept}(s) added")
     note = f" Not compared (cut off at the photo edge): {', '.join(skipped)}." if skipped else ""
+    if correct:
+        note += (f" Framing corrected before comparing ({framing['anchors']} matching doors: "
+                 f"stretch x {framing['sx']:.3f}, y {framing['sy']:.3f}; "
+                 f"shift x {framing['tx']:+.1%}, y {framing['ty']:+.1%}): "
+                 + (f"{rescued} item(s) matched only after correction." if rescued else "no item needed it."))
+    elif framing is not None:
+        note += (f" Framing drift {framing['drift']:.1%} ({framing['anchors']} matching doors) "
+                 f"is over {FRAMING_MAX_DRIFT:.0%}; not corrected.")
     if problems:
         return "fail", f"Staging changed structure: {'; '.join(problems)}.{note}"
     if skipped and not compared:
