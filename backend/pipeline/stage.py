@@ -24,8 +24,15 @@ from pipeline.classify import is_utility
 STYLE_PRESETS = {
     "modern-luxury": {
         "label": "Modern luxury",
-        "description": "Restyle this room as a modern luxury interior: calm neutral palette, "
-                       "designer furniture, layered lighting, museum-minimal styling.",
+        "description": "Restyle this room as a modern luxury interior with a few large pieces "
+                       "only, low and clean-lined: one large warm-ivory sofa, one low sculptural "
+                       "travertine or stone coffee table, one large warm-neutral rug grounding "
+                       "the set, and exactly one accent piece — either a charcoal armchair or a "
+                       "champagne-metal floor lamp, never both. Palette: warm ivory upholstery, "
+                       "charcoal and champagne-metal accents, at most one small muted-cyan "
+                       "cushion or artwork. No small decor: no vases, books, throws, plants, "
+                       "dried stems, or objects on counters and shelves. Warm light, not flat "
+                       "daylight. Light and space first — do not fill empty floor.",
     },
     "coastal": {
         "label": "Coastal",
