@@ -112,6 +112,45 @@ async function compute(plate: string, staged: string): Promise<Cut | null> {
   return { url: URL.createObjectURL(blob), w, h, alpha: grown };
 }
 
+/**
+ * The furniture mask with every falling piece's oval cut out of it, drawn on canvas (not
+ * mask-composite, which drops the subtraction in Chrome). What remains is decor — artwork,
+ * shelving, curtains — revealed during the sketch opening before the pieces drop.
+ */
+const decorCache = new Map<string, Promise<string | null>>();
+
+export function maskMinusOvals(maskPath: string | null | undefined, ovals: [number, number, number, number][]): Promise<string | null> {
+  if (!maskPath) return Promise.resolve(null);
+  const key = `${maskPath}|${ovals.map((o) => o.map((v) => v.toFixed(3)).join(",")).join(";")}`;
+  let hit = decorCache.get(key);
+  if (!hit) {
+    hit = (async () => {
+      // The path is already a resolved URL (media() path or a blob URL), so it is not re-wrapped.
+      const img = new Image();
+      img.src = maskPath;
+      await img.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      ctx.globalCompositeOperation = "destination-out";
+      const grow = 0.07;
+      for (const [x1, y1, x2, y2] of ovals) {
+        const w = (x2 - x1 + 2 * grow) * canvas.width;
+        const h = (y2 - y1 + 2 * grow) * canvas.height;
+        ctx.beginPath();
+        ctx.ellipse(((x1 + x2) / 2) * canvas.width, ((y1 + y2) / 2) * canvas.height, w / 2, h / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+      return blob ? URL.createObjectURL(blob) : null;
+    })().catch(() => null);
+    decorCache.set(key, hit);
+  }
+  return hit;
+}
+
 /** Cached per plate and staged image. Resolves to null when the mask can't be made or isn't useful. */
 export function cutout(plate: string | null | undefined, staged: string | null | undefined): Promise<Cut | null> {
   if (!plate || !staged) return Promise.resolve(null);

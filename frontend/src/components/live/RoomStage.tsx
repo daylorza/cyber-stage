@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { media, type LiveRoom } from "../../api";
-import { cutout, usable, type Cut } from "./cutout";
+import { cutout, maskMinusOvals, usable, type Cut } from "./cutout";
+import { sketch } from "./sketch";
 import { featherMask, IDENTITY, inFront, ovalOf, pieceMask, placed, planPieces, preload } from "./stage";
 
 export type StagePhase = "empty" | "staged";
@@ -23,6 +24,13 @@ type Props = {
 
 const FIRST_HOLD = 2200;
 const RESTYLE_HOLD = 220;
+/** Sketch -> finished opening: the room sits as a pencil sketch, then fills stage by stage. */
+const SKETCH_FADE = 600;
+const SKETCH_HOLD = 1500;
+const SKETCH_HOLD_MAIN = 2600;
+/** Walls/wood fill (sketch lifts to the filmed room) and shelving/artwork fill. */
+const SHELL_MS = 1150;
+const DECOR_MS = 1050;
 /** One fall, ceiling to floor, including the landing squash and settle. */
 const FALL_MS = 1150;
 /** Where in the fall the piece touches the floor. */
@@ -75,6 +83,8 @@ const pieceInnerMask = (url: string | null, fronts: string[]): CSSProperties => 
 export default function RoomStage({ room, styleId, instant, reduced, beat = FIRST_HOLD, onReady, onPhase, overlay, children }: Props) {
   const [shown, setShown] = useState<string | null>(null);
   const [cut, setCut] = useState<Cut | null>(null);
+  const [sketchUrl, setSketchUrl] = useState<string | null>(null);
+  const [decorMask, setDecorMask] = useState<string | null>(null);
   const shownRef = useRef<string | null>(null);
   const started = useRef(false);
   const layer = useRef<HTMLDivElement>(null);
@@ -100,6 +110,7 @@ export default function RoomStage({ room, styleId, instant, reduced, beat = FIRS
     (async () => {
       const ready = Promise.all([preload(base), preload(stagedPath), preload(target?.mask)]);
       const cutting = target?.mask ? Promise.resolve(null) : cutout(base, stagedPath);
+      const drawing = sketch(stagedPath);
       const first = !started.current;
 
       if (first) {
@@ -142,6 +153,7 @@ export default function RoomStage({ room, styleId, instant, reduced, beat = FIRS
       const mask = await Promise.race([cutting, sleep(300).then(() => null)]);
       if (cancelled) return;
 
+      const hasMask = !!target?.mask || !!mask;
       setCut(mask);
       setShownStyle(styleId);
       await frames();
@@ -150,6 +162,43 @@ export default function RoomStage({ room, styleId, instant, reduced, beat = FIRS
       const root = layer.current;
       const rest = root?.querySelector<HTMLElement>("[data-rest]");
       const pieces = root ? Array.from(root.querySelectorAll<HTMLElement>("[data-piece]")) : [];
+
+      // Sketch -> finished opening (first arrival only, while a furniture mask exists):
+      // the room sits as a pencil sketch, the walls/wood fill with colour, shelving and
+      // artwork fill in (the staged image where the mask has no furniture piece), THEN the
+      // cascade drops the pieces. The sketch is the opening; the drop is still the main act.
+      if (first && hasMask && pieces.length > 0) {
+        const drawn = await Promise.race([drawing, sleep(1400).then(() => null)]);
+        if (cancelled) return;
+        if (drawn) {
+          setDecorMask(
+            await maskMinusOvals(
+              maskUrl,
+              items.map((i) => [i.x1, i.y1, i.x2, i.y2]),
+            ),
+          );
+          setSketchUrl(drawn);
+          await frames();
+          if (cancelled) return;
+          const paper = root?.querySelector<HTMLElement>("[data-sketch]");
+          const decor = root?.querySelector<HTMLElement>("[data-decor]");
+          paper?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: SKETCH_FADE, fill: "forwards" });
+          await sleep(SKETCH_FADE + (room.main ? SKETCH_HOLD_MAIN : SKETCH_HOLD));
+          if (cancelled) return;
+          paper?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: SHELL_MS, easing: "ease-in-out", fill: "forwards" });
+          await sleep(SHELL_MS);
+          if (cancelled) return;
+          decor?.animate(
+            [
+              { clipPath: "inset(0 0 100% 0)", opacity: 0.4 },
+              { clipPath: "inset(0 0 0% 0)", opacity: 1 },
+            ],
+            { duration: DECOR_MS, easing: "cubic-bezier(0.5, 0, 0.2, 1)", fill: "forwards" },
+          );
+          await sleep(DECOR_MS + 120);
+          if (cancelled) return;
+        }
+      }
 
       if (pieces.length === 0) {
         callbacks.current.onPhase("staged");
@@ -209,6 +258,7 @@ export default function RoomStage({ room, styleId, instant, reduced, beat = FIRS
 
     function settleNow() {
       const root = layer.current;
+      root?.querySelector("[data-decor]")?.animate([{ opacity: 1 }], { duration: 1, fill: "forwards" });
       root?.querySelector("[data-rest]")?.animate([{ opacity: 1 }], { duration: 1, fill: "forwards" });
       root?.querySelectorAll("[data-piece],[data-shadow]").forEach((el) => el.animate([{ opacity: 1 }], { duration: 1, fill: "forwards" }));
     }
@@ -257,6 +307,16 @@ export default function RoomStage({ room, styleId, instant, reduced, beat = FIRS
 
       {shown && style?.image && (
         <div key={shown} ref={layer} className="absolute inset-0">
+          {/* Shelving, artwork and decor: the staged image where the mask has no furniture piece.
+              Filled during the sketch opening, before the pieces drop. */}
+          <div
+            data-decor
+            className="absolute inset-0"
+            style={{ opacity: 0, ...maskStyle(decorMask) }}
+          >
+            <img src={media(style.image)} alt="" draggable={false} className="absolute max-w-none select-none" style={placed(align)} />
+          </div>
+
           {/* The masked remainder: only where the furniture mask says the staged room differs. */}
           <div data-rest className="absolute inset-0" style={{ opacity: 0, ...maskStyle(maskUrl) }}>
             <img src={media(style.image)} alt="" draggable={false} className="absolute max-w-none select-none" style={placed(align)} />
@@ -323,6 +383,17 @@ export default function RoomStage({ room, styleId, instant, reduced, beat = FIRS
               </div>
             );
           })}
+
+          {sketchUrl && (
+            <img
+              data-sketch
+              src={sketchUrl}
+              alt=""
+              draggable={false}
+              className="absolute max-w-none select-none"
+              style={{ ...placed(align), opacity: 0 }}
+            />
+          )}
         </div>
       )}
 

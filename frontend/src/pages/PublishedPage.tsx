@@ -64,6 +64,10 @@ function Walkthrough({ page, rooms }: { page: Page; rooms: Room[] }) {
         playsInline
         controls
         preload="auto"
+        onLoadedData={(e) => {
+          e.currentTarget.defaultPlaybackRate = 0.5;
+          e.currentTarget.playbackRate = 0.5;
+        }}
         onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)}
         aria-label={`${page.title}: full walkthrough video, ${clock(video.duration)}`}
         className="block max-h-[78dvh] w-full rounded-2xl bg-night object-contain shadow-[0_40px_120px_-40px_rgb(0_0_0/0.9)]"

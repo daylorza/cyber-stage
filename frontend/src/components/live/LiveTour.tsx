@@ -29,8 +29,12 @@ import {
 
 const REST_EASE = "cubic-bezier(0.22, 0.7, 0.12, 1)";
 const MOVE_EASE = "cubic-bezier(0.45, 0, 0.25, 1)";
-/** Walking in from the video, the empty room has just been seen: a short beat, then the cascade. */
-const ARRIVAL_BEAT = 900;
+/** Walking in from the video, the empty room has just been seen: a short beat, then the cascade.
+    The main living space holds longest — the vibe is the point. */
+const ARRIVAL_BEAT = 1400;
+const MAIN_BEAT = 2400;
+/** The walk plays at half speed so the space reads. */
+const WALK_RATE = 0.5;
 const FIT_TILT = 5;
 
 /** Which plan room lights up for each room type. */
@@ -261,6 +265,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const play = useCallback(() => {
     const el = videoRef.current;
     if (!el) return;
+    el.playbackRate = WALK_RATE;
     setEnded(false);
     void el.play().catch(() => undefined);
   }, []);
@@ -538,7 +543,9 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               playsInline
               preload="auto"
               className="absolute inset-0 h-full w-full object-fill"
-              onLoadedData={() => {
+              onLoadedData={(e) => {
+                e.currentTarget.defaultPlaybackRate = WALK_RATE;
+                e.currentTarget.playbackRate = WALK_RATE;
                 setEntered(true);
                 setDark(false);
                 later(play, 1400);
@@ -563,7 +570,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                 styleId={styleId}
                 instant={instant}
                 reduced={reduced}
-                beat={walking ? ARRIVAL_BEAT : undefined}
+                beat={walking ? (room.main ? MAIN_BEAT : ARRIVAL_BEAT) : undefined}
                 onReady={onReady}
                 onPhase={setPhase}
                 overlay={overlay}
