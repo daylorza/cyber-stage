@@ -42,6 +42,8 @@ MAX_SIDE = 1024
 MAX_CLASSIFY_FRAMES = 24
 
 BOX_RE = re.compile(r"(\d+)<\|box;x1=(\d+);y1=(\d+);x2=(\d+);y2=(\d+);w=(\d+);h=(\d+)(?:;c=([\d.]+))?\|>")
+# A record is a box then its mask; the mask payload's base85 alphabet never contains "|".
+RECORD_RE = re.compile(BOX_RE.pattern + r"<\|mask;x=\d+;y=\d+(?:;c=[\d.]+)?;data=(\d+),(\d+),([^|]*)\|>")
 
 ROOM_TYPES = "living, kitchen, dining, bedroom, bathroom, office, terrace, hallway, closet, exterior, other"
 
@@ -212,6 +214,27 @@ def parse_sam_output(output_text: str, orig_w: int, orig_h: int) -> list[dict[st
     return boxes
 
 
+def parse_sam_masks(output_text: str, orig_w: int, orig_h: int) -> list[dict[str, Any]]:
+    """Boxes (ORIGINAL image coords) with their masks. A mask is an H x W raster over its box
+    on the image SAM saw (`source_box` in `source_size`); `encoding` "~" is lossless 8-bit
+    coverage, "!" one-bit. Decode with meta-sam-parser."""
+    records = []
+    for m in RECORD_RE.finditer(output_text or ""):
+        x1, y1, x2, y2, w, h = (int(m.group(i)) for i in range(2, 8))
+        if w <= 0 or h <= 0:
+            continue
+        sx, sy = orig_w / w, orig_h / h
+        payload = m.group(11)
+        records.append({
+            "box": [round(x1 * sx), round(y1 * sy), round(x2 * sx), round(y2 * sy)],
+            "score": float(m.group(8)) if m.group(8) else None,
+            "source_box": [x1, y1, x2, y2], "source_size": [w, h],
+            "mask": {"height": int(m.group(9)), "width": int(m.group(10)),
+                     "encoding": "lossless" if payload.startswith("~") else "one_bit", "payload": payload},
+        })
+    return records
+
+
 class _ClientBase:
     """Shared call plumbing for the real client and the offline test fake."""
 
@@ -365,6 +388,28 @@ class MetaClient(_ClientBase):
             for b in boxes:
                 b["concept"] = concept
             return boxes, f"{len(boxes)} {concept} box(es)"
+
+        return self._invoke(trace, purpose, target or {"concept": concept},
+                            self.sam_model, concept, [blob], fn)
+
+    def sam_masks(self, image_path: str | Path, concept: str, *, trace: list | None = None,
+                  purpose: str = "sam.masks", target: dict | None = None) -> list[dict[str, Any]]:
+        """Same SAM 3.1 call as sam_segment, keeping each record's mask (see parse_sam_masks)."""
+        img, orig_w, orig_h = _load_scaled(image_path)
+        blob = _jpeg_bytes(img)
+
+        def fn() -> tuple[list[dict[str, Any]], str]:
+            response = self._client().responses.create(
+                model=self.sam_model,
+                input=[{"role": "user", "content": [
+                    {"type": "input_text", "text": concept},
+                    {"type": "input_image", "image_url": _data_url(blob)},
+                ]}],
+            )
+            records = parse_sam_masks(response.output_text, orig_w, orig_h)
+            for r in records:
+                r["concept"] = concept
+            return records, f"{len(records)} {concept} mask(s)"
 
         return self._invoke(trace, purpose, target or {"concept": concept},
                             self.sam_model, concept, [blob], fn)

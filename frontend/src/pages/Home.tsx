@@ -207,6 +207,11 @@ export default function Home() {
                   Broker console
                 </Link>
               </li>
+              <li>
+                <Link to="/prototype-testing" className="eyebrow text-ivory/70! transition hover:text-ivory!">
+                  Prototype Testing
+                </Link>
+              </li>
             </ul>
           </div>
         </nav>

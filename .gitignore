@@ -11,6 +11,9 @@ backend/assets/
 frontend/node_modules/
 frontend/dist/
 
+# Prototype Testing: local-only assets (POC clip symlink, textures cut from its staging)
+frontend/public/prototype/
+
 # Secrets
 .env
 .env.*

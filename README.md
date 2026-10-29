@@ -13,6 +13,7 @@ make backend    # API on http://127.0.0.1:8000
 make frontend   # UI on http://localhost:5173 (HTTPS=1 make frontend for https)
 make test       # backend tests + frontend typecheck
 make serve      # build the UI and serve everything from :8000
+make prototype  # local-only assets for /prototype-testing (needs the POC clip; nothing committed)
 ```
 
 Product AI runs on the Meta Model API. Copy `.env.example` to `.env` and fill in the values; `.env` is git-ignored.
