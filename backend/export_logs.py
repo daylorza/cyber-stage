@@ -14,6 +14,7 @@ from typing import Any
 
 import checklist
 import config
+from pipeline.frames import coverage_line
 from pipeline.stage import STYLE_PRESETS
 
 # Key-like shapes that must never leave the server, even inside stored content.
@@ -251,6 +252,8 @@ def _section_listing(listing: dict[str, Any], meta: dict[str, Any], lines: list[
     lines.append("")
     lines.append(f"ID: {listing.get('id')}")
     lines.append(f"Title: {copy.get('title') or '(no listing copy yet)'}")
+    if listing.get("note"):
+        lines.append(f"Label: {listing['note']}")
     lines.append(f"Status: {listing.get('status')}")
     lines.append(f"Source: {listing.get('source')}")
     lines.append(
@@ -299,6 +302,73 @@ def _section_listing(listing: dict[str, Any], meta: dict[str, Any], lines: list[
         lines.append(f"  published rooms: {', '.join(names) or 'none'}")
     else:
         lines.append("Published snapshot: not published")
+    lines.append("")
+
+
+def _section_video(listing: dict[str, Any], lines: list[str]) -> None:
+    lines.append("## 1b. Walkthrough video · main living room · token guard")
+    lines.append("")
+    videos = listing.get("videos") or []
+    if not videos:
+        has_video = any(u.get("kind") == "video" for u in listing.get("uploads") or [])
+        lines.append("Video coverage: not recorded (processed before full-video extraction)" if has_video
+                     else "Video coverage: no video upload")
+    for video in videos:
+        lines.append(f"Upload {video.get('upload')}: {coverage_line(video)}")
+        lines.append(f"  duration: {video.get('duration')} s · frames extracted: {video.get('extracted')} "
+                     f"(expected >= {video.get('expected')}) · first frame t={video.get('first_t')} s · "
+                     f"last frame t={video.get('last_t')} s · kept: {video.get('kept')}")
+        lines.append(f"  published video: {video.get('status') or 'not built'} · {_media(video.get('path'))} · "
+                     f"{video.get('detail') or ''}".rstrip())
+        if video.get("note"):
+            lines.append(f"  note: {video['note']}")
+    main = listing.get("main_room") or {}
+    lines.append(f"Main living room: {main.get('detail') or 'not decided yet'}")
+    guard = listing.get("token_guard") or {}
+    if guard:
+        lines.append(f"Token guard: {guard.get('status')} · {guard.get('detail')}")
+        lines.append(f"  staging order: {', '.join(guard.get('order') or []) or 'none'} · "
+                     f"held: {', '.join(guard.get('skipped') or []) or 'none'} · at {guard.get('at')}")
+    else:
+        lines.append("Token guard: not recorded")
+    lines.append("")
+
+
+def _section_live(listing: dict[str, Any], lines: list[str]) -> None:
+    live_block = listing.get("live") or {}
+    lines.append("## 7b. Live-In-It preparation")
+    lines.append("")
+    if not live_block:
+        lines.append("Not prepared.")
+        lines.append("")
+        return
+    trace = live_block.get("trace") or []
+    spent = sum(1 for t in trace if not t.get("cached"))
+    lines.append(f"Status: {live_block.get('status')} · prepared_at: {live_block.get('prepared_at') or 'none'} · "
+                 f"error: {live_block.get('error') or 'none'}")
+    lines.append(f"Meta calls: {len(trace)} traced · {spent} new · {len(trace) - spent} from cache")
+    guard = live_block.get("guard") or {}
+    if guard:
+        lines.append(f"Order: {', '.join(guard.get('order') or [])} (main room {guard.get('main_room')} first) · "
+                     f"utility rooms walked past, not staged: {', '.join(guard.get('skipped_utility') or []) or 'none'}"
+                     + (f" · held: {', '.join(guard['held'])}" if guard.get("held") else ""))
+    for room in live_block.get("rooms") or []:
+        lines.append(f"- {room.get('name')} ({room.get('id')}) · t={room.get('t')} · plate: {room.get('plate_source')}")
+        for style_id, entry in (room.get("styles") or {}).items():
+            state = "available" if entry.get("available") else f"disabled: {entry.get('error') or ''}"
+            if not entry.get("available"):
+                for key in ("geometry", "structure"):
+                    check = entry.get(key) or {}
+                    if check.get("status") == "fail":
+                        state += f" {check.get('reason')}"
+            align = entry.get("align") or {}
+            lines.append(f"    {style_id}: {state.strip()} · pieces: {len(entry.get('pieces') or [])} · "
+                         f"mask: {_media(entry.get('mask'))} · align: "
+                         + (f"stretch {align.get('sx')}/{align.get('sy')} shift {align.get('bx')}/{align.get('by')}"
+                            if align else "none"))
+            outside = (entry.get("structure") or {}).get("outside_view") or []
+            if outside:
+                lines.append(f"      outside view (reported separately, not blocking): {'; '.join(outside)}")
     lines.append("")
 
 
@@ -367,7 +437,11 @@ def _room_lines(listing: dict[str, Any], room: dict[str, Any], lines: list[str])
     staging = room.get("staging")
 
     lines.append(f"- {room.get('name')} ({room.get('id')}) · type={room.get('type')} · "
-                 f"excluded: {'yes' if room.get('rejected') else 'no'}")
+                 f"excluded: {'yes' if room.get('rejected') else 'no'}"
+                 + (" · MAIN LIVING ROOM" if room.get("main") else ""))
+    if room.get("t") is not None:
+        span = room.get("span") or [room["t"], room["t"]]
+        lines.append(f"  video: hero at {clock(room['t'])} · segment {clock(span[0] or 0)}–{clock(span[1] or 0)}")
     lines.append(f"  hero frame: {room.get('source_frame') or 'none'} · coverage {_pct(hero_cov)} · "
                  f"{room.get('hero_reason') or ''}".rstrip())
     lines.append(f"  frames: {', '.join(room.get('frames') or []) or 'none'}")
@@ -599,12 +673,14 @@ def render(listing: dict[str, Any], jobs: list[dict[str, Any]], *, meta: dict[st
         "",
     ]
     _section_listing(listing, meta, lines)
+    _section_video(listing, lines)
     _section_checks(listing, lines)
     _section_flags(listing, lines)
     _section_rooms(listing, lines)
     _section_copy(listing, lines)
     _section_decisions(listing, lines)
     _section_trace(listing, lines)
+    _section_live(listing, lines)
     _section_jobs(listing, jobs, lines)
     lines.append(f"-- end of export · {lid} --")
     return scrub("\n".join(lines) + "\n")

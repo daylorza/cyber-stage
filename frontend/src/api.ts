@@ -52,7 +52,47 @@ export type Room = {
   staging_history?: (Staging & { after: string | null; replaced_at: string })[];
   restage_error?: { level: number; error: string; at: string };
   rejected: boolean;
+  /** Hero frame time in the walkthrough video, and the room's unbroken segment. */
+  t?: number | null;
+  span?: [number | null, number | null] | null;
+  upload?: number | null;
+  /** The main living space: the hero room. */
+  main?: boolean;
 };
+
+/** Coverage of one uploaded video, plus the blurred copy the listing page plays. */
+export type VideoCoverage = {
+  upload: number;
+  duration: number;
+  fps: number;
+  extracted: number;
+  expected: number;
+  first_t: number | null;
+  last_t: number | null;
+  kept?: number;
+  path?: string | null;
+  status?: "ready" | "held" | "failed";
+  detail?: string;
+  note?: string;
+  blurred_boxes?: number;
+  width?: number;
+  height?: number;
+};
+
+export type PublishedVideo = { path: string; duration: number; width: number; height: number; upload: number; note: string | null };
+
+export type MainRoom = { room: string | null; found: boolean; detail: string; name?: string; t?: number | null; span?: [number | null, number | null] };
+
+export type TokenGuard = {
+  main_room: string | null;
+  status: "main_first" | "no_main_room" | "main_failed";
+  detail: string;
+  order: string[];
+  skipped: string[];
+  at: string;
+};
+
+export type LiveEligibility = { eligible: boolean; reason: string | null; status: "preparing" | "ready" | "failed" | null; main_room?: string; main_room_name?: string };
 
 export type ChecklistStatus = "open" | "generated" | "failed" | "done" | "flagged";
 export type ChecklistItem = { id: string; label: string; status: ChecklistStatus; detail: string; updated_at: string };
@@ -131,7 +171,7 @@ export type Copy = {
 export type Job = {
   id: string;
   listing_id: string;
-  kind: "listing" | "verify" | "restage";
+  kind: "listing" | "verify" | "restage" | "live";
   status: "queued" | "running" | "done" | "failed";
   stage: string | null;
   progress: number;
@@ -152,6 +192,9 @@ export type PublishedPage = {
   approved_at: string;
   published_at: string;
   verification: { passed: boolean; ran_at: string; checks: number; open?: number };
+  video: PublishedVideo | null;
+  note: string | null;
+  live: LiveEligibility;
 };
 
 export type Listing = {
@@ -179,6 +222,9 @@ export type Listing = {
   error?: string;
   note?: string;
   published?: PublishedPage;
+  videos?: VideoCoverage[];
+  main_room?: MainRoom;
+  token_guard?: TokenGuard;
   updated_at: string;
 };
 
@@ -197,9 +243,11 @@ export type ListingSummary = {
 };
 
 export type GeometryCheck = { status: "pass" | "fail"; reason: string; correlation: number | null };
-export type StructureCheck = { status: "pass" | "fail" | "not_checked"; reason: string };
+export type StructureCheck = { status: "pass" | "fail" | "not_checked"; reason: string; outside_view?: string[]; corrected?: boolean };
 /** box = x1, y1, x2, y2 normalized 0..1 on the style image. */
 export type Piece = { concept: string; box: [number, number, number, number]; score: number | null };
+/** Maps a generated image into the filmed frame: frame = s * image + b, per axis. */
+export type Align = { sx: number; sy: number; bx: number; by: number };
 export type LiveStyle = {
   label: string;
   image: string | null;
@@ -210,21 +258,30 @@ export type LiveStyle = {
   geometry: GeometryCheck | null;
   structure: StructureCheck | null;
   pieces: Piece[];
+  /** Alignment of this image to the filmed frame, and its furniture mask (frame coordinates). */
+  align?: Align;
+  mask?: string | null;
 };
 export type LiveRoom = {
   id: string;
   name: string;
   type: string;
+  main?: boolean;
+  t?: number | null;
+  span?: [number | null, number | null] | null;
   before: string | null;
   plate: string | null;
   plate_source: "before" | "generated";
   plate_check: GeometryCheck | null;
   /** True when the plate is the as-filmed frame and SAM found furniture in it. */
   plate_furnished?: boolean;
+  plate_align?: Align;
   styles: Record<string, LiveStyle>;
   window: [number, number, number, number] | null;
   size: [number, number] | null;
 };
+/** Every published room on the video timeline; `prepared` rooms are where the walk stops. */
+export type WalkStop = { id: string; name: string; type: string; t: number; span: [number | null, number | null] | null; main: boolean; prepared: boolean };
 export type LiveMoment = {
   id: "coffee" | "sit" | "view";
   label: string;
@@ -249,6 +306,9 @@ export type LivePayload = {
   default_style: string;
   rooms: LiveRoom[];
   moments: LiveMoment[];
+  video: PublishedVideo | null;
+  path: WalkStop[];
+  guard: { main_room: string; order: string[]; skipped_utility: string[]; held: string[] } | null;
   calls: number;
   calls_by_purpose: Record<string, number>;
 };
@@ -268,6 +328,7 @@ export type ReviewBody = {
   action: "save" | "approve" | "reject";
   copy_edit?: { title: string; description: string; highlights: string[] };
   rejected_rooms?: string[];
+  test_listing?: boolean;
 };
 
 function errorMessage(status: number, body: unknown): string {
@@ -315,7 +376,8 @@ export const api = {
   settings: () => request<{ blocking_checks: boolean }>("/settings"),
   reprocess: (id: string) => request<{ listing_id: string; job_id: string }>(`/listings/${id}/reprocess`, { method: "POST" }),
   live: (id: string) => request<LivePayload>(`/listings/${id}/live`),
-  prepareLive: (id: string, residence = "seed_miami") =>
+  /** `residence` only links a Miami listing to the seeded home-page residence; any listing can be prepared. */
+  prepareLive: (id: string, residence: string | null = null) =>
     request<{ listing_id: string; job_id: string }>(`/listings/${id}/live`, json({ residence })),
   residenceLive: (residenceId: string) =>
     request<{ listing_id: string; status: "preparing" | "ready" | "failed" }>(`/residences/${residenceId}/live`),

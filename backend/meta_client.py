@@ -58,8 +58,12 @@ For EVERY frame, in order, return one entry:
 
 Also return "order": the room keys in walkthrough order.
 
+Room types: an open-plan living area (open floor for seating, large windows, sliding glass doors to a balcony) is "living" with its own living room key, even when part of a kitchen is visible; use "kitchen" only when cabinets, appliances or an island fill most of the frame. Entryways, corridors and close-ups of doors are "hallway". Laundry and utility spaces are "other".
+
 Rules: describe only what is visible in the frame. No guesses about location, views, finishes, or amenities not in frame. Do not count anything beyond what is visible.
 Reply with JSON only: {{"frames": [...], "order": [...]}}"""
+
+KNOWN_ROOMS_PROMPT = """These frames continue the same walkthrough. Room keys already used for earlier frames (key, type, time range): {rooms}. Reuse one of these keys only when a frame shows that same room; otherwise make a new key."""
 
 SPARK_PROMPT = """You are writing luxury real-estate listing copy. Tone: refined, concise, confident. No exclamation marks, no hype.
 
@@ -365,15 +369,20 @@ class MetaClient(_ClientBase):
         return self._invoke(trace, purpose, target or {"concept": concept},
                             self.sam_model, concept, [blob], fn)
 
-    def wonder_classify(self, frames: list[dict[str, Any]], *, trace: list | None = None,
-                        purpose: str = "wonder.classify", target: dict | None = None) -> dict[str, Any]:
+    def wonder_classify(self, frames: list[dict[str, Any]], *, known_rooms: str = "",
+                        trace: list | None = None, purpose: str = "wonder.classify",
+                        target: dict | None = None) -> dict[str, Any]:
+        """One call classifies up to MAX_CLASSIFY_FRAMES frames; pipeline/classify.py batches
+        longer walkthroughs and passes the room keys seen so far as `known_rooms`."""
         frames = frames[:MAX_CLASSIFY_FRAMES]
-        content: list[dict[str, Any]] = [{"type": "input_text", "text": WONDER_PROMPT}]
-        prompt_parts = [WONDER_PROMPT]
+        head = WONDER_PROMPT + (f"\n\n{KNOWN_ROOMS_PROMPT.format(rooms=known_rooms)}" if known_rooms else "")
+        content: list[dict[str, Any]] = [{"type": "input_text", "text": head}]
+        prompt_parts = [head]
         blobs: list[bytes] = []
         for frame in frames:
             label = f"Frame {frame['id']}"
-            label += f" (t={frame['t']:g}s)" if frame.get("t") is not None else " (photo)"
+            # Whole seconds are enough context for Wonder (and keep the prompt stable).
+            label += f" (t={round(frame['t'])}s)" if frame.get("t") is not None else " (photo)"
             content.append({"type": "input_text", "text": label})
             prompt_parts.append(label)
             img, _, _ = _load_scaled(frame["path"])

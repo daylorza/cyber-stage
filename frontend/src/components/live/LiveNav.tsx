@@ -16,6 +16,8 @@ type Props = {
   moments: LiveMoment[];
   onMoment: (m: LiveMoment) => void;
   plan: Plan | null;
+  /** Shown under a schematic (not measured) plan. */
+  planNote?: string | null;
   heading: number;
   open: boolean;
   setOpen: (open: boolean) => void;
@@ -59,6 +61,7 @@ export default function LiveNav(p: Props) {
             {p.plan && (
               <div className="hidden sm:block">
                 <FloorPlan plan={p.plan} heading={p.heading} label={p.title} />
+                {p.planNote && <p className="eyebrow mt-2 text-[0.55rem]! text-ivory/45!">{p.planNote}</p>}
               </div>
             )}
             <ul className="space-y-2.5">

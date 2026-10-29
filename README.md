@@ -40,9 +40,13 @@ per-claim evidence. A checklist is generated per job and an independent verifier
 (`backend/verify/`) re-checks everything with its own model calls; the broker
 console must clear every item before approve, and publish re-verifies.
 
-Stage 2 (core, one property: The Ocean Residence, Miami): Live-In-It opens only for a
-published listing. `backend/live.py` pre-processes it as a job — every style preset per
-room (geometry + window/door checks, one stricter retry), SAM furniture pieces for the
-cascade, an AI-emptied plate when the filmed room is furnished, and coffee/sit/view moments.
-`/p/:id/live` plays it: cascade room by room, style picker, moments, floor plan inside the
-hover nav, and a simulated hold (no payment taken, no provider). Stage 1 data is never changed.
+Stage 2 (Live-In-It, Spec v2): the whole video is sampled at 1 fps (no frame cap; a
+truncated extraction fails the job), the main living room is the hero room and stages first
+(token guard: no main living space, no staging spend), and the published page plays the full
+walkthrough video (re-encoded, privacy regions blurred, audio removed). Any published listing
+with a main living space can be prepared: `backend/live.py` stages every style preset for the
+lived-in rooms (utility rooms are walked past), aligns each generated image to the filmed
+frame and cuts a furniture mask (`backend/cascade.py`). `/p/:id/live` walks the video and stops
+at each room's hero frame, where the furniture falls from the ceiling; style picker, moments,
+drag to look around, floor plan inside the hover nav, and a simulated hold (no payment taken).
+Stage 1 data is never changed.

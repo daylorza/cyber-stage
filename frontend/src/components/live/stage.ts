@@ -1,13 +1,20 @@
-import { media, type LiveRoom, type Piece } from "../../api";
+import { media, type Align, type LiveRoom, type Piece } from "../../api";
 
 /** Extra width and height beyond "cover", so there is a little room to pan. */
 export const PAN_PAD = 1.08;
+/** Tall (phone) footage on a wide screen is shown a little larger than the screen, so you can look up and down. */
+export const LOOK_ZOOM = 1.22;
+/** How far a fit-mode room slides sideways while looking around, as a share of its width. */
+const FIT_SLIDE = 0.14;
 export const LOOK_DEGREES = 35;
 
 export type Box = [number, number, number, number];
 export type Size = { w: number; h: number };
-/** `fit` = a tall room shown whole at viewport height, with a blurred backdrop behind it. */
+/** `fit` = a tall room shown (nearly) whole, with a blurred backdrop at the sides. */
 export type Stage = Size & { fit: boolean };
+export type Pan = { x: number; y: number };
+
+export const IDENTITY: Align = { sx: 1, sy: 1, bx: 0, by: 0 };
 
 export const roomAspect = (room: LiveRoom) => (room.size && room.size[0] > 0 && room.size[1] > 0 ? room.size[0] / room.size[1] : 16 / 9);
 
@@ -16,27 +23,37 @@ export const isFit = (aspect: number, vw: number, vh: number) => aspect < (vw / 
 
 /**
  * Cover mode: the box that covers the viewport at the room's aspect ratio, so normalized boxes map by
- * percentage. Fit mode: the whole room at viewport height, centred.
+ * percentage. Fit mode: the room at a little more than viewport height, centred, so it can be looked around.
  */
 export function stageSize(vw: number, vh: number, aspect: number): Stage {
-  if (isFit(aspect, vw, vh)) return { w: vh * aspect, h: vh, fit: true };
+  if (isFit(aspect, vw, vh)) return { w: vh * LOOK_ZOOM * aspect, h: vh * LOOK_ZOOM, fit: true };
   const w = Math.max(vw, vh * aspect);
   return { w: w * PAN_PAD, h: (w / aspect) * PAN_PAD, fit: false };
 }
 
-export const maxPanFor = (stage: Stage, vw: number) => (stage.fit ? 0 : Math.max(0, (stage.w - vw) / 2));
+/** How far the camera can look left/right and up/down, in pixels. */
+export const maxPanFor = (stage: Stage, vw: number, vh: number): Pan => ({
+  x: stage.fit ? stage.w * FIT_SLIDE : Math.max(0, (stage.w - vw) / 2),
+  y: Math.max(0, (stage.h - vh) / 2),
+});
 
 /** Vertical camera offset that frames the staged furniture when the stage is taller than the viewport. */
-export function restOffset(pieces: Piece[], stage: Stage, vh: number): number {
+export function restOffset(pieces: Piece[], stage: Stage, vh: number, align: Align = IDENTITY): number {
   const my = Math.max(0, (stage.h - vh) / 2);
-  if (stage.fit || my === 0) return 0;
-  const items = planPieces(pieces);
+  if (my === 0) return 0;
+  const items = planPieces(pieces, align);
   if (items.length === 0) return 0;
   const top = Math.min(...items.map((i) => i.y1));
   const bottom = Math.max(...items.map((i) => i.y2));
   const y = -((top + bottom) / 2 - 0.5) * stage.h;
   return Math.max(-my, Math.min(my, y));
 }
+
+/** A normalized box on a generated image, in filmed-frame coordinates. */
+export const toFrame = (box: Box, a: Align = IDENTITY): Box => [a.sx * box[0] + a.bx, a.sy * box[1] + a.by, a.sx * box[2] + a.bx, a.sy * box[3] + a.by];
+
+/** CSS that places an aligned image inside a frame-sized box. */
+export const placed = (a: Align = IDENTITY) => ({ left: `${a.bx * 100}%`, top: `${a.by * 100}%`, width: `${a.sx * 100}%`, height: `${a.sy * 100}%` });
 
 const loaded = new Map<string, { img: HTMLImageElement; done: Promise<void> }>();
 
@@ -98,11 +115,11 @@ const PAD = 0.028;
 const RUG = /rug|carpet/i;
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
-/** Rug first, then large to small. Boxes that cover most of the room are left to the full image. */
-export function planPieces(pieces: Piece[]): PieceItem[] {
+/** Rug first, then large to small, in filmed-frame coordinates. Boxes that cover most of the room are left to the full image. */
+export function planPieces(pieces: Piece[], align: Align = IDENTITY): PieceItem[] {
   return pieces
     .map((p, i) => {
-      const [a, b, c, d] = p.box;
+      const [a, b, c, d] = toFrame(p.box, align);
       const x1 = clamp01(Math.min(a, c));
       const x2 = clamp01(Math.max(a, c));
       const y1 = clamp01(Math.min(b, d));
@@ -110,8 +127,10 @@ export function planPieces(pieces: Piece[]): PieceItem[] {
       return { p, i, x1, y1, x2, y2, area: (x2 - x1) * (y2 - y1) };
     })
     .filter((b) => b.x2 - b.x1 > 0.02 && b.y2 - b.y1 > 0.02 && b.area >= 0.0015 && b.area <= 0.55)
+    // The 8 largest pieces, then rug first and back to front (furthest from the camera falls first).
     .sort((a, b) => Number(RUG.test(b.p.concept)) - Number(RUG.test(a.p.concept)) || b.area - a.area)
     .slice(0, 8)
+    .sort((a, b) => Number(RUG.test(b.p.concept)) - Number(RUG.test(a.p.concept)) || a.y2 - b.y2)
     .map(({ p, i, x1, y1, x2, y2 }) => {
       const X1 = clamp01(x1 - PAD);
       const Y1 = clamp01(y1 - PAD);
@@ -135,6 +154,28 @@ export function planPieces(pieces: Piece[]): PieceItem[] {
       };
     });
 }
+
+/**
+ * Falling pieces are cut by an oval, not their box: whatever the furniture mask lets through near the box
+ * edge (a patch of rug, a shadow) fades out instead of ending in a straight line, so nothing reads as a slab.
+ */
+export const pieceMask = (i: PieceItem) =>
+  `radial-gradient(ellipse ${50 + i.fl}% ${50 + i.ft}% at 50% 50%, #000 62%, rgb(0 0 0 / 0.85) 74%, transparent 100%)`;
+
+/**
+ * Pieces closer to the camera that overlap this one. Their ovals are cut out of this piece, so a sofa never
+ * falls carrying a copy of the coffee table in front of it; the closer piece fills that spot when it lands.
+ */
+export function inFront(p: PieceItem, items: PieceItem[]): PieceItem[] {
+  // Everything standing on a rug is cut out of the rug too: it unrolls bare, and each piece lands in its spot.
+  return items.filter(
+    (q) => q.key !== p.key && !q.flat && (p.flat || q.y2 > p.y2 + 0.005) && q.x1 < p.x2 && q.x2 > p.x1 && q.y1 < p.y2 && q.y2 > p.y1,
+  );
+}
+
+/** An oval over a piece's box, in percent of the frame. */
+export const ovalOf = (q: PieceItem) =>
+  `radial-gradient(ellipse ${((q.x2 - q.x1) / 2) * 92}% ${((q.y2 - q.y1) / 2) * 92}% at ${((q.x1 + q.x2) / 2) * 100}% ${((q.y1 + q.y2) / 2) * 100}%, #000 58%, transparent 100%)`;
 
 /** `soft` swaps the thin pad-ring feather for a wide one, so a whole-box patch reads as a fade-in. */
 export const featherMask = (i: PieceItem, soft = false) => {

@@ -4,6 +4,7 @@ const STAGES = [
   { id: "frames", label: "Frames", detail: "Sampling the walkthrough" },
   { id: "masks", label: "Masks", detail: "SAM 3.1 finding faces, photos, windows" },
   { id: "privacy", label: "Privacy", detail: "Blurring faces and personal items" },
+  { id: "video", label: "Video", detail: "Blurred full walkthrough for the listing page" },
   { id: "rooms", label: "Rooms", detail: "Wonder classifying each space" },
   { id: "staging", label: "Staging", detail: "Furnishing each room" },
   { id: "copy", label: "Copy", detail: "Spark writing from evidence" },

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, factLine, media, money, type Job, type Listing, type MetaStatus } from "../api";
+import { api, clock, factLine, media, money, type Job, type Listing, type MetaStatus } from "../api";
 import AttentionList from "../components/AttentionList";
 import BeforeAfter from "../components/BeforeAfter";
 import ChecklistPanel, { openItems } from "../components/ChecklistPanel";
@@ -8,23 +8,31 @@ import CompsTable from "../components/CompsTable";
 import DecisionPanel from "../components/DecisionPanel";
 import PipelineIndicator from "../components/PipelineIndicator";
 import LiveControl from "../components/live/LiveControl";
+import SourcePanel from "../components/SourcePanel";
 import StatusMark from "../components/StatusMark";
 import { ClaimTrust, EvidenceBlock, ITEM_SHORT, ResultLine, roomIssues } from "../components/trust";
 
 const clean = (lines: string[]) => lines.map((l) => l.trim()).filter(Boolean);
 
-function Header({ listing }: { listing: Listing }) {
+function Header({ listing, onTestLabel }: { listing: Listing; onTestLabel?: (test: boolean) => void }) {
   const { facts, copy, comps } = listing;
   const range = comps?.suggested_range;
   const price = facts.price
     ? money(facts.price, facts.currency)
     : range && `Guide ${money(range.low, range.currency)} – ${money(range.high, range.currency)}`;
+  const isTest = !!listing.note && /not a real listing/i.test(listing.note);
   return (
     <header>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
         <span className="eyebrow">{facts.city || "City not set"}</span>
         {listing.source === "seed" && <span className="eyebrow">Seeded hero listing</span>}
         <StatusMark status={listing.status} />
+        {listing.note && <span className="eyebrow rounded-full bg-rose/10 px-2.5 py-1 text-rose! ring-1 ring-rose/30">{listing.note}</span>}
+        {onTestLabel && listing.source === "upload" && (
+          <button type="button" onClick={() => onTestLabel(!isTest)} className="eyebrow transition hover:text-ivory!">
+            {isTest ? "Remove test label" : "Mark as test upload"}
+          </button>
+        )}
       </div>
       <h1 className="mt-4 max-w-4xl font-serif text-5xl leading-[1.05]">{copy?.title || "Untitled residence"}</h1>
       <div className="mt-5 flex flex-wrap items-center gap-x-8 gap-y-2">
@@ -165,9 +173,15 @@ function Review({
     <>
       <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="space-y-10">
-          <Header listing={listing} />
+          <Header
+            listing={listing}
+            onTestLabel={locked ? undefined : (test) => run("label", () => api.review(listing.id, { action: "save", test_listing: test }))}
+          />
           {listing.source === "upload" ? (
-            <AttentionList listing={listing} blocking={gates} onClaim={focusClaim} onRoom={pickRoom} />
+            <>
+              <SourcePanel listing={listing} />
+              <AttentionList listing={listing} blocking={gates} onClaim={focusClaim} onRoom={pickRoom} />
+            </>
           ) : (
             <p className="max-w-md text-sm text-ash">Seeded placeholder. The pipeline has not run on footage, so publishing stays blocked.</p>
           )}
@@ -187,7 +201,11 @@ function Review({
                 <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-lg font-light">{room.name}</p>
-                    <p className="eyebrow mt-1">{room.type === "unclassified" ? "Room type pending" : room.type}</p>
+                    <p className="eyebrow mt-1">
+                      {room.type === "unclassified" ? "Room type pending" : room.type}
+                      {room.main && " · main living space"}
+                      {room.t != null && ` · ${clock(room.span?.[0] ?? room.t)}–${clock(room.span?.[1] ?? room.t)} in the video`}
+                    </p>
                   </div>
                   {!locked && (
                     <button
@@ -255,6 +273,7 @@ function Review({
                           <span className="eyebrow grid h-16 w-28 place-items-center bg-smoke px-2 text-center text-[0.55rem]! leading-snug">Held back</span>
                         )}
                         {roomIssues(checks, r.id).length > 0 && <span aria-hidden className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-rose" />}
+                        {r.main && <span className="eyebrow absolute bottom-1 left-1.5 text-[0.5rem]! text-ice!">Main</span>}
                       </button>
                     ))}
                   </div>
@@ -364,7 +383,7 @@ function Review({
       <div className="glass fixed bottom-6 right-6 z-30 flex flex-wrap items-center gap-1.5 rounded-full! p-1.5">
         {locked ? (
           <>
-            <LiveControl listingId={listing.id} city={listing.facts.city} />
+            <LiveControl listing={listing} />
             <Link to={`/p/${listing.id}`} className="btn-primary">
               View published page
             </Link>

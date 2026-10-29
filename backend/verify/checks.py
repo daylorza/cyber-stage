@@ -3,11 +3,14 @@ checks (its own Wonder/SAM calls — never the calls that produced the listing).
 
 import math
 import re
+import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
 from PIL import Image, ImageChops, ImageFilter, ImageStat
 
+import cascade
 import config
 
 GEOMETRY_MIN_CORR = 0.25
@@ -19,6 +22,7 @@ FRAMING_ANCHOR_IOU = 0.5
 FRAMING_MIN_ANCHORS = 3
 FRAMING_MAX_DRIFT = 0.05
 FRAMING_MIN_SPREAD = 0.3
+GLASS_DOOR = "glass door"
 MIN_REGION_DIFF = 8.0
 FACE_MIN_AREA = 0.001
 
@@ -45,10 +49,13 @@ def included_rooms(listing: dict[str, Any]) -> list[dict[str, Any]]:
     return [r for r in listing.get("rooms") or [] if not r.get("rejected")]
 
 
+def _edges_of(img: Image.Image, size: tuple[int, int] = (96, 54)) -> list[float]:
+    return [float(p) for p in img.convert("L").resize(size).filter(ImageFilter.FIND_EDGES).tobytes()]
+
+
 def _edge_map(path: Path, size: tuple[int, int] = (96, 54)) -> list[float]:
     with Image.open(path) as img:
-        img = img.convert("L").resize(size).filter(ImageFilter.FIND_EDGES)
-        return [float(p) for p in img.tobytes()]
+        return _edges_of(img, size)
 
 
 def _pearson(a: list[float], b: list[float]) -> float:
@@ -65,6 +72,66 @@ def _pearson(a: list[float], b: list[float]) -> float:
 
 def edge_correlation(path_a: Path, path_b: Path) -> float:
     return _pearson(_edge_map(path_a), _edge_map(path_b))
+
+
+# ---------- whole-picture framing correction (Day, Oct 28: "Align + glass-door SAM") ----------
+# Same rule as the door-based correction approved Oct 28, 18:12 EDT: a global stretch/shift of at
+# most 5% is corrected before comparing, it is stated in the check result, and it can only rescue a
+# comparison, never break one. When fewer than 3 doors match, the stretch/shift is measured from the
+# whole picture (cascade.align, edge maps) instead. Thresholds (edge 0.25, IoU 0.3) are unchanged.
+
+def image_drift(a: dict[str, float]) -> float:
+    return max(abs(a["sx"] - 1), abs(a["sy"] - 1), abs(a["bx"]), abs(a["by"]),
+               abs(a["sx"] + a["bx"] - 1), abs(a["sy"] + a["by"] - 1))
+
+
+def _is_identity(a: dict[str, float]) -> bool:
+    return a["sx"] == 1 and a["sy"] == 1 and a["bx"] == 0 and a["by"] == 0
+
+
+def describe_alignment(a: dict[str, float]) -> str:
+    tx, ty = a["bx"] - (1 - a["sx"]) / 2, a["by"] - (1 - a["sy"]) / 2
+    return f"stretch x {a['sx']:.3f}, y {a['sy']:.3f}; shift x {tx:+.1%}, y {ty:+.1%}"
+
+
+def aligned_correlation(src: Path, dst: Path, a: dict[str, float]) -> float:
+    """Edge correlation after laying the staged image back over the source frame."""
+    with Image.open(src) as si, Image.open(dst) as di:
+        size = si.size
+        source, warped = si.convert("L"), cascade.warp(di.convert("L"), a, size)
+    box = cascade._valid_box(a, size, inset=4)
+    return _pearson(_edges_of(source.crop(box)), _edges_of(warped.crop(box)))
+
+
+def geometry(src: Path, dst: Path, align: dict[str, float] | None = None) -> dict[str, Any]:
+    """Same aspect ratio and same edge structure as the source frame, with the framing correction."""
+    with Image.open(src) as si, Image.open(dst) as di:
+        (sw, sh), (dw, dh) = si.size, di.size
+    deviation = abs((dw / dh) / (sw / sh) - 1)
+    corr = edge_correlation(src, dst)
+    out: dict[str, Any] = {"correlation": round(corr, 3), "corrected": False}
+    if deviation > ASPECT_MAX_DEVIATION:
+        return {**out, "status": "fail", "reason": f"Aspect ratio changed {deviation:.1%} (> {ASPECT_MAX_DEVIATION:.0%})."}
+    if corr >= GEOMETRY_MIN_CORR:
+        return {**out, "status": "pass",
+                "reason": f"Geometry preserved (correlation {corr:.2f}, aspect deviation {deviation:.1%})."}
+    a = align if align is not None else cascade.align(src, dst)
+    failed = f"Edge structure changed (correlation {corr:.3f} < {GEOMETRY_MIN_CORR})."
+    if _is_identity(a):
+        return {**out, "status": "fail", "reason": failed}
+    drift = image_drift(a)
+    if drift > FRAMING_MAX_DRIFT:
+        return {**out, "status": "fail",
+                "reason": f"{failed} Framing drift {drift:.1%} is over {FRAMING_MAX_DRIFT:.0%}; not corrected."}
+    fixed = aligned_correlation(src, dst, a)
+    out["corrected_correlation"] = round(fixed, 3)
+    if fixed < GEOMETRY_MIN_CORR:
+        return {**out, "status": "fail",
+                "reason": f"{failed} Still {fixed:.3f} after framing correction ({describe_alignment(a)})."}
+    return {**out, "status": "pass", "corrected": True,
+            "reason": (f"Geometry preserved after framing correction from the whole picture "
+                       f"({describe_alignment(a)}): correlation {corr:.2f} as generated, {fixed:.2f} corrected "
+                       f"(threshold {GEOMETRY_MIN_CORR} unchanged).")}
 
 
 def _iou(a: list[float], b: list[float]) -> float:
@@ -119,6 +186,42 @@ def check_frames(ctx, listing: dict[str, Any]) -> None:
         ctx.code("frames", "frames", "fail", f"Rooms without a source frame: {', '.join(orphans)}.")
         return
     ctx.code("frames", "frames", "pass", f"{len(frames)} frames on disk.")
+    _check_coverage(ctx, listing)
+
+
+def _check_coverage(ctx, listing: dict[str, Any]) -> None:
+    """Independent re-read of video coverage: frames must reach the end of every video."""
+    uploads = [i for i, u in enumerate(listing.get("uploads") or [], start=1) if u.get("kind") == "video"]
+    if not uploads:
+        return
+    videos = {v.get("upload"): v for v in listing.get("videos") or []}
+    frames = listing.get("frames") or []
+    for index in uploads:
+        target = {"upload": index}
+        video = videos.get(index)
+        if video is None:
+            ctx.code("frames", f"frames:coverage:{index}", "fail",
+                     "Video coverage was not recorded (processed before full-video extraction); "
+                     "reprocess the walkthrough.", target)
+            continue
+        times = [f["t"] for f in frames if f.get("upload") == index and f.get("t") is not None]
+        last = max(times, default=None)
+        tail = video["duration"] - 2.0
+        if video.get("extracted", 0) < video.get("expected", 1) or last is None \
+                or (video.get("last_t") or 0) < tail:
+            ctx.code("frames", f"frames:coverage:{index}", "fail",
+                     f"Frames stop at {_clock(video.get('last_t'))} of a {video['duration']:.1f}s video.", target)
+        else:
+            ctx.code("frames", f"frames:coverage:{index}", "pass",
+                     f"Whole video covered: {video['duration']:.1f}s, {video['extracted']} frames "
+                     f"{_clock(video['first_t'])}–{_clock(video['last_t'])}.", target)
+
+
+def _clock(t: float | None) -> str:
+    if t is None:
+        return "-:--"
+    s = max(0, round(t))
+    return f"{s // 60}:{s % 60:02d}"
 
 
 def check_sam(ctx, listing: dict[str, Any]) -> None:
@@ -284,20 +387,8 @@ def check_staging(ctx, listing: dict[str, Any]) -> None:
         if src is None or not src.is_file() or not dst.is_file():
             ctx.code("staging_geometry", check_id, "fail", "Staged or source image missing on disk.", target)
             continue
-        with Image.open(src) as si, Image.open(dst) as di:
-            sw, sh = si.size
-            dw, dh = di.size
-        deviation = abs((dw / dh) / (sw / sh) - 1)
-        corr = edge_correlation(src, dst)
-        if deviation > ASPECT_MAX_DEVIATION:
-            ctx.code("staging_geometry", check_id, "fail",
-                     f"Aspect ratio changed {deviation:.1%} (> {ASPECT_MAX_DEVIATION:.0%}).", target)
-        elif corr < GEOMETRY_MIN_CORR:
-            ctx.code("staging_geometry", check_id, "fail",
-                     f"Edge structure changed (correlation {corr:.2f} < {GEOMETRY_MIN_CORR}).", target)
-        else:
-            ctx.code("staging_geometry", check_id, "pass",
-                     f"Geometry preserved (correlation {corr:.2f}, aspect deviation {deviation:.1%}).", target)
+        result = geometry(src, dst)
+        ctx.code("staging_geometry", check_id, result["status"], result["reason"], target)
 
         def fn(room=room, src=src, dst=dst):
             return _structure_check(ctx, room, src, dst)
@@ -348,10 +439,99 @@ def _corrected(box: list[float], f: dict[str, float]) -> list[float]:
             f["sx"] * box[2] + f["tx"], f["sy"] * box[3] + f["ty"]]
 
 
-def _structure_check(ctx, room: dict[str, Any], src: Path, dst: Path) -> tuple[str, str]:
+def _inside(box: list[float], outer: list[float]) -> float:
+    """Share of `box` that lies inside `outer`."""
+    inter = max(0.0, min(box[2], outer[2]) - max(box[0], outer[0])) * \
+        max(0.0, min(box[3], outer[3]) - max(box[1], outer[1]))
+    area = (box[2] - box[0]) * (box[3] - box[1])
+    return inter / area if area > 0 else 0.0
+
+
+def _outside_view(box: list[float], src_by: dict[str, list[list[float]]]) -> bool:
+    """A window seen THROUGH the room's own glass (a building across the street): it sits inside
+    a much larger window box, or inside a glass door box that shows several such windows (a
+    facade seen through a sliding door). Muse Image redraws the outside view, so these are
+    reported separately from the room's own structure. A single window inside a door box (a
+    transom or door pane) is NOT treated as outside view and stays a room-structure problem."""
+    area = (box[2] - box[0]) * (box[3] - box[1])
+    windows = src_by.get("window", [])
+
+    def holds(outer: list[float]) -> bool:
+        return outer is not box and (outer[2] - outer[0]) * (outer[3] - outer[1]) >= 2.5 * area \
+            and _inside(box, outer) >= 0.8
+
+    # Inside a much larger window, or anywhere inside a glass door (SAM "glass door" on the source).
+    if any(holds(other) for other in windows + src_by.get(GLASS_DOOR, [])):
+        return True
+    return any(
+        holds(door) and sum(1 for w in windows if w is not box and _inside(w, door) >= 0.8) >= 1
+        for door in src_by.get("door", [])
+    )
+
+
+def compare_structure(src_by: dict[str, list[list[float]]],
+                      dst_by: dict[str, list[list[float]]],
+                      image_align: dict[str, float] | None = None) -> dict[str, Any]:
+    """Windows/doors (normalized boxes) on the staged image vs the source frame.
+
+    Cut-off boxes are not compared; a small global framing drift (<= 5%) is corrected before
+    comparing, fitted on doors that already match or, with fewer than 3 of those, measured from the
+    whole picture (`image_align`, staged -> frame); IoU stays 0.3. Windows seen through the room's
+    own glass (`src_by["glass door"]`) are reported as `outside`, separately from `problems`.
+    """
     problems: list[str] = []
+    outside: list[str] = []
     skipped: list[str] = []
     compared = rescued = 0
+    # Muse Image re-frames slightly per generation; a small global drift is corrected so it
+    # doesn't read as moved doors/windows. The correction can only rescue a match, never break one.
+    framing = _framing(src_by.get("door", []), dst_by.get("door", []))
+    correct = framing is not None and framing["drift"] <= FRAMING_MAX_DRIFT
+    whole = (not correct and image_align is not None and not _is_identity(image_align)
+             and image_drift(image_align) <= FRAMING_MAX_DRIFT)
+    moved_dst = ({k: [cascade.to_frame(b, image_align) for b in v] for k, v in dst_by.items()}
+                 if whole and image_align is not None else {})
+    for concept in ("window", "door"):
+        src_norm, dst_norm = src_by.get(concept, []), dst_by.get(concept, [])
+        for i, box in enumerate(src_norm, start=1):
+            if _cut_off(box):
+                skipped.append(f"{concept} #{i}")
+                continue
+            compared += 1
+            if any(_iou(box, d) >= STRUCTURE_IOU for d in dst_norm):
+                continue
+            if correct and any(_iou(_corrected(box, framing), d) >= STRUCTURE_IOU for d in dst_norm):
+                rescued += 1
+                continue
+            if whole and any(_iou(box, d) >= STRUCTURE_IOU for d in moved_dst.get(concept, [])):
+                rescued += 1
+                continue
+            label = f"{concept} #{i} moved or removed"
+            (outside if concept == "window" and _outside_view(box, src_by) else problems).append(label)
+        in_src = sum(not _cut_off(b) for b in src_norm)
+        in_dst = sum(not _cut_off(b) for b in dst_norm)
+        if in_dst > in_src + STRUCTURE_EXTRA_ALLOWED:
+            problems.append(f"{in_dst - in_src} extra {concept}(s) added")
+    note = f" Not compared (cut off at the photo edge): {', '.join(skipped)}." if skipped else ""
+    if correct:
+        note += (f" Framing corrected before comparing ({framing['anchors']} matching doors: "
+                 f"stretch x {framing['sx']:.3f}, y {framing['sy']:.3f}; "
+                 f"shift x {framing['tx']:+.1%}, y {framing['ty']:+.1%}): "
+                 + (f"{rescued} item(s) matched only after correction." if rescued else "no item needed it."))
+    elif whole and image_align is not None:
+        note += (f" Framing corrected from the whole picture before comparing (fewer than 3 matching "
+                 f"doors; {describe_alignment(image_align)}): "
+                 + (f"{rescued} item(s) matched only after correction." if rescued else "no item needed it."))
+    elif framing is not None:
+        note += (f" Framing drift {framing['drift']:.1%} ({framing['anchors']} matching doors) "
+                 f"is over {FRAMING_MAX_DRIFT:.0%}; not corrected.")
+    if outside:
+        note += f" Outside view (seen through the room's glass, reported separately): {'; '.join(outside)}."
+    return {"problems": problems, "outside": outside, "skipped": skipped, "compared": compared,
+            "rescued": rescued, "framing": framing, "corrected": correct or whole, "note": note}
+
+
+def _structure_check(ctx, room: dict[str, Any], src: Path, dst: Path) -> tuple[str, str]:
     with Image.open(src) as si, Image.open(dst) as di:
         src_size, dst_size = si.size, di.size
     src_by: dict[str, list[list[float]]] = {}
@@ -365,39 +545,19 @@ def _structure_check(ctx, room: dict[str, Any], src: Path, dst: Path) -> tuple[s
             target={"room": room["id"], "concept": concept, "side": "after"})
         src_by[concept] = [_normalized(b["box"], src_size) for b in src_boxes]
         dst_by[concept] = [_normalized(b["box"], dst_size) for b in dst_boxes]
-    # Muse Image re-frames slightly per generation; a small global drift is corrected so it
-    # doesn't read as moved doors/windows. The correction can only rescue a match, never break one.
-    framing = _framing(src_by["door"], dst_by["door"])
-    correct = framing is not None and framing["drift"] <= FRAMING_MAX_DRIFT
-    for concept in ("window", "door"):
-        src_norm, dst_norm = src_by[concept], dst_by[concept]
-        for i, box in enumerate(src_norm, start=1):
-            if _cut_off(box):
-                skipped.append(f"{concept} #{i}")
-                continue
-            compared += 1
-            if any(_iou(box, d) >= STRUCTURE_IOU for d in dst_norm):
-                continue
-            if correct and any(_iou(_corrected(box, framing), d) >= STRUCTURE_IOU for d in dst_norm):
-                rescued += 1
-                continue
-            problems.append(f"{concept} #{i} moved or removed")
-        in_src = sum(not _cut_off(b) for b in src_norm)
-        in_dst = sum(not _cut_off(b) for b in dst_norm)
-        if in_dst > in_src + STRUCTURE_EXTRA_ALLOWED:
-            problems.append(f"{in_dst - in_src} extra {concept}(s) added")
-    note = f" Not compared (cut off at the photo edge): {', '.join(skipped)}." if skipped else ""
-    if correct:
-        note += (f" Framing corrected before comparing ({framing['anchors']} matching doors: "
-                 f"stretch x {framing['sx']:.3f}, y {framing['sy']:.3f}; "
-                 f"shift x {framing['tx']:+.1%}, y {framing['ty']:+.1%}): "
-                 + (f"{rescued} item(s) matched only after correction." if rescued else "no item needed it."))
-    elif framing is not None:
-        note += (f" Framing drift {framing['drift']:.1%} ({framing['anchors']} matching doors) "
-                 f"is over {FRAMING_MAX_DRIFT:.0%}; not corrected.")
-    if problems:
-        return "fail", f"Staging changed structure: {'; '.join(problems)}.{note}"
-    if skipped and not compared:
+    # The room's own glass doors (sliding/balcony): windows behind them are outside view.
+    glass = ctx.client.sam_segment(
+        src, GLASS_DOOR, trace=ctx.trace, purpose="verify.sam.structure",
+        target={"room": room["id"], "concept": GLASS_DOOR, "side": "before"})
+    src_by[GLASS_DOOR] = [_normalized(b["box"], src_size) for b in glass]
+    result = compare_structure(src_by, dst_by, image_align=cascade.align(src, dst))
+    note = result["note"]
+    if result["problems"]:
+        return "fail", f"Staging changed structure: {'; '.join(result['problems'])}.{note}"
+    if result["outside"]:
+        # Still flagged, but labelled: the room's own windows and doors held.
+        return "fail", f"Room structure preserved; only the outside view changed.{note}"
+    if result["skipped"] and not result["compared"]:
         return "pass", f"No windows or doors fully in frame to compare.{note}"
     return "pass", f"Windows and doors preserved.{note}"
 
@@ -454,6 +614,11 @@ def check_blur(ctx, listing: dict[str, Any]) -> None:
             reason += f"; {len(held)} frame(s) held back, never served"
         ctx.code("blur_pass", "blur_pass", "pass", reason + ".")
 
+    for video in listing.get("videos") or []:
+        status, reason = _video_check(listing, video, raw_dir)
+        ctx.code("blur_pass", f"blur_pass:video:{video.get('upload')}", status, reason,
+                 {"upload": video.get("upload")})
+
     for room in included_rooms(listing):
         for side in ("before", "after"):
             rel = room.get(side)
@@ -467,6 +632,46 @@ def check_blur(ctx, listing: dict[str, Any]) -> None:
                      {"room": room["id"], "side": side}, fn,
                      model=getattr(ctx.client, "sam_model", None),
                      resolution="Re-run the blur pass or exclude the room before publishing.")
+
+
+def _video_check(listing: dict[str, Any], video: dict[str, Any], raw_dir: Path) -> tuple[str, str]:
+    """The published video must live under media_dir, carry no audio, and show every SAM privacy
+    region blurred at the frame where SAM found it (read back from the encoded file)."""
+    s = config.settings
+    if video.get("status") != "ready" or not video.get("path"):
+        return "pass", f"Walkthrough video not published ({video.get('detail') or 'held back'}); nothing served."
+    path = (s.media_dir / video["path"]).resolve()
+    if not path.is_relative_to(s.media_dir.resolve()) or not path.is_file():
+        return "fail", "Published walkthrough video is missing or outside media_dir."
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type", "-of", "csv=p=0", str(path)],
+        capture_output=True, text=True, check=False,
+    )
+    if "audio" in probe.stdout:
+        return "fail", "Published walkthrough video still has an audio track."
+    frames = [f for f in listing.get("frames") or []
+              if f.get("upload") == video.get("upload") and (f.get("sam") or {}).get("privacy")]
+    checked = 0
+    with tempfile.TemporaryDirectory() as tmp:
+        for frame in frames:
+            still = Path(tmp) / f"{frame['id']}.png"
+            # Times are rounded to 1 ms: seek 4 ms early so the frame itself is not skipped
+            # (ffmpeg drops frames stamped before the seek point; 1/30 s of pan moves a lot).
+            subprocess.run(
+                ["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-ss", f"{max(0.0, frame['t'] - 0.004):.3f}",
+                 "-i", str(path),
+                 "-frames:v", "1", str(still)],
+                capture_output=True, check=False,
+            )
+            if not still.is_file():
+                return "fail", f"Could not read the published video at {_clock(frame['t'])} to check the blur."
+            for box in frame["sam"]["privacy"]:
+                issue = _region_check(raw_dir / frame["raw"], still, box["box"])
+                if issue:
+                    return "fail", f"Published video at {_clock(frame['t'])} ({frame['id']}): {issue}."
+                checked += 1
+    return "pass", (f"Published video {video['duration']:.1f}s, no audio; {checked} privacy region(s) "
+                    "read back from the encoded file and blurred.")
 
 
 def _face_check(ctx, room: dict[str, Any], path: Path, side: str) -> tuple[str, str]:

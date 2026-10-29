@@ -19,6 +19,7 @@ import checklist
 import config
 import meta_client
 from pipeline import privacy
+from pipeline.classify import is_utility
 
 STYLE_PRESETS = {
     "modern-luxury": {
@@ -151,22 +152,40 @@ def _staged_image(listing: dict[str, Any], room: dict[str, Any], prompt: str,
     room["style"] = style
 
 
+NO_MAIN_ROOM = ("Not staged: no main living space was found in this video, so no Meta Image calls "
+                "were spent on bathrooms, laundry or door close-ups.")
+MAIN_FAILED = "Not staged: the main living room did not stage, so the rest of the budget was held."
+
+
 def stage_rooms(listing: dict[str, Any]) -> dict[str, Any]:
+    """Token guard: the main living room is confirmed and staged FIRST. Without one nothing is
+    staged; if it fails, utility and secondary rooms are not staged either. Primary rooms then
+    stage before utility rooms. The order is recorded in listing["token_guard"]."""
     meta = meta_client.get_client()
     style = listing.get("style") or "modern-luxury"
     prompt = prompt_for(style)
     staged = 0
     first_error: str | None = None
+    included = [r for r in listing["rooms"] if not r.get("rejected")]
+    main = next((r for r in included if r.get("main")), None)
+    order = ([main] if main else []) + sorted(
+        (r for r in included if r is not main), key=lambda r: is_utility(r))
+    guard: dict[str, Any] = {"main_room": main["id"] if main else None, "order": [], "skipped": [],
+                             "at": _now()}
 
-    for room in listing["rooms"]:
-        if room.get("rejected"):
-            continue
+    for room in order:
         record = {"model": getattr(meta, "image_model", None), "prompt": prompt, "style": style, "error": None}
+        if main is None or (room is not main and main.get("after") is None):
+            record["error"] = NO_MAIN_ROOM if main is None else MAIN_FAILED
+            room["staging"] = record
+            guard["skipped"].append(room["id"])
+            continue
         if not room.get("before"):
             record["error"] = "No blurred source frame."
             room["staging"] = record
             first_error = first_error or record["error"]
             continue
+        guard["order"].append(room["id"])
         try:
             _staged_image(
                 listing, room, prompt, f"{room['id']}_{style}.jpg",
@@ -178,13 +197,27 @@ def stage_rooms(listing: dict[str, Any]) -> dict[str, Any]:
             first_error = first_error or record["error"]
         room["staging"] = record
 
+    if main is None:
+        guard["status"] = "no_main_room"
+        guard["detail"] = NO_MAIN_ROOM
+    elif main.get("after") is None:
+        guard["status"] = "main_failed"
+        guard["detail"] = f"{main['name']} did not stage ({first_error}); {len(guard['skipped'])} other room(s) held."
+    else:
+        names = {r["id"]: r["name"] for r in included}
+        guard["status"] = "main_first"
+        guard["detail"] = (f"{main['name']} confirmed and staged first; then "
+                           + (", ".join(names[i] for i in guard["order"][1:]) or "no other rooms") + ".")
+    listing["token_guard"] = guard
+
     if staged:
         checklist.set_item(
             listing, "staging_geometry", "generated",
-            f"{staged} of {len(listing['rooms'])} rooms staged ({style})",
+            f"{staged} of {len(listing['rooms'])} rooms staged ({style}), {guard['detail']}",
         )
     else:
-        checklist.set_item(listing, "staging_geometry", "failed", first_error or "No rooms to stage.")
+        checklist.set_item(listing, "staging_geometry", "failed",
+                           guard["detail"] if main is None else first_error or "No rooms to stage.")
     return listing
 
 

@@ -12,12 +12,14 @@ import checklist
 import config
 import db
 import verify
-from pipeline import comps, copy
+from pipeline import comps, copy, video
 
 REVIEWABLE = {"draft", "approved", "rejected"}
 BROKER_EDIT = {"kind": "broker", "ref": "edited"}
 STYLES = {"modern-luxury", "coastal", "minimal"}
 DEFAULT_STYLE = "modern-luxury"
+# Shown on the console, the published page and inside Live-In-It for test uploads.
+TEST_NOTE = "Test upload · Not a real listing. Placeholder facts."
 
 
 class ReviewError(Exception):
@@ -159,8 +161,20 @@ def _edit_rooms(listing: dict[str, Any], rejected: list[str]) -> list[str]:
     return ["rooms"] if changed else []
 
 
+def set_test_label(listing: dict[str, Any], test: bool) -> None:
+    """Label (or unlabel) an upload as a test: "Not a real listing" everywhere it shows.
+    A label, not content: it never clears an approval."""
+    if listing.get("source") != "upload":
+        return
+    if test:
+        listing["note"] = TEST_NOTE
+    elif listing.get("note") == TEST_NOTE:
+        listing.pop("note", None)
+
+
 def apply_review(listing: dict[str, Any], *, action: str, copy_edit: dict[str, Any] | None = None,
-                 rejected_rooms: list[str] | None = None, notes: str | None = None) -> dict[str, Any]:
+                 rejected_rooms: list[str] | None = None, notes: str | None = None,
+                 test_listing: bool | None = None) -> dict[str, Any]:
     normalize(listing)
     if listing["status"] not in REVIEWABLE:
         message = {
@@ -177,6 +191,8 @@ def apply_review(listing: dict[str, Any], *, action: str, copy_edit: dict[str, A
     review["edited_fields"] = sorted(set(review["edited_fields"]) | set(edited))
     if notes is not None:
         review["notes"] = notes.strip()
+    if test_listing is not None:
+        set_test_label(listing, test_listing)
 
     verify.run(listing, meta=False)
 
@@ -224,6 +240,7 @@ def publish(listing: dict[str, Any]) -> dict[str, Any]:
         "facts": {k: v for k, v in facts.items() if k != "estimate_price"},
         "price_display": copy.format_price(facts.get("price"), facts.get("currency")),
         "rooms": [r for r in listing["rooms"] if not r["rejected"]],
+        "video": video.public(listing),
         "comps": listing["comps"],
         "verification": {
             "passed": bool(verification.get("passed")) and not blocked,

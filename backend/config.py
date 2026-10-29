@@ -18,7 +18,9 @@ class Settings:
     max_video_seconds: int = field(default_factory=lambda: int(_env("VRE_MAX_VIDEO_SECONDS", "180")))
     # Demo default: checks run and flag, but only block Approve/Publish when this is on.
     blocking_checks: bool = field(default_factory=lambda: _env("VRE_BLOCKING_CHECKS", "0") == "1")
-    max_frames: int = 24
+    # Videos are sampled over their WHOLE length (max_video_seconds bounds the count);
+    # this caps photo uploads only.
+    max_photos: int = 40
     max_rooms: int = 6
     seed_dir: Path = REPO_DIR / "seed"
     frontend_dist: Path = REPO_DIR / "frontend" / "dist"

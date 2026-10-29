@@ -1,10 +1,13 @@
 """Stage 2 "Live-In-It": pre-processing job for the second-act experience.
 
-Once a listing is published, one gated job prepares everything the viewer needs:
-an empty plate per room (for the cascade), every style preset staged per room,
-segmented furniture pieces, window/size metadata, and the live-in moments
-(coffee / sit / view). It only ever writes listing["live"] — Stage 1 data
-(rooms, copy, comps, checklist, verification, trace, published) is untouched.
+Any published listing with a main living space can be prepared (not only the Miami hero).
+One gated job prepares everything the viewer needs for the rooms a buyer lives in (the main
+living room first, then kitchen/bedrooms/...; bathrooms, laundry and other utility rooms are
+walked past on the video, never staged): an empty plate per room, every style preset staged
+per room, segmented furniture pieces, each generated image ALIGNED to the filmed frame with a
+clean furniture mask (cascade.py), window/size metadata, and the live-in moments (coffee / sit /
+view). It only ever writes listing["live"] — Stage 1 data (rooms, copy, comps, checklist,
+verification, trace, published) is untouched.
 
 All generated images go through the same safety path as Stage 1 staging:
 write to the non-served staged_raw dir, SAM face check, blur, then publish
@@ -20,16 +23,20 @@ from typing import Any
 
 from PIL import Image
 
+import cascade
 import config
 import db
 import listings
 import meta_client
 from pipeline import privacy, stage
+from pipeline.classify import MAIN_TYPES, is_utility
 from verify import checks
 
 log = logging.getLogger("vre.live")
 
+# Seeded residences a published listing can stand in for on the home page.
 LIVE_RESIDENCES = {"seed_miami"}
+NO_MAIN_ROOM = "No main living space found in this video, so there is no room to walk into."
 FURNITURE_CONCEPTS = ("sofa", "chair", "table", "bed", "lamp", "rug", "plant")
 PLATE_CONCEPTS = ("sofa", "chair", "table", "bed")
 MOMENT_LABELS = {"coffee": "Make coffee", "sit": "Sit down", "view": "Look out at the view"}
@@ -81,20 +88,10 @@ def _size(path: Path) -> tuple[int, int]:
         return img.size
 
 
-def _geometry_check(src: Path, dst: Path) -> dict[str, Any]:
-    """Code check: same aspect ratio and same edge structure as the source frame."""
-    sw, sh = _size(src)
-    dw, dh = _size(dst)
-    deviation = abs((dw / dh) / (sw / sh) - 1)
-    corr = checks.edge_correlation(src, dst)
-    if deviation > checks.ASPECT_MAX_DEVIATION:
-        reason = f"Aspect ratio changed {deviation:.1%} (> {checks.ASPECT_MAX_DEVIATION:.0%})."
-        return {"status": "fail", "reason": reason, "correlation": round(corr, 3)}
-    if corr < checks.GEOMETRY_MIN_CORR:
-        reason = f"Edge structure changed (correlation {corr:.3f} < {checks.GEOMETRY_MIN_CORR})."
-        return {"status": "fail", "reason": reason, "correlation": round(corr, 3)}
-    reason = f"Geometry preserved (correlation {corr:.2f}, aspect deviation {deviation:.1%})."
-    return {"status": "pass", "reason": reason, "correlation": round(corr, 3)}
+def _geometry_check(src: Path, dst: Path, align: dict[str, float] | None = None) -> dict[str, Any]:
+    """Code check: same aspect ratio and same edge structure as the source frame, with the
+    verifier's framing correction (<= 5% stretch/shift, stated, threshold unchanged)."""
+    return checks.geometry(src, dst, align)
 
 
 def _save_checked(data: bytes, pre_path: Path, dest_path: Path, meta, trace: list,
@@ -172,8 +169,12 @@ def _prepare_plate(room: dict[str, Any], before_path: Path, meta, trace: list,
 
 
 def _structure_check(room: dict[str, Any], frame: dict[str, Any] | None, dst_path: Path,
-                     meta, trace: list, style: str) -> tuple[dict[str, Any], dict[str, list]]:
-    """Compare windows/doors on the style image against the Stage 1 source frame.
+                     meta, trace: list, style: str, before_path: Path | None = None,
+                     align: dict[str, float] | None = None) -> tuple[dict[str, Any], dict[str, list]]:
+    """Compare windows/doors on the style image against the Stage 1 source frame, with the
+    same rules as the verifier (edge boxes not compared, framing drift <= 5% corrected,
+    IoU 0.3). Windows seen through the room's glass are reported separately as outside view
+    and do not make a style unavailable; the room's own windows and doors still do.
 
     Returns (check record, dst normalized boxes by concept). A source frame with
     no structure boxes is reported as not_checked, never as a pass.
@@ -187,27 +188,34 @@ def _structure_check(room: dict[str, Any], frame: dict[str, Any] | None, dst_pat
             {},
         )
     dw, dh = _size(dst_path)
-    problems: list[str] = []
-    dst_by_concept: dict[str, list] = {}
+    src_by: dict[str, list] = {}
+    dst_by: dict[str, list] = {}
     for concept in STRUCTURE_CONCEPTS:
-        src_norm = [_norm(b["box"], (fw, fh)) for b in src_boxes if b.get("concept") == concept]
+        src_by[concept] = [_norm(b["box"], (fw, fh)) for b in src_boxes if b.get("concept") == concept]
         dst = meta.sam_segment(
             dst_path, concept, trace=trace, purpose="live.sam.structure",
             target={"room": room["id"], "style": style, "concept": concept},
         )
-        dst_norm = [_norm(b["box"], (dw, dh)) for b in dst]
-        dst_by_concept[concept] = dst_norm
-        for i, box in enumerate(src_norm, start=1):
-            if not any(_iou(box, d) >= checks.STRUCTURE_IOU for d in dst_norm):
-                problems.append(f"{concept} #{i} moved or removed")
-        if len(dst_norm) > len(src_norm) + checks.STRUCTURE_EXTRA_ALLOWED:
-            problems.append(f"{len(dst_norm) - len(src_norm)} extra {concept}(s) added")
-    if problems:
-        record = {"status": "fail",
-                  "reason": f"Staging changed structure: {'; '.join(problems)}."}
+        dst_by[concept] = [_norm(b["box"], (dw, dh)) for b in dst]
+    if before_path is not None and before_path.is_file():
+        # The room's own glass doors: windows seen through them are outside view. Same image and
+        # concept for every style, so this is one Meta call per room (then cached).
+        glass = meta.sam_segment(
+            before_path, checks.GLASS_DOOR, trace=trace, purpose="live.sam.structure",
+            target={"room": room["id"], "concept": checks.GLASS_DOOR, "side": "before"},
+        )
+        src_by[checks.GLASS_DOOR] = [_norm(b["box"], _size(before_path)) for b in glass]
+    result = checks.compare_structure(src_by, dst_by, image_align=align)
+    note = result["note"]
+    if result["problems"]:
+        record = {"status": "fail", "reason": f"Staging changed structure: {'; '.join(result['problems'])}.{note}"}
+    elif result["outside"]:
+        record = {"status": "pass", "reason": f"Room windows and doors preserved; outside view changed.{note}"}
     else:
-        record = {"status": "pass", "reason": "Windows and doors preserved."}
-    return record, dst_by_concept
+        record = {"status": "pass", "reason": f"Windows and doors preserved.{note}"}
+    record["outside_view"] = result["outside"]
+    record["corrected"] = result["corrected"]
+    return record, dst_by
 
 
 def _pieces(path: Path, meta, trace: list, room_id: str, style: str) -> list[dict[str, Any]]:
@@ -241,6 +249,17 @@ def _pieces(path: Path, meta, trace: list, room_id: str, style: str) -> list[dic
     return kept[:PIECE_MAX_COUNT]
 
 
+def _cascade_prep(room_id: str, style_id: str, lid: str, before_path: Path, plate_path: Path,
+                  plate_align: dict[str, float], style_path: Path,
+                  align: dict[str, float] | None = None) -> dict[str, Any]:
+    """Align the style image to the filmed frame and cut its furniture mask (no model calls)."""
+    align = align or cascade.align(before_path, style_path)
+    rel = f"live/{lid}/{room_id}_{style_id}_mask.png"
+    info = cascade.furniture_mask(before_path, plate_path, plate_align, style_path, align,
+                                  config.settings.media_dir / rel)
+    return {"align": align, "mask": rel if info["usable"] else None, "mask_changed": info["changed"]}
+
+
 def _prepare_room(listing: dict[str, Any], room: dict[str, Any], meta, trace: list,
                   raw_dir: Path, live_dir: Path) -> dict[str, Any]:
     s = config.settings
@@ -255,11 +274,16 @@ def _prepare_room(listing: dict[str, Any], room: dict[str, Any], meta, trace: li
         "id": room["id"],
         "name": room["name"],
         "type": room["type"],
+        "main": bool(room.get("main")),
+        "t": room.get("t"),
+        "span": room.get("span"),
+        "upload": room.get("upload"),
         "before": before_rel,
         "plate": before_rel,
         "plate_source": "before",
         "plate_check": None,
         "plate_furnished": False,
+        "plate_align": dict(cascade.IDENTITY),
         "styles": {},
         "window": None,
         "size": None,
@@ -279,6 +303,9 @@ def _prepare_room(listing: dict[str, Any], room: dict[str, Any], meta, trace: li
     out["plate_source"] = plate["plate_source"]
     out["plate_check"] = plate["plate_check"]
     out["plate_furnished"] = plate["furnished"] and plate["plate_source"] == "before"
+    plate_path = s.media_dir / out["plate"]
+    if out["plate_source"] == "generated":
+        out["plate_align"] = cascade.align(before_path, plate_path)
 
     dst_windows: dict[str, list] = {}
     for style_id, preset in stage.STYLE_PRESETS.items():
@@ -307,9 +334,10 @@ def _prepare_room(listing: dict[str, Any], room: dict[str, Any], meta, trace: li
                                   {"room": room["id"], "style": style_id})
                     entry["image"] = f"live/{lid}/{filename}"
                 style_path = s.media_dir / entry["image"]
-                entry["geometry"] = _geometry_check(before_path, style_path)
+                entry["align"] = cascade.align(before_path, style_path)
+                entry["geometry"] = _geometry_check(before_path, style_path, entry["align"])
                 entry["structure"], dst_boxes = _structure_check(room, frame, style_path, meta, trace,
-                                                                 style_id)
+                                                                 style_id, before_path, entry["align"])
                 dst_windows[style_id] = dst_boxes.get("window", [])
                 entry["available"] = (
                     style_path.is_file()
@@ -320,6 +348,8 @@ def _prepare_room(listing: dict[str, Any], room: dict[str, Any], meta, trace: li
                     break
             if entry["available"]:
                 entry["pieces"] = _pieces(style_path, meta, trace, room["id"], style_id)
+                entry.update(_cascade_prep(room["id"], style_id, lid, before_path, plate_path,
+                                           out["plate_align"], style_path, entry["align"]))
         except meta_client.MetaError as exc:
             entry["available"] = False
             entry["error"] = str(exc)
@@ -487,23 +517,39 @@ def run(job: dict[str, Any]) -> None:
     live_dir.mkdir(parents=True, exist_ok=True)
     try:
         published_rooms = listing["published"].get("rooms") or []
+        main = main_room(published_rooms)
+        if main is None:
+            raise listings.ReviewError(422, NO_MAIN_ROOM)
+        # Token guard: the main living room first; the rest only if it yields a usable style.
+        # Utility rooms (bathroom, laundry, other) are walked past on the video, never staged.
+        todo = [main] + [r for r in published_rooms if r is not main and not is_utility(r)]
+        skipped = [r["id"] for r in published_rooms if r is not main and is_utility(r)]
         out_rooms: list[dict[str, Any]] = []
-        for index, room in enumerate(published_rooms):
+        guard = {"main_room": main["id"], "order": [], "skipped_utility": skipped, "held": []}
+        for index, room in enumerate(todo):
+            if out_rooms and not any(st.get("available") for st in out_rooms[0]["styles"].values()):
+                guard["held"] = [r["id"] for r in todo[index:]]
+                break
             db.update_job(job["id"], stage=f"live:{room['id']}",
-                          progress=round(index / (len(published_rooms) + 1) * 100))
+                          progress=round(index / (len(todo) + 1) * 100))
+            guard["order"].append(room["id"])
             out_rooms.append(_prepare_room(listing, room, client, trace, raw_dir, live_dir))
         db.update_job(job["id"], stage="live:moments",
-                      progress=round(len(published_rooms) / (len(published_rooms) + 1) * 100))
+                      progress=round(len(todo) / (len(todo) + 1) * 100))
         moments = _prepare_moments(listing, out_rooms, client, trace, raw_dir, live_dir)
+        out_rooms.sort(key=lambda r: (r["upload"] or 0, r["t"] if r["t"] is not None else 0))
         live_block.update(
             status="ready", prepared_at=db.now(), rooms=out_rooms, moments=moments,
-            calls=getattr(client, "calls", 0), error=None,
+            calls=getattr(client, "calls", 0), error=None, guard=guard,
         )
         db.save_listing(listing)
         db.update_job(job["id"], status="done", stage="ready", progress=100)
     except Exception as exc:
-        log.exception("live job %s crashed", job["id"])
-        message = f"Live-In-It preparation stopped unexpectedly ({exc.__class__.__name__})."
+        if isinstance(exc, listings.ReviewError):
+            message = str(exc)
+        else:
+            log.exception("live job %s crashed", job["id"])
+            message = f"Live-In-It preparation stopped unexpectedly ({exc.__class__.__name__})."
         live_block.update(status="failed", error=message)
         db.save_listing(listing)
         db.update_job(job["id"], status="failed", error=message)
@@ -511,15 +557,49 @@ def run(job: dict[str, Any]) -> None:
 
 # ---------- request + payload ----------
 
-def request(listing: dict[str, Any], residence: str) -> str:
-    """Gate + enqueue a Live-In-It job for a published listing."""
+def main_room(rooms: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """The main living space among (published, included) rooms."""
+    rooms = [r for r in rooms if not r.get("rejected")]
+    marked = next((r for r in rooms if r.get("main")), None)
+    if marked is not None:
+        return marked
+    for room_type in MAIN_TYPES:
+        found = next((r for r in rooms if r.get("type") == room_type), None)
+        if found is not None:
+            return found
+    return None
+
+
+def eligibility(listing: dict[str, Any]) -> dict[str, Any]:
+    """Can a buyer enter this listing? Any published listing with a main living space can."""
+    live_block = listing.get("live") or {}
+    status = live_block.get("status")
+    if listing.get("status") != "published":
+        return {"eligible": False, "reason": "Live-In-It opens only after the broker publishes this listing.",
+                "status": status}
+    rooms = (listing.get("published") or {}).get("rooms") or []
+    main = main_room(rooms)
+    if main is None:
+        return {"eligible": False, "reason": NO_MAIN_ROOM, "status": status}
+    return {"eligible": True, "reason": None, "status": status, "main_room": main["id"],
+            "main_room_name": main.get("name")}
+
+
+def request(listing: dict[str, Any], residence: str | None = None) -> str:
+    """Gate + enqueue a Live-In-It job for any published listing with a main living space.
+    `residence` optionally links it to a seeded home-page residence (city must match)."""
+    gate = eligibility(listing)
     if listing["status"] != "published":
-        raise listings.ReviewError(409, "Live-In-It opens only after the broker publishes this listing.")
-    if residence not in LIVE_RESIDENCES:
-        raise listings.ReviewError(422, "Live-In-It is limited to The Ocean Residence (Miami) this round.")
-    seed_city = ((_seed_entry(residence) or {}).get("facts") or {}).get("city") or ""
-    if (listing["facts"].get("city") or "").strip().lower() != seed_city.lower():
-        raise listings.ReviewError(422, f"This listing isn't in {seed_city}, so it can't open as that residence.")
+        raise listings.ReviewError(409, gate["reason"])
+    if residence is not None:
+        if residence not in LIVE_RESIDENCES:
+            raise listings.ReviewError(
+                422, "Only The Ocean Residence (Miami) has a seeded home-page residence to stand in for.")
+        seed_city = ((_seed_entry(residence) or {}).get("facts") or {}).get("city") or ""
+        if (listing["facts"].get("city") or "").strip().lower() != seed_city.lower():
+            raise listings.ReviewError(422, f"This listing isn't in {seed_city}, so it can't open as that residence.")
+    if not gate["eligible"]:
+        raise listings.ReviewError(422, gate["reason"])
     if (listing.get("live") or {}).get("status") == "preparing":
         raise listings.ReviewError(409, "Live-In-It is already being prepared.")
     job_id = db.new_id("job")
@@ -555,10 +635,22 @@ def _seed_note(residence_id: str | None) -> str | None:
     return (_seed_entry(residence_id) or {}).get("note")
 
 
+def _walk_path(published: dict[str, Any], prepared: set[str]) -> list[dict[str, Any]]:
+    """Every published room on the video timeline, in video order. Prepared rooms are where the
+    walk stops for the cascade; the others (utility rooms) are walked past and only labelled."""
+    rooms = [r for r in published.get("rooms") or [] if r.get("t") is not None]
+    rooms.sort(key=lambda r: (r.get("upload") or 0, r["t"]))
+    return [{"id": r["id"], "name": r["name"], "type": r["type"], "t": r["t"], "span": r.get("span"),
+             "upload": r.get("upload"), "main": bool(r.get("main")), "prepared": r["id"] in prepared}
+            for r in rooms]
+
+
 def payload(listing: dict[str, Any]) -> dict[str, Any]:
     published = listing.get("published") or {}
     live_block = listing.get("live") or {}
     ready = live_block.get("status") == "ready"
+    rooms = (live_block.get("rooms") or []) if ready else []
+    video = published.get("video")
     calls_by_purpose: dict[str, int] = {}
     for entry in live_block.get("trace") or []:
         if entry.get("cached"):
@@ -578,12 +670,15 @@ def payload(listing: dict[str, Any]) -> dict[str, Any]:
         "price_display": published.get("price_display"),
         "approved_at": published.get("approved_at"),
         "published_at": published.get("published_at"),
-        "note": _seed_note(live_block.get("residence")),
+        "note": listing.get("note") or _seed_note(live_block.get("residence")),
         "styles": [{"id": style_id, "label": preset["label"]}
                    for style_id, preset in stage.STYLE_PRESETS.items()],
         "default_style": listing.get("style") or listings.DEFAULT_STYLE,
-        "rooms": (live_block.get("rooms") or []) if ready else [],
+        "rooms": rooms,
         "moments": (live_block.get("moments") or []) if ready else [],
+        "video": video,
+        "path": _walk_path(published, {r["id"] for r in rooms}) if video else [],
+        "guard": live_block.get("guard"),
         "calls": live_block.get("calls") or 0,
         "calls_by_purpose": calls_by_purpose,
     }

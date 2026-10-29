@@ -18,6 +18,10 @@ import meta_client
 OBSERVATIONS = {
     "living": ["floor-to-ceiling windows", "stone fireplace", "wide-plank oak floors"],
     "kitchen": ["marble island", "brass fixtures"],
+    "bathroom": ["tiled walk-in shower"],
+    "bedroom": ["carpeted floor"],
+    "other": ["washer and dryer"],
+    "hallway": ["white doors"],
 }
 
 
@@ -28,8 +32,13 @@ class FakeMeta(meta_client._ClientBase):
                  fail_staged_faces: bool = False, furnished_before: bool = False,
                  warp_live: bool = False, warp_live_once: bool = False,
                  fail_live_image: bool = False, warp_room: str | None = None,
-                 fix_at_level: int = 1, fail_restage: bool = False):
+                 fix_at_level: int = 1, fail_restage: bool = False,
+                 layout: list[str] | None = None):
         super().__init__()
+        # Room type per frame number (f01 -> layout[0]; the last entry repeats). Default:
+        # odd frames living, even frames kitchen.
+        self.layout = layout
+        self.classify_batches: list[dict] = []
         self.bad_claim = bad_claim
         self.warp_staging = warp_staging
         self.face_survives = face_survives
@@ -102,12 +111,21 @@ class FakeMeta(meta_client._ClientBase):
                             self.sam_model, f"{concept}|{purpose}",
                             [Path(image_path).read_bytes()], fn)
 
-    def wonder_classify(self, frames: list[dict], *, trace=None,
+    def _room_type(self, frame_id: str) -> str:
+        n = int(frame_id.lstrip("f") or 1)
+        if self.layout:
+            return self.layout[min(n, len(self.layout)) - 1]
+        return "living" if n % 2 == 1 else "kitchen"
+
+    def wonder_classify(self, frames: list[dict], *, known_rooms: str = "", trace=None,
                         purpose: str = "wonder.classify", target: dict | None = None) -> dict:
+        assert len(frames) <= meta_client.MAX_CLASSIFY_FRAMES, "classify must batch long walkthroughs"
+        self.classify_batches.append({"frames": [f["id"] for f in frames], "known_rooms": known_rooms})
+
         def fn():
             entries, order = [], []
-            for i, frame in enumerate(frames):
-                room_type = "living" if i % 2 == 0 else "kitchen"
+            for frame in frames:
+                room_type = self._room_type(frame["id"])
                 room_key = f"{room_type}_1"
                 if room_key not in order:
                     order.append(room_key)
@@ -117,12 +135,12 @@ class FakeMeta(meta_client._ClientBase):
                     "room_type": room_type,
                     "usable": True,
                     "coverage": 0.8,
-                    "observations": OBSERVATIONS[room_type],
+                    "observations": OBSERVATIONS.get(room_type, ["neutral walls"]),
                     "condition": "well kept",
                 })
             return {"frames": entries, "order": order}, f"{len(entries)} frames classified"
 
-        prompt = "classify:" + ",".join(f["id"] for f in frames)
+        prompt = "classify:" + ",".join(f["id"] for f in frames) + "|" + known_rooms
         blobs = [Path(f["path"]).read_bytes() for f in frames if f.get("path")]
         return self._invoke(trace, purpose, target or {"frames": len(frames)},
                             self.wonder_model, prompt, blobs, fn)

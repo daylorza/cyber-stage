@@ -29,6 +29,7 @@ export default function NewWalkthrough() {
   const [files, setFiles] = useState<File[]>([]);
   const [dragging, setDragging] = useState(false);
   const [estimate, setEstimate] = useState(false);
+  const [test, setTest] = useState(false);
   const [style, setStyle] = useState("modern-luxury");
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -47,6 +48,7 @@ export default function NewWalkthrough() {
     const form = new FormData(e.currentTarget);
     files.forEach((f) => form.append("files", f));
     form.set("estimate_price", String(estimate));
+    form.set("test_listing", String(test));
     form.set("style", style);
     setError("");
     setProgress(0);
@@ -162,6 +164,10 @@ export default function NewWalkthrough() {
           <label className="flex cursor-pointer items-center gap-3 text-sm text-ivory/85">
             <input type="checkbox" checked={estimate} onChange={(e) => setEstimate(e.target.checked)} className="h-4 w-4 accent-[#9be6ef]" />
             Estimate the price from comparable sales
+          </label>
+          <label className="flex cursor-pointer items-center gap-3 text-sm text-ivory/85">
+            <input type="checkbox" checked={test} onChange={(e) => setTest(e.target.checked)} className="h-4 w-4 accent-[#9be6ef]" />
+            Test upload · label it "Not a real listing" everywhere
           </label>
 
           <fieldset>

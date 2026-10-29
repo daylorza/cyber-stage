@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { media, type LiveRoom } from "../../api";
 import { cutout, usable, type Cut } from "./cutout";
-import { featherMask, planPieces, preload } from "./stage";
+import { featherMask, IDENTITY, inFront, ovalOf, pieceMask, placed, planPieces, preload } from "./stage";
 
 export type StagePhase = "empty" | "staged";
 export type Overlay = { src: string | null; on: boolean };
@@ -13,6 +13,8 @@ type Props = {
   /** Show the staged room straight away, with no cascade. */
   instant: boolean;
   reduced: boolean;
+  /** Length of the empty-room beat before the first cascade (shorter when walking in from the video). */
+  beat?: number;
   onReady: () => void;
   onPhase: (phase: StagePhase) => void;
   overlay: Overlay;
@@ -20,24 +22,57 @@ type Props = {
 };
 
 const FIRST_HOLD = 2200;
-const RESTYLE_HOLD = 160;
-const FALL_MS = 900;
-const FADE_MS = 700;
+const RESTYLE_HOLD = 220;
+/** One fall, ceiling to floor, including the landing squash and settle. */
+const FALL_MS = 1150;
+/** Where in the fall the piece touches the floor. */
+const CONTACT = 0.78;
+const STAGGER = 320;
+const RUG_MS = 950;
+const SETTLE_MS = 750;
+// Gravity: slow off the ceiling, fastest at the floor.
+const GRAVITY = "cubic-bezier(0.55, 0, 0.9, 0.5)";
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 const frames = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 
-/** Fade an element to full opacity and keep it there. */
-function reveal(el: Element | null | undefined, ms: number) {
-  el?.animate([{ opacity: 1 }], { duration: ms, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" });
-}
+const maskStyle = (url: string | null): CSSProperties =>
+  url
+    ? {
+        maskImage: `url(${url})`,
+        WebkitMaskImage: `url(${url})`,
+        maskSize: "100% 100%",
+        WebkitMaskSize: "100% 100%",
+        maskRepeat: "no-repeat",
+        WebkitMaskRepeat: "no-repeat",
+      }
+    : {};
+
+/** The furniture mask (or everything), minus the ovals of the pieces in front. */
+const pieceInnerMask = (url: string | null, fronts: string[]): CSSProperties => {
+  if (!fronts.length) return maskStyle(url);
+  const layers = [url ? `url(${url})` : "linear-gradient(#000, #000)", ...fronts].join(", ");
+  const rest = fronts.map(() => "add");
+  return {
+    maskImage: layers,
+    WebkitMaskImage: layers,
+    maskSize: "100% 100%",
+    WebkitMaskSize: "100% 100%",
+    maskRepeat: "no-repeat",
+    WebkitMaskRepeat: "no-repeat",
+    maskComposite: ["subtract", ...rest].join(", "),
+    WebkitMaskComposite: ["source-out", ...rest.map(() => "source-over")].join(", "),
+  };
+};
 
 /**
- * One room. Starts on the empty plate, then drops each piece of the chosen style into place and
- * fades the full staged image over the top. Boxes are percentages of this element, which the
- * parent sizes to the room's aspect ratio.
+ * One room. Starts on the empty plate (the filmed frame), then each piece of the chosen style falls from
+ * the ceiling and lands with weight: contact shadow growing under it as it nears the floor, a small squash on
+ * impact, a settle. The rug unrolls. Only what the furniture mask covers ever appears, so walls, windows and
+ * floor stay the filmed room; at the end the masked remainder (art, curtains, small decor) settles in.
+ * Generated images are aligned to the filmed frame (style.align) and boxes are percentages of this element.
  */
-export default function RoomStage({ room, styleId, instant, reduced, onReady, onPhase, overlay, children }: Props) {
+export default function RoomStage({ room, styleId, instant, reduced, beat = FIRST_HOLD, onReady, onPhase, overlay, children }: Props) {
   const [shown, setShown] = useState<string | null>(null);
   const [cut, setCut] = useState<Cut | null>(null);
   const shownRef = useRef<string | null>(null);
@@ -48,7 +83,10 @@ export default function RoomStage({ room, styleId, instant, reduced, onReady, on
 
   const base = room.plate ?? room.before;
   const style = shown ? room.styles[shown] : undefined;
-  const items = useMemo(() => planPieces(style?.pieces ?? []), [style]);
+  const align = style?.align ?? IDENTITY;
+  const items = useMemo(() => planPieces(style?.pieces ?? [], style?.align ?? IDENTITY), [style]);
+  // Server mask: aligned and cleaned. Without one (older preparations), the in-browser difference cut.
+  const maskUrl = style?.mask ? media(style.mask) : cut ? cut.url : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -60,9 +98,8 @@ export default function RoomStage({ room, styleId, instant, reduced, onReady, on
     };
 
     (async () => {
-      const ready = Promise.all([preload(base), preload(stagedPath)]);
-      // Where the staged image differs from the plate: that is the furniture. Computed alongside the preload.
-      const cutting = cutout(base, stagedPath);
+      const ready = Promise.all([preload(base), preload(stagedPath), preload(target?.mask)]);
+      const cutting = target?.mask ? Promise.resolve(null) : cutout(base, stagedPath);
       const first = !started.current;
 
       if (first) {
@@ -94,13 +131,13 @@ export default function RoomStage({ room, styleId, instant, reduced, onReady, on
         setShownStyle(styleId);
         await frames();
         if (cancelled) return;
-        reveal(layer.current?.querySelector("[data-full]"), 1);
+        settleNow();
         callbacks.current.onPhase("staged");
         return;
       }
 
-      // The empty-room beat. The cutout is usually ready by the end of it; wait a little longer, then go without.
-      await sleep(first ? FIRST_HOLD : RESTYLE_HOLD);
+      // The empty-room beat. A missing server mask is cut in the browser meanwhile; go without it if slow.
+      await sleep(first ? beat : RESTYLE_HOLD);
       if (cancelled) return;
       const mask = await Promise.race([cutting, sleep(300).then(() => null)]);
       if (cancelled) return;
@@ -111,61 +148,92 @@ export default function RoomStage({ room, styleId, instant, reduced, onReady, on
       if (cancelled) return;
 
       const root = layer.current;
-      const full = root?.querySelector("[data-full]");
+      const rest = root?.querySelector<HTMLElement>("[data-rest]");
       const pieces = root ? Array.from(root.querySelectorAll<HTMLElement>("[data-piece]")) : [];
-      const shadows = root ? Array.from(root.querySelectorAll<HTMLElement>("[data-shadow]")) : [];
 
       if (pieces.length === 0) {
         callbacks.current.onPhase("staged");
-        reveal(full, 1800);
+        rest?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1600, easing: "ease-in-out", fill: "forwards" });
         return;
       }
 
-      const stagger = 210;
-      pieces.forEach((el, i) => {
+      let at = 0;
+      let landed = 0;
+      pieces.forEach((el) => {
+        const shadow = root?.querySelector<HTMLElement>(`[data-shadow="${el.dataset.key}"]`);
+        if (el.dataset.flat === "1") {
+          // A rug unrolls across the floor instead of dropping like a slab.
+          el.animate(
+            [
+              { clipPath: "inset(0 100% 0 0)", opacity: 0, transform: "translate3d(0, -1.5%, 0)" },
+              { opacity: 1, offset: 0.12 },
+              { clipPath: "inset(0 0% 0 0)", opacity: 1, transform: "translate3d(0, 0, 0)" },
+            ],
+            { duration: RUG_MS, delay: at, easing: "cubic-bezier(0.45, 0, 0.2, 1)", fill: "both" },
+          );
+          landed = Math.max(landed, at + RUG_MS);
+          at += STAGGER;
+          return;
+        }
         const drop = Number(el.dataset.drop ?? 120);
         el.animate(
           [
-            { transform: `translate3d(0, -${drop}%, 0)`, opacity: 0, offset: 0, easing: "cubic-bezier(0.5, 0.05, 0.78, 0.6)" },
-            { opacity: 1, offset: 0.14 },
-            { transform: "translate3d(0, 1.6%, 0)", opacity: 1, offset: 0.72, easing: "cubic-bezier(0.2, 0.6, 0.3, 1)" },
-            { transform: "translate3d(0, 0, 0)", opacity: 1, offset: 1 },
+            { transform: `translate3d(0, -${drop}%, 0) scale(0.99, 1.025)`, opacity: 1, offset: 0, easing: GRAVITY },
+            { transform: "translate3d(0, 0, 0) scale(1.014, 0.972)", offset: CONTACT, easing: "cubic-bezier(0.2, 0.6, 0.35, 1)" },
+            { transform: "translate3d(0, -0.8%, 0) scale(0.996, 1.006)", offset: 0.9, easing: "cubic-bezier(0.4, 0, 0.6, 1)" },
+            { transform: "translate3d(0, 0, 0) scale(1, 1)", opacity: 1, offset: 1 },
           ],
-          { duration: FALL_MS, delay: i * stagger, fill: "both" },
+          { duration: FALL_MS, delay: at, fill: "both" },
         );
-        shadows[i]?.animate([{ opacity: 0 }, { opacity: 1 }], {
-          duration: 420,
-          delay: i * stagger + FALL_MS * 0.6,
-          easing: "ease-out",
-          fill: "both",
-        });
+        // The floor shadow is there before the piece is: faint and wide-spread high up, dark and tight at contact.
+        shadow?.animate(
+          [
+            { opacity: 0, transform: "scale(0.45, 0.6)", offset: 0 },
+            { opacity: 0.25, transform: "scale(0.7, 0.75)", offset: CONTACT * 0.6, easing: GRAVITY },
+            { opacity: 1, transform: "scale(1.04, 1)", offset: CONTACT },
+            { opacity: 0.92, transform: "scale(1, 1)", offset: 1 },
+          ],
+          { duration: FALL_MS, delay: at, easing: "linear", fill: "both" },
+        );
+        landed = Math.max(landed, at + FALL_MS);
+        at += STAGGER;
       });
-      await sleep((pieces.length - 1) * stagger + FALL_MS + 120);
+      await sleep(landed + 80);
+      if (cancelled) return;
+      // What the boxes missed (art, curtains, small decor) settles in, masked: the room itself never changes.
+      rest?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: SETTLE_MS, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" });
+      await sleep(SETTLE_MS * 0.6);
       if (cancelled) return;
       callbacks.current.onPhase("staged");
-      reveal(full, FADE_MS);
     })();
 
-    /** Lift the current pieces back up and clear to the plate. */
+    function settleNow() {
+      const root = layer.current;
+      root?.querySelector("[data-rest]")?.animate([{ opacity: 1 }], { duration: 1, fill: "forwards" });
+      root?.querySelectorAll("[data-piece],[data-shadow]").forEach((el) => el.animate([{ opacity: 1 }], { duration: 1, fill: "forwards" }));
+    }
+
+    /** Lift the current pieces back up to the ceiling and clear to the plate. */
     async function lift() {
       const root = layer.current;
       if (!root) return;
       const pieces = Array.from(root.querySelectorAll<HTMLElement>("[data-piece]"));
       const shadows = Array.from(root.querySelectorAll<HTMLElement>("[data-shadow]"));
-      const full = root.querySelector("[data-full]");
+      const rest = root.querySelector("[data-rest]");
       if (reduced) return;
-      full?.animate([{ opacity: 0 }], { duration: 260, easing: "ease-out", fill: "forwards" });
-      await sleep(140);
-      pieces.forEach((el, i) =>
-        el.animate([{ transform: "translate3d(0, -16%, 0)", opacity: 0 }], {
-          duration: 400,
-          delay: i * 28,
-          easing: "cubic-bezier(0.45, 0, 0.9, 0.55)",
+      rest?.animate([{ opacity: 0 }], { duration: 280, easing: "ease-out", fill: "forwards" });
+      await sleep(160);
+      pieces.reverse().forEach((el, i) => {
+        const drop = Number(el.dataset.drop ?? 120);
+        el.animate([{ transform: `translate3d(0, -${drop}%, 0) scale(0.99, 1.03)` }], {
+          duration: 520,
+          delay: i * 45,
+          easing: "cubic-bezier(0.5, 0, 0.75, 0.2)",
           fill: "forwards",
-        }),
-      );
-      shadows.forEach((el) => el.animate([{ opacity: 0 }], { duration: 220, fill: "forwards" }));
-      await sleep(400 + pieces.length * 28 + 60);
+        });
+      });
+      shadows.forEach((el) => el.animate([{ opacity: 0, transform: "scale(0.5, 0.6)" }], { duration: 380, fill: "forwards" }));
+      await sleep(520 + pieces.length * 45 + 60);
     }
 
     return () => {
@@ -177,37 +245,55 @@ export default function RoomStage({ room, styleId, instant, reduced, onReady, on
 
   return (
     <div role="img" aria-label={room.name} className="relative h-full w-full overflow-hidden bg-smoke">
-      {base && <img src={media(base)} alt="" draggable={false} className="absolute inset-0 h-full w-full select-none" />}
+      {base && (
+        <img
+          src={media(base)}
+          alt=""
+          draggable={false}
+          className="absolute max-w-none select-none"
+          style={placed(room.plate_source === "generated" ? room.plate_align : IDENTITY)}
+        />
+      )}
 
       {shown && style?.image && (
         <div key={shown} ref={layer} className="absolute inset-0">
+          {/* The masked remainder: only where the furniture mask says the staged room differs. */}
+          <div data-rest className="absolute inset-0" style={{ opacity: 0, ...maskStyle(maskUrl) }}>
+            <img src={media(style.image)} alt="" draggable={false} className="absolute max-w-none select-none" style={placed(align)} />
+          </div>
+
           {items.map((p) =>
             p.flat ? null : (
               <div
                 key={`s-${p.key}`}
-                data-shadow
+                data-shadow={p.key}
                 className="absolute"
                 style={{
-                  left: `${p.x1 * 100 + (p.x2 - p.x1) * 8}%`,
-                  width: `${(p.x2 - p.x1) * 84}%`,
-                  top: `${(p.y2 - 0.034) * 100}%`,
-                  height: "4.2%",
+                  left: `${p.x1 * 100 + (p.x2 - p.x1) * 6}%`,
+                  width: `${(p.x2 - p.x1) * 88}%`,
+                  top: `${(p.y2 - 0.04) * 100}%`,
+                  height: "5%",
                   opacity: 0,
-                  background: "radial-gradient(ellipse at 50% 50%, rgb(0 0 0 / 0.5), rgb(0 0 0 / 0.18) 55%, transparent 72%)",
+                  transformOrigin: "50% 60%",
+                  background: "radial-gradient(ellipse at 50% 55%, rgb(8 8 10 / 0.55), rgb(8 8 10 / 0.22) 50%, transparent 72%)",
+                  filter: "blur(2px)",
                 }}
               />
             ),
           )}
+
           {items.map((p) => {
             const w = p.x2 - p.x1;
             const h = p.y2 - p.y1;
-            const cutOut = usable(cut, [p.x1, p.y1, p.x2, p.y2]);
-            const mask = featherMask(p, p.flat && !cutOut);
+            const masked = !!style.mask || usable(cut, [p.x1, p.y1, p.x2, p.y2]);
+            const feather = p.flat ? featherMask(p, !masked) : pieceMask(p);
             return (
               <div
                 key={p.key}
                 data-piece
+                data-key={p.key}
                 data-drop={p.drop}
+                data-flat={p.flat ? "1" : "0"}
                 className="absolute will-change-transform"
                 style={{
                   left: `${p.x1 * 100}%`,
@@ -215,45 +301,28 @@ export default function RoomStage({ room, styleId, instant, reduced, onReady, on
                   width: `${w * 100}%`,
                   height: `${h * 100}%`,
                   opacity: 0,
-                  maskImage: mask,
-                  WebkitMaskImage: mask,
-                  maskComposite: "intersect",
-                  WebkitMaskComposite: "source-in",
+                  transformOrigin: "50% 100%",
+                  maskImage: feather,
+                  WebkitMaskImage: feather,
+                  ...(p.flat ? { maskComposite: "intersect", WebkitMaskComposite: "source-in" } : {}),
                 }}
               >
-                <img
-                  src={media(style.image!)}
-                  alt=""
-                  draggable={false}
-                  className="absolute max-w-none select-none"
+                {/* A frame-sized window onto the aligned staged image, cut to the furniture mask. */}
+                <div
+                  className="absolute"
                   style={{
                     width: `${100 / w}%`,
                     height: `${100 / h}%`,
                     left: `${(-p.x1 / w) * 100}%`,
                     top: `${(-p.y1 / h) * 100}%`,
-                    ...(cutOut && cut
-                      ? {
-                          maskImage: `url(${cut.url})`,
-                          WebkitMaskImage: `url(${cut.url})`,
-                          maskSize: "100% 100%",
-                          WebkitMaskSize: "100% 100%",
-                          maskRepeat: "no-repeat",
-                          WebkitMaskRepeat: "no-repeat",
-                        }
-                      : null),
+                    ...pieceInnerMask(masked ? maskUrl : null, inFront(p, items).map(ovalOf)),
                   }}
-                />
+                >
+                  <img src={media(style.image!)} alt="" draggable={false} className="absolute max-w-none select-none" style={placed(align)} />
+                </div>
               </div>
             );
           })}
-          <img
-            data-full
-            src={media(style.image)}
-            alt=""
-            draggable={false}
-            className="absolute inset-0 h-full w-full select-none"
-            style={{ opacity: 0 }}
-          />
         </div>
       )}
 
@@ -262,8 +331,8 @@ export default function RoomStage({ room, styleId, instant, reduced, onReady, on
           src={overlay.src}
           alt=""
           draggable={false}
-          className="absolute inset-0 h-full w-full select-none"
-          style={{ opacity: overlay.on ? 1 : 0, transition: "opacity 1400ms ease-in-out" }}
+          className="absolute max-w-none select-none"
+          style={{ ...placed(align), opacity: overlay.on ? 1 : 0, transition: "opacity 1400ms ease-in-out" }}
         />
       )}
 

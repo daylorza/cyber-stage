@@ -96,6 +96,7 @@ async def create_listing(
     currency: str = Form("USD"),
     estimate_price: bool = Form(False),
     style: str = Form(listings.DEFAULT_STYLE),
+    test_listing: bool = Form(False),
 ) -> dict[str, str]:
     kinds = [_kind(f.filename or "") for f in files]
     if currency not in CURRENCIES:
@@ -136,6 +137,7 @@ async def create_listing(
 
     listing = listings.new_listing(listing_id, source="upload", facts=facts, uploads=uploads, job_id=job_id,
                                    style=style)
+    listings.set_test_label(listing, test_listing)
     with db.connect() as conn:
         db.insert_listing(conn, listing)
         db.insert_job(conn, job_id, listing_id, "listing")
@@ -173,6 +175,7 @@ class ReviewBody(BaseModel):
     copy_edit: CopyEdit | None = None
     rejected_rooms: list[str] | None = None
     notes: str | None = None
+    test_listing: bool | None = None
 
 
 @router.post("/listings/{listing_id}/review")
@@ -184,6 +187,7 @@ def review_listing(listing_id: str, body: ReviewBody) -> dict[str, Any]:
         copy_edit=body.copy_edit.model_dump() if body.copy_edit else None,
         rejected_rooms=body.rejected_rooms,
         notes=body.notes,
+        test_listing=body.test_listing,
     )
 
 
@@ -195,15 +199,22 @@ def publish_listing(listing_id: str) -> dict[str, Any]:
 @router.post("/listings/{listing_id}/reprocess", status_code=202)
 def reprocess_listing(listing_id: str) -> dict[str, str]:
     """Re-run the full pipeline from the stored uploads. Starts the listing over:
-    fresh checklist and trace, generated copy replaces broker edits."""
+    fresh checklist and trace, generated copy replaces broker edits. A published listing is
+    taken down: it needs a new broker approval and publish before anyone sees it again."""
     listing = _listing_or_404(listing_id)
-    if listing["source"] != "upload" or listing["status"] not in {"draft", "approved", "rejected", "failed"}:
+    if listing["source"] != "upload" or listing["status"] not in {"draft", "approved", "rejected", "failed",
+                                                                   "published"}:
         raise HTTPException(409, "This listing can't be reprocessed right now.")
+    if (listing.get("live") or {}).get("status") == "preparing":
+        raise HTTPException(409, "Live-In-It is being prepared; reprocess when it finishes.")
     job_id = db.new_id("job")
     listing["status"] = "processing"
     listing["job_id"] = job_id
     listing["verification"] = None
     listing.pop("published", None)
+    listing.pop("published_at", None)
+    listing.pop("live", None)
+    listing.pop("token_guard", None)
     listing["review"] = {"decision": None, "decided_at": None, "notes": "", "edited_fields": []}
     db.save_listing(listing)
     with db.connect() as conn:
@@ -289,14 +300,17 @@ def export_listing_logs(listing_id: str) -> Response:
 
 @router.get("/listings/{listing_id}/page")
 def published_page(listing_id: str) -> dict[str, Any]:
+    """The broker-approved snapshot (video first), plus its label and whether a buyer can
+    enter Live-In-It from it (and why not)."""
     listing = _listing_or_404(listing_id)
     if listing["status"] != "published":
         raise HTTPException(404, "This listing isn't published.")
-    return listing["published"]
+    return {**listing["published"], "video": listing["published"].get("video"),
+            "note": listing.get("note"), "live": live.eligibility(listing)}
 
 
 class LiveRequest(BaseModel):
-    residence: str = "seed_miami"
+    residence: str | None = None
 
 
 @router.post("/listings/{listing_id}/live", status_code=202)

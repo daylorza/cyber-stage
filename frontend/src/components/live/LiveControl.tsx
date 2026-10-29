@@ -1,18 +1,23 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type LivePayload } from "../../api";
+import { api, type Listing, type LivePayload } from "../../api";
 
 type State = { status: "unknown" | "none" | "preparing" | "ready" | "failed"; error: string; progress: number; jobId: string | null };
 
-/** Console control for the Miami hero: prepare Live-In-It, then enter it. Published listings only. */
-export default function LiveControl({ listingId, city }: { listingId: string; city: string }) {
-  const isMiami = city.trim().toLowerCase() === "miami";
+const MAIN_TYPES = ["living", "dining"];
+export const NO_MAIN_ROOM = "No main living space found in this video, so there is no room to walk into.";
+
+/** Console control for any published listing with a main living space: prepare Live-In-It, then enter it. */
+export default function LiveControl({ listing }: { listing: Listing }) {
+  const listingId = listing.id;
+  const isMiami = listing.facts.city.trim().toLowerCase() === "miami";
+  const rooms = (listing.published?.rooms ?? listing.rooms).filter((r) => !r.rejected);
+  const eligible = rooms.some((r) => r.main || MAIN_TYPES.includes(r.type));
   const [s, setS] = useState<State>({ status: "unknown", error: "", progress: 0, jobId: null });
 
   const fromPayload = (p: LivePayload): State => ({ status: p.status, error: p.error ?? "", progress: 0, jobId: p.job_id });
 
   useEffect(() => {
-    if (!isMiami) return;
     let stopped = false;
     api
       .live(listingId)
@@ -21,7 +26,7 @@ export default function LiveControl({ listingId, city }: { listingId: string; ci
     return () => {
       stopped = true;
     };
-  }, [listingId, isMiami]);
+  }, [listingId]);
 
   const jobId = s.status === "preparing" ? s.jobId : null;
   useEffect(() => {
@@ -54,14 +59,15 @@ export default function LiveControl({ listingId, city }: { listingId: string; ci
   async function prepare() {
     setS({ status: "preparing", error: "", progress: 0, jobId: null });
     try {
-      const { job_id } = await api.prepareLive(listingId);
+      // A Miami listing also stands in for the seeded home-page residence.
+      const { job_id } = await api.prepareLive(listingId, isMiami ? "seed_miami" : null);
       setS({ status: "preparing", error: "", progress: 0, jobId: job_id });
     } catch (e) {
       setS({ status: "failed", error: (e as Error).message, progress: 0, jobId: null });
     }
   }
 
-  if (!isMiami || s.status === "unknown") return null;
+  if (s.status === "unknown") return null;
 
   if (s.status === "ready")
     return (
@@ -77,9 +83,22 @@ export default function LiveControl({ listingId, city }: { listingId: string; ci
       </button>
     );
 
+  if (!eligible)
+    return (
+      <span className="flex items-center gap-3 px-3">
+        <button type="button" className="btn-glass" disabled title={NO_MAIN_ROOM}>
+          Enter residence
+        </button>
+        <span className="max-w-[16rem] text-xs leading-snug text-rose/80">No main living space found in this video</span>
+      </span>
+    );
+
   return (
-    <button type="button" className="btn-glass" title={s.error || undefined} onClick={prepare}>
-      Prepare Live-In-It
-    </button>
+    <span className="flex items-center gap-3">
+      {s.status === "failed" && s.error && <span className="max-w-[18rem] px-2 text-xs leading-snug text-rose/80">{s.error}</span>}
+      <button type="button" className="btn-glass" title={s.error || undefined} onClick={prepare}>
+        Prepare Live-In-It
+      </button>
+    </span>
   );
 }

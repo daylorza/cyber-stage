@@ -14,7 +14,7 @@ import config
 import db
 import meta_client
 import verify
-from pipeline import PipelineError, classify, comps, copy, frames, privacy, segment, stage
+from pipeline import PipelineError, classify, comps, copy, frames, privacy, segment, stage, video
 
 log = logging.getLogger("vre.pipeline")
 
@@ -24,6 +24,7 @@ STAGES: list[tuple[str, Step]] = [
     ("frames", frames.extract),
     ("masks", segment.run),
     ("privacy", privacy.run),
+    ("video", video.run),
     ("rooms", classify.run),
     ("staging", stage.stage_rooms),
     ("copy", copy.write),

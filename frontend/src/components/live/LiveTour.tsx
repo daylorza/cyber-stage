@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { media, type LiveMoment, type LivePayload } from "../../api";
+import { clock, media, type LiveMoment, type LivePayload } from "../../api";
 import { RESIDENCES } from "../../residences";
 import Backdrop from "./Backdrop";
 import { cutout } from "./cutout";
 import { useReducedMotion, useViewport } from "./hooks";
 import LiveNav from "./LiveNav";
 import MomentFx, { NO_FX, type Fx } from "./MomentFx";
+import { schematicPlan, stopsForPlan } from "./plan";
 import ReserveControl from "./ReserveControl";
 import RoomStage, { type Overlay, type StagePhase } from "./RoomStage";
 import {
   aim,
+  IDENTITY,
   LOOK_DEGREES,
   maxPanFor,
   preload,
@@ -19,12 +21,17 @@ import {
   roomAspect,
   scaleFor,
   stageSize,
+  styleStatus,
   type Cam,
   type Frame,
+  type Pan,
 } from "./stage";
 
 const REST_EASE = "cubic-bezier(0.22, 0.7, 0.12, 1)";
 const MOVE_EASE = "cubic-bezier(0.45, 0, 0.25, 1)";
+/** Walking in from the video, the empty room has just been seen: a short beat, then the cascade. */
+const ARRIVAL_BEAT = 900;
+const FIT_TILT = 5;
 
 /** Which plan room lights up for each room type. */
 const PLAN_ROOM: Record<string, string> = { living: "living", kitchen: "kitchen", dining: "dining", bedroom: "primary", terrace: "terrace" };
@@ -35,27 +42,61 @@ const clamp = (v: number, limit: number) => Math.max(-limit, Math.min(limit, v))
 
 type Move = { cam: Cam | null; ms: number; ease: string };
 type Token = { abort: boolean; wake: (() => void) | null };
+type Mode = "walk" | "room";
+
+/**
+ * The style the walk opens in: the listing's own style when it furnishes the main living room (a few
+ * pieces to fall), otherwise the available style with the most pieces there. The buyer can switch any time.
+ */
+function openingStyle(payload: LivePayload): string {
+  const main = payload.rooms.find((r) => r.main) ?? payload.rooms[0];
+  if (!main) return payload.default_style;
+  const pieces = (id: string) => (main.styles[id]?.available ? (main.styles[id]?.pieces.length ?? 0) : -1);
+  if (pieces(payload.default_style) >= 4) return payload.default_style;
+  const best = payload.styles.map((s) => s.id).sort((a, b) => pieces(b) - pieces(a))[0];
+  return best && pieces(best) > pieces(payload.default_style) ? best : payload.default_style;
+}
 
 const glassButton =
   "group pointer-events-auto flex items-center gap-4 rounded-full bg-ivory/[0.08] py-2 pl-2 pr-6 text-[15px] tracking-wide text-ivory ring-1 ring-ivory/25 backdrop-blur-xl transition hover:bg-ivory/[0.14] hover:ring-ivory/40";
 
-/** The residence in first person: one room at a time, empty to lived-in, with live-in moments. */
+/**
+ * The residence in first person. With a walkthrough video, Live-In-It walks the filmed path in order: the
+ * video plays, stops on each lived-in room exactly at its hero frame, and the furniture falls from the ceiling
+ * over that frame; "Continue walking" picks the video up again. Bathrooms and utility rooms are walked past.
+ * Without a video (older listings) it goes room by room.
+ */
 export default function LiveTour({ payload }: { payload: LivePayload }) {
   const navigate = useNavigate();
-  const { rooms, moments, styles } = payload;
+  const { styles } = payload;
+  const video = payload.video;
   const viewport = useViewport();
   const reduced = useReducedMotion();
 
+  // On the video walk, stop only where furniture can fall: rooms with at least one usable style.
+  const rooms = useMemo(() => {
+    const timed = !!video && payload.rooms.some((r) => r.t != null);
+    const usable = payload.rooms.filter((r) => Object.values(r.styles).some((s) => s.available && s.image));
+    return timed && usable.length ? usable : payload.rooms;
+  }, [payload.rooms, video]);
+  const walking = !!video && rooms.some((r) => r.t != null);
+  const moments = useMemo(() => payload.moments.filter((m) => rooms.some((r) => r.id === m.room_id)), [payload.moments, rooms]);
+
+  const [mode, setMode] = useState<Mode>(walking ? "walk" : "room");
+  const [arrived, setArrived] = useState(!walking);
+  const [playing, setPlaying] = useState(false);
+  const [now, setNow] = useState(0);
+  const [ended, setEnded] = useState(false);
   const [roomIndex, setRoomIndex] = useState(0);
   const [instant, setInstant] = useState(false);
-  const [chosen, setChosen] = useState(payload.default_style);
+  const [chosen, setChosen] = useState(() => openingStyle(payload));
   const [phase, setPhase] = useState<StagePhase>("empty");
   const [entered, setEntered] = useState(false);
   const [dark, setDark] = useState(true);
-  const [pan, setPan] = useState(0);
+  const [pan, setPan] = useState<Pan>({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
-  const [visited, setVisited] = useState<Set<string>>(() => new Set([rooms[0]?.id]));
+  const [visited, setVisited] = useState<Set<string>>(() => new Set(walking ? [] : [rooms[0]?.id]));
   const [finishPressed, setFinishPressed] = useState(false);
   const [moment, setMoment] = useState<LiveMoment | null>(null);
   const [move, setMove] = useState<Move>({ cam: null, ms: 1800, ease: REST_EASE });
@@ -64,37 +105,64 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const [overlay, setOverlay] = useState<Overlay>({ src: null, on: false });
   const [pending, setPending] = useState<LiveMoment | null>(null);
 
-  const drag = useRef({ x: 0, pan: 0 });
+  const drag = useRef({ x: 0, y: 0, pan: { x: 0, y: 0 } });
   const closeTimer = useRef(0);
   const switching = useRef(false);
   const token = useRef<Token | null>(null);
   const timers = useRef<number[]>([]);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const nextStop = useRef(0);
 
   const room = rooms[roomIndex];
   const { id: styleId, fellBack } = useMemo(() => resolveStyle(room, chosen, payload.default_style), [room, chosen, payload.default_style]);
   const styleLabel = styles.find((s) => s.id === styleId)?.label ?? room.styles[styleId ?? ""]?.label ?? "";
   const chosenLabel = styles.find((s) => s.id === chosen)?.label ?? chosen;
+  const inRoom = mode === "room";
 
-  const stage = useMemo(() => stageSize(viewport.w, viewport.h, roomAspect(room)), [viewport.w, viewport.h, room]);
+  const aspect = walking && video ? video.width / video.height : roomAspect(room);
+  const stage = useMemo(() => stageSize(viewport.w, viewport.h, aspect), [viewport.w, viewport.h, aspect]);
   const fit = stage.fit;
-  const maxPan = maxPanFor(stage, viewport.w);
+  const maxPan = maxPanFor(stage, viewport.w, viewport.h);
+  const stagedStyle = styleId ? room.styles[styleId] : undefined;
   const restY = useMemo(
-    () => restOffset(styleId ? (room.styles[styleId]?.pieces ?? []) : [], stage, viewport.h),
-    [room, styleId, stage, viewport.h],
+    () => (inRoom && stagedStyle ? restOffset(stagedStyle.pieces ?? [], stage, viewport.h, stagedStyle.align ?? IDENTITY) : 0),
+    [inRoom, stagedStyle, stage, viewport.h],
   );
-  const backdropPath = phase === "staged" && styleId ? (room.styles[styleId]?.image ?? null) : (room.plate ?? room.before);
-  const finished = finishPressed || visited.size >= rooms.length;
+
+  // Where the walk is: the room on the video timeline at this moment (prepared or walked past).
+  const pathStop = useMemo(() => {
+    const stops = payload.path ?? [];
+    return [...stops].reverse().find((s) => (s.span?.[0] ?? s.t) <= now + 0.2) ?? null;
+  }, [payload.path, now]);
+  const nearestRoom = useMemo(() => {
+    if (!walking) return room;
+    const ahead = rooms.find((r) => (r.t ?? 0) >= now);
+    return ahead ?? rooms[rooms.length - 1];
+  }, [walking, rooms, room, now]);
+
+  const backdropPath = inRoom
+    ? phase === "staged" && styleId
+      ? (room.styles[styleId]?.image ?? null)
+      : (room.plate ?? room.before)
+    : (nearestRoom?.before ?? null);
+  const finished = walking ? ended || finishPressed : finishPressed || visited.size >= rooms.length;
   const last = roomIndex === rooms.length - 1;
 
   // Latest values for the async moment runner.
   const latest = useRef({ stage, viewport, styleId });
   latest.current = { stage, viewport, styleId };
 
-  const basePlan = RESIDENCES.find((r) => r.id === payload.residence)?.plan ?? null;
-  const planRoom = PLAN_ROOM[room.type] ?? basePlan?.current;
+  const seeded = RESIDENCES.find((r) => r.id === payload.residence)?.plan ?? null;
+  const planRoom = seeded ? (PLAN_ROOM[room.type] ?? seeded.current) : inRoom ? room.id : (pathStop?.id ?? room.id);
   // FloorPlan resets its rotation when this object changes, so only rebuild it when the lit room changes.
-  const plan = useMemo(() => (basePlan && planRoom ? { ...basePlan, current: planRoom } : basePlan), [basePlan, planRoom]);
-  const heading = (plan?.facing ?? 0) + (maxPan > 0 ? (pan / maxPan) * LOOK_DEGREES : 0);
+  const plan = useMemo(
+    () =>
+      seeded
+        ? { ...seeded, current: planRoom }
+        : schematicPlan(payload.path?.length ? stopsForPlan(payload.path) : rooms.map((r) => ({ id: r.id, name: r.name })), planRoom),
+    [seeded, planRoom, payload.path, rooms],
+  );
+  const heading = (plan?.facing ?? 0) + (maxPan.x > 0 ? (pan.x / maxPan.x) * LOOK_DEGREES : 0);
 
   const later = (fn: () => void, ms: number) => {
     timers.current.push(window.setTimeout(fn, ms));
@@ -112,26 +180,32 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
     };
   }, [payload.title]);
 
-  useEffect(() => setPan((p) => clamp(p, maxPan)), [maxPan]);
-  useEffect(() => setVisited((v) => (v.has(room.id) ? v : new Set(v).add(room.id))), [room.id]);
-
-  // Warm the next room and this room's other styles while the buyer looks around.
+  useEffect(() => setPan((p) => ({ x: clamp(p.x, maxPan.x), y: clamp(p.y, maxPan.y) })), [maxPan.x, maxPan.y]);
   useEffect(() => {
+    if (inRoom) setVisited((v) => (v.has(room.id) ? v : new Set(v).add(room.id)));
+  }, [room.id, inRoom]);
+
+  // Warm what comes next: while walking, the next room; in a room, its other styles and the next room.
+  useEffect(() => {
+    const warm = (r: (typeof rooms)[number] | undefined) => {
+      if (!r) return;
+      const s = resolveStyle(r, chosen, payload.default_style).id;
+      void preload(r.plate ?? r.before);
+      if (!s) return;
+      void preload(r.styles[s]?.image);
+      void preload(r.styles[s]?.mask);
+      if (!r.styles[s]?.mask) void cutout(r.plate ?? r.before, r.styles[s]?.image);
+    };
+    if (!inRoom) return warm(rooms[nextStop.current]);
     if (phase !== "staged") return;
-    const next = rooms[roomIndex + 1];
-    if (next) {
-      const s = resolveStyle(next, chosen, payload.default_style).id;
-      void preload(next.plate ?? next.before);
-      if (s) void preload(next.styles[s]?.image);
-      if (s) void cutout(next.plate ?? next.before, next.styles[s]?.image);
-    }
+    warm(rooms[roomIndex + 1]);
     Object.values(room.styles).forEach((s) => {
       if (!s.available) return;
       void preload(s.image);
-      void cutout(room.plate ?? room.before, s.image);
+      void preload(s.mask);
     });
     moments.filter((m) => m.room_id === room.id).forEach((m) => Object.values(m.images).forEach((p) => void preload(p)));
-  }, [phase, room, roomIndex, rooms, chosen, payload.default_style, moments]);
+  }, [inRoom, phase, room, roomIndex, rooms, chosen, payload.default_style, moments]);
 
   const onReady = useCallback(() => {
     setEntered(true);
@@ -139,22 +213,112 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
     switching.current = false;
   }, []);
 
+  // ── the walk: the video plays and stops at each prepared room's hero frame ──
+
+  const arrive = useCallback(
+    (i: number) => {
+      const el = videoRef.current;
+      const t = rooms[i]?.t;
+      if (!el || t == null) return;
+      el.pause();
+      nextStop.current = i + 1;
+      const show = () => {
+        setRoomIndex(i);
+        setInstant(false);
+        setPhase("empty");
+        setPan({ x: 0, y: 0 });
+        setArrived(true);
+        setMode("room");
+      };
+      if (Math.abs(el.currentTime - t) > 0.02) {
+        el.addEventListener("seeked", show, { once: true });
+        el.currentTime = t;
+      } else show();
+    },
+    [rooms],
+  );
+
+  useEffect(() => {
+    if (!walking || !playing) return;
+    let raf = 0;
+    let shown = -1;
+    const tick = () => {
+      const el = videoRef.current;
+      if (!el) return;
+      const t = el.currentTime;
+      if (Math.abs(t - shown) > 0.15) {
+        shown = t;
+        setNow(t);
+      }
+      const stop = rooms[nextStop.current];
+      if (stop?.t != null && t >= stop.t - 0.03) return arrive(nextStop.current);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [walking, playing, rooms, arrive]);
+
+  const play = useCallback(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    setEnded(false);
+    void el.play().catch(() => undefined);
+  }, []);
+
+  const continueWalk = useCallback(() => {
+    if (token.current) return;
+    setNavOpen(false);
+    setPending(null);
+    setMode("walk");
+    later(play, 480);
+  }, [play]);
+
+  /** Jump the walk to a time: the next stop is the first room after it. */
+  const seekWalk = useCallback(
+    (t: number) => {
+      const el = videoRef.current;
+      if (!el || token.current) return;
+      nextStop.current = rooms.findIndex((r) => (r.t ?? 0) > t + 0.05);
+      if (nextStop.current < 0) nextStop.current = rooms.length;
+      el.currentTime = t;
+      setNow(t);
+      setMode("walk");
+      later(play, 300);
+    },
+    [rooms, play],
+  );
+
   const goTo = useCallback(
     (i: number, asStaged = false) => {
-      if (i < 0 || i >= rooms.length || i === roomIndex || switching.current || token.current) return;
+      if (i < 0 || i >= rooms.length || switching.current || token.current) return;
+      if (i === roomIndex && inRoom) return;
       switching.current = true;
-      setDark(true);
       setNavOpen(false);
       if (!asStaged) setPending(null);
-      later(() => {
-        setRoomIndex(i);
-        setInstant(asStaged);
-        setPhase("empty");
-        setPan(0);
-      }, 380);
+      const fromRoom = inRoom && arrived;
+      if (fromRoom) setDark(true);
+      later(
+        () => {
+          if (walking) {
+            const el = videoRef.current;
+            el?.pause();
+            if (el && rooms[i].t != null) el.currentTime = rooms[i].t!;
+            nextStop.current = i + 1;
+            setNow(rooms[i].t ?? 0);
+            setArrived(true);
+            setMode("room");
+          }
+          setRoomIndex(i);
+          setInstant(asStaged);
+          setPhase("empty");
+          setPan({ x: 0, y: 0 });
+          if (!fromRoom) switching.current = false;
+        },
+        fromRoom ? 380 : 0,
+      );
       later(() => (switching.current = false), 7000);
     },
-    [rooms.length, roomIndex],
+    [rooms, roomIndex, inRoom, arrived, walking],
   );
 
   // ── live-in moments ──
@@ -263,16 +427,16 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
       if (index < 0) return;
       setNavOpen(false);
       setPending(m);
-      if (index !== roomIndex) goTo(index, true);
+      if (index !== roomIndex || !inRoom) goTo(index, true);
     },
-    [rooms, roomIndex, goTo],
+    [rooms, roomIndex, inRoom, goTo],
   );
 
   useEffect(() => {
-    if (!pending || phase !== "staged" || pending.room_id !== room.id || dark) return;
+    if (!pending || !inRoom || phase !== "staged" || pending.room_id !== room.id || dark) return;
     setPending(null);
     void playMoment(pending);
-  }, [pending, phase, room.id, dark, playMoment]);
+  }, [pending, inRoom, phase, room.id, dark, playMoment]);
 
   // ── keys ──
 
@@ -285,8 +449,16 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
         else navigate(`/p/${payload.listing_id}`);
       }
       if (token.current) return;
-      if (e.key === "ArrowRight") goTo(roomIndex + 1);
+      if (e.key === "ArrowRight") {
+        if (walking && inRoom) continueWalk();
+        else if (!walking) goTo(roomIndex + 1);
+      }
       if (e.key === "ArrowLeft") goTo(roomIndex - 1);
+      if (e.key === " " && walking && !inRoom) {
+        e.preventDefault();
+        if (playing) videoRef.current?.pause();
+        else play();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -296,20 +468,25 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     if (token.current) return abortMoment();
-    if (fit) return setNavOpen(false);
     e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { x: e.clientX, pan };
+    drag.current = { x: e.clientX, y: e.clientY, pan };
     setDragging(true);
     setNavOpen(false);
   }
   function onPointerMove(e: PointerEvent<HTMLDivElement>) {
     if (!dragging) return;
-    setPan(clamp(drag.current.pan + (e.clientX - drag.current.x) * 0.8, maxPan));
+    setPan({
+      x: clamp(drag.current.pan.x + (e.clientX - drag.current.x) * 0.8, maxPan.x),
+      y: clamp(drag.current.pan.y + (e.clientY - drag.current.y) * 0.8, maxPan.y),
+    });
   }
   const endDrag = () => setDragging(false);
 
-  const caption =
-    phase === "staged" && styleId
+  const caption = !inRoom
+    ? ended
+      ? "End of the walkthrough"
+      : "Walking the residence · as filmed"
+    : phase === "staged" && styleId
       ? `AI-staged · ${styleLabel}`
       : room.plate_source === "generated"
         ? "Empty room · AI-modified"
@@ -318,9 +495,13 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
           : "Empty room · as filmed";
 
   const cam = moment ? move.cam : null;
-  const x = cam ? cam.x : pan;
-  const roomMoments = moments.filter((m) => m.room_id === room.id);
+  const x = cam ? cam.x : pan.x;
+  const y = cam ? cam.y : clamp(restY + pan.y, maxPan.y);
+  const tilt = fit && !cam && maxPan.x > 0 ? (-pan.x / maxPan.x) * FIT_TILT : 0;
+  const roomMoments = inRoom ? moments.filter((m) => m.room_id === room.id) : [];
   const chrome = `transition-opacity duration-700 ${moment || !entered ? "opacity-0" : "opacity-100"}`;
+  const roomName = inRoom ? room.name : (pathStop?.name ?? "");
+  const nextRoom = rooms[nextStop.current];
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-night select-none">
@@ -334,12 +515,12 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
           top: "50%",
           marginLeft: -stage.w / 2,
           marginTop: -stage.h / 2,
-          transform: `translate3d(${x}px, ${cam ? cam.y : restY}px, 0) scale(${cam ? cam.s : 1})`,
+          transform: `perspective(1600px) translate3d(${x}px, ${y}px, 0) rotateY(${tilt}deg) scale(${cam ? cam.s : 1})`,
           transition: dragging ? "none" : `transform ${move.ms}ms ${move.ease}`,
         }}
       >
         <div
-          className="h-full w-full"
+          className="relative h-full w-full overflow-hidden"
           style={
             fit
               ? {
@@ -349,18 +530,48 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               : undefined
           }
         >
-          <RoomStage
-            key={room.id}
-            room={room}
-            styleId={styleId}
-            instant={instant}
-            reduced={reduced}
-            onReady={onReady}
-            onPhase={setPhase}
-            overlay={overlay}
-          >
-            <MomentFx fx={fx} focus={moment?.focus ?? null} />
-          </RoomStage>
+          {walking && video && (
+            <video
+              ref={videoRef}
+              src={media(video.path)}
+              muted
+              playsInline
+              preload="auto"
+              className="absolute inset-0 h-full w-full object-fill"
+              onLoadedData={() => {
+                setEntered(true);
+                setDark(false);
+                later(play, 1400);
+              }}
+              onPlay={() => setPlaying(true)}
+              onPause={() => setPlaying(false)}
+              onEnded={() => {
+                setPlaying(false);
+                setEnded(true);
+                nextStop.current = rooms.length;
+              }}
+            />
+          )}
+          {arrived && (
+            <div
+              className="absolute inset-0"
+              style={{ opacity: inRoom ? 1 : 0, transition: `opacity ${inRoom ? 420 : 480}ms ease-in-out`, pointerEvents: "none" }}
+            >
+              <RoomStage
+                key={room.id}
+                room={room}
+                styleId={styleId}
+                instant={instant}
+                reduced={reduced}
+                beat={walking ? ARRIVAL_BEAT : undefined}
+                onReady={onReady}
+                onPhase={setPhase}
+                overlay={overlay}
+              >
+                <MomentFx fx={fx} focus={moment?.focus ?? null} />
+              </RoomStage>
+            </div>
+          )}
         </div>
       </div>
 
@@ -379,8 +590,8 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
 
       <div
         role="img"
-        aria-label={fit ? `${payload.title}, ${room.name}.` : `${payload.title}, ${room.name}. Drag to look around.`}
-        className={`absolute inset-0 touch-none ${moment ? "cursor-pointer" : fit ? "" : "cursor-grab active:cursor-grabbing"}`}
+        aria-label={`${payload.title}, ${roomName}. Drag to look around.`}
+        className={`absolute inset-0 touch-none ${moment ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
@@ -396,20 +607,20 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
         <div inert={!!moment} className={chrome}>
           <div className="absolute left-6 top-6 max-w-[min(26rem,60vw)] sm:left-10 sm:top-9">
             <p className="font-serif text-xl text-ivory/90">{payload.title}</p>
-            <p key={room.id} className="eyebrow mt-1.5 flex animate-fade-in items-center gap-2.5 text-ivory/80!">
+            <p key={roomName} className="eyebrow mt-1.5 flex animate-fade-in items-center gap-2.5 text-ivory/80!">
               <span className="ice-dot" />
-              {room.name}
+              {roomName}
             </p>
             <p className="eyebrow mt-1.5 text-ivory/55!" aria-live="polite">
               {caption}
             </p>
-            {fellBack && styleId && (
+            {inRoom && fellBack && styleId && (
               <p className="eyebrow mt-1.5 text-ivory/45!">
                 {chosenLabel} isn't available in this room · showing {styleLabel}
               </p>
             )}
-            {!styleId && <p className="eyebrow mt-1.5 text-ivory/45!">Staging isn't available for this room</p>}
-            {payload.note && <p className="eyebrow mt-3 max-w-xs text-[0.58rem]! leading-relaxed normal-case tracking-wide text-ivory/60!">{payload.note}</p>}
+            {inRoom && !styleId && <p className="eyebrow mt-1.5 text-ivory/45!">Staging isn't available for this room</p>}
+            {payload.note && <p className="eyebrow mt-3 max-w-xs text-[0.58rem]! leading-relaxed normal-case tracking-wide text-rose/80!">{payload.note}</p>}
           </div>
 
           <div className="absolute right-6 top-6 sm:right-10 sm:top-9">
@@ -417,7 +628,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               listingId={payload.listing_id}
               title={payload.title}
               rooms={rooms}
-              roomIndex={roomIndex}
+              roomIndex={inRoom ? roomIndex : -1}
               onRoom={goTo}
               styles={styles}
               styleId={styleId}
@@ -425,6 +636,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               moments={moments}
               onMoment={requestMoment}
               plan={plan}
+              planNote={seeded ? null : "Schematic · rooms in walkthrough order, not to scale"}
               heading={heading}
               open={navOpen}
               setOpen={setNavOpen}
@@ -433,22 +645,94 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
           </div>
 
           <div className="absolute inset-x-0 bottom-24 flex flex-col items-center gap-3.5 sm:bottom-9">
-            <div
-              className={`flex flex-wrap items-center justify-center gap-x-7 gap-y-2 transition-opacity duration-700 ${phase === "staged" && !dark ? "opacity-100" : "opacity-0"}`}
-            >
-              {roomMoments.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  disabled={phase !== "staged"}
-                  onClick={() => requestMoment(m)}
-                  className="eyebrow pointer-events-auto text-ivory/70! transition hover:text-ice!"
-                >
-                  {m.label}
+            {inRoom && (
+              <div
+                role="group"
+                aria-label="Style"
+                className={`pointer-events-auto flex flex-col items-center gap-1.5 transition-opacity duration-700 ${phase === "staged" && !dark ? "opacity-100" : "opacity-0"}`}
+              >
+                <div className="flex items-center gap-1 rounded-full bg-night/35 p-1 ring-1 ring-ivory/15 backdrop-blur-xl">
+                  {styles.map((s) => {
+                    const status = styleStatus(room, s.id);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        disabled={!status.ok || phase !== "staged"}
+                        title={status.ok ? `Restyle as ${s.label}` : status.reason}
+                        aria-pressed={s.id === styleId}
+                        onClick={() => setChosen(s.id)}
+                        className={`rounded-full px-3.5 py-1.5 text-[12px] tracking-wide transition disabled:cursor-not-allowed ${s.id === styleId ? "bg-ivory/90 text-night" : status.ok ? "text-ivory/80 hover:text-ivory" : "text-ivory/30 line-through decoration-ivory/30"}`}
+                      >
+                        {s.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {styles
+                  .filter((s) => !styleStatus(room, s.id).ok)
+                  .map((s) => (
+                    <p key={s.id} className="max-w-md text-center text-[11px] leading-snug text-ivory/45">
+                      {s.label} unavailable here · {styleStatus(room, s.id).reason.split(" Not compared")[0].split(" Framing")[0]}
+                    </p>
+                  ))}
+              </div>
+            )}
+
+            {roomMoments.length > 0 && (
+              <div className={`flex flex-wrap items-center justify-center gap-x-7 gap-y-2 transition-opacity duration-700 ${phase === "staged" && !dark ? "opacity-100" : "opacity-0"}`}>
+                {roomMoments.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    disabled={phase !== "staged"}
+                    onClick={() => requestMoment(m)}
+                    className="eyebrow pointer-events-auto text-ivory/70! transition hover:text-ice!"
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {walking ? (
+              inRoom ? (
+                <button type="button" onClick={continueWalk} className={glassButton}>
+                  <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+                    <span className="ice-dot" />
+                  </span>
+                  Continue walking
+                  <span aria-hidden className="transition group-hover:translate-x-1">→</span>
+                  <span className="font-mono text-[11px] tracking-widest text-ivory/55">
+                    {roomIndex + 1} / {rooms.length}
+                  </span>
                 </button>
-              ))}
-            </div>
-            {finishPressed ? (
+              ) : ended ? (
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => seekWalk(0)} className={glassButton}>
+                    <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+                      <span className="ice-dot" />
+                    </span>
+                    Walk again
+                  </button>
+                  <Link to={`/p/${payload.listing_id}`} className="btn-glass pointer-events-auto">
+                    View listing
+                  </Link>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => (playing ? videoRef.current?.pause() : play())}
+                  className={glassButton}
+                  aria-label={playing ? "Pause the walk" : "Resume the walk"}
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+                    <span className={playing ? "ice-dot animate-pulse" : "ice-dot"} />
+                  </span>
+                  {playing ? (nextRoom ? `Walking to the ${nextRoom.name.toLowerCase()}` : "Walking") : "Resume walking"}
+                </button>
+              )
+            ) : finishPressed ? (
               <Link to={`/p/${payload.listing_id}`} className={glassButton}>
                 <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
                   <span className="ice-dot" />
@@ -468,7 +752,32 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                 </span>
               </button>
             )}
-            {!fit && <p className="eyebrow text-ivory/55!">Drag to look around</p>}
+
+            {walking && video && (
+              <div className="pointer-events-auto relative h-5 w-[min(34rem,80vw)]" aria-label="The walkthrough">
+                <div className="absolute inset-x-0 top-1/2 h-px bg-ivory/15" />
+                <div className="absolute left-0 top-1/2 h-px bg-ice/60" style={{ width: `${Math.min(100, (now / video.duration) * 100)}%` }} />
+                {(payload.path ?? []).map((s) => {
+                  const index = rooms.findIndex((r) => r.id === s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      title={`${s.name} · ${clock(s.t)}${s.prepared ? "" : " · walked past"}`}
+                      aria-label={`${s.name}, ${clock(s.t)}`}
+                      onClick={() => (index >= 0 ? goTo(index) : seekWalk(s.span?.[0] ?? s.t))}
+                      className="absolute top-1/2 grid h-5 w-5 -translate-x-1/2 -translate-y-1/2 place-items-center"
+                      style={{ left: `${((index >= 0 ? s.t : (s.span?.[0] ?? s.t)) / video.duration) * 100}%` }}
+                    >
+                      <span
+                        className={`block rounded-full ${s.prepared ? "h-2 w-2 bg-ice shadow-[0_0_10px_rgb(155_230_239/0.7)]" : "h-1 w-1 bg-ivory/45"}`}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <p className="eyebrow text-ivory/55!">Drag to look around</p>
           </div>
 
           <div
