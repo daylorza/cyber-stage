@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { HoverNav } from "../components/Shell";
 import { CascadeScene } from "../components/prototype/CascadeScene";
-import { loadManifest, type Manifest } from "../components/prototype/manifest";
+import { ASSET_ROOT, generalRoot, loadManifest, type Manifest } from "../components/prototype/manifest";
 
 const HEADER = "Prototype Testing — Not a real listing — AI-modified — Proof of concept";
 const FOOTER = "Prototype Testing — Not a real listing — AI-modified";
@@ -34,6 +34,13 @@ export default function PrototypeTesting() {
   const stage = useRef<HTMLDivElement>(null);
   const scene = useRef<CascadeScene | null>(null);
   const meta = useRef<Manifest | null>(null);
+  /** Work 3: ?listing=<id> renders that listing's generalised cascade assets
+   *  (built by prototype.general); no param keeps the POC prototype. */
+  const [assetRoot] = useState(() => {
+    const id = new URLSearchParams(window.location.search).get("listing");
+    return id ? generalRoot(id) : ASSET_ROOT;
+  });
+  const isGeneral = assetRoot !== ASSET_ROOT;
   const phaseRef = useRef<Phase>("loading");
   /** The hero frame stops the walk once per pass through the clip. */
   const armed = useRef(true);
@@ -48,7 +55,7 @@ export default function PrototypeTesting() {
 
   useEffect(() => {
     document.title = "Prototype Testing";
-    loadManifest()
+    loadManifest(assetRoot)
       .then((m) => {
         meta.current = m;
         setManifest(m);
@@ -56,12 +63,13 @@ export default function PrototypeTesting() {
       })
       .catch(() => go("missing"));
     return () => clearTimeout(timer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // The Three.js layer: one canvas over the video, same box, resized with it.
   useEffect(() => {
     if (!manifest || !canvas.current || !stage.current) return;
-    const s = new CascadeScene(canvas.current, manifest.camera, manifest.video.width / manifest.video.height);
+    const s = new CascadeScene(canvas.current, manifest.camera, manifest.video.width / manifest.video.height, assetRoot);
     scene.current = s;
     const box = stage.current;
     const fit = () => s.resize(box.clientWidth, box.clientHeight);
@@ -248,7 +256,7 @@ export default function PrototypeTesting() {
       <header className="relative z-40 flex h-16 items-center px-6 pr-20 sm:px-10 sm:pr-24">
         <p className="eyebrow flex items-center gap-2.5 text-ivory/80!">
           <span className="ice-dot" />
-          {HEADER}
+          {isGeneral ? (manifest?.label ?? HEADER) : HEADER}
         </p>
         {/* Over the page, not in its flow: opening the menu never resizes the video. */}
         <div className="absolute right-6 top-3 sm:right-10">
@@ -284,8 +292,18 @@ export default function PrototypeTesting() {
               <div className="max-w-md">
                 <p className="font-serif text-xl text-ivory/90">The prototype assets are not built on this computer.</p>
                 <p className="mt-4 text-sm leading-relaxed text-ash">
-                  Put the proof-of-concept clip at meta-hackathon/poc-luxury-empty-apartment.mp4, then run{" "}
-                  <span className="font-mono text-ivory/80">make prototype</span>.
+                  {isGeneral ? (
+                    <>
+                      Build this listing&apos;s cascade with{" "}
+                      <span className="font-mono text-ivory/80">python -m prototype.general</span> (listing id, its
+                      uploaded clip, and per-video calibration lines), then reload.
+                    </>
+                  ) : (
+                    <>
+                      Put the proof-of-concept clip at meta-hackathon/poc-luxury-empty-apartment.mp4, then run{" "}
+                      <span className="font-mono text-ivory/80">make prototype</span>.
+                    </>
+                  )}
                 </p>
               </div>
             </div>
@@ -305,39 +323,51 @@ export default function PrototypeTesting() {
         </div>
 
         {manifest && (
-          <div role="group" aria-label="Style" className="flex items-center gap-1 rounded-full bg-ivory/[0.04] p-1 ring-1 ring-ivory/10">
-            {manifest.styles.map((st) => {
-              const active = st.id === styleId;
-              const off = `${st.label} is off. ${st.reason ?? ""}`;
-              return (
-                <button
-                  key={st.id}
-                  type="button"
-                  aria-pressed={active}
-                  aria-disabled={!st.available}
-                  title={st.available ? st.source : off}
-                  onClick={() => void chooseStyle(st.id)}
-                  onMouseEnter={() => !st.available && setNote(off)}
-                  onMouseLeave={() => setNote(null)}
-                  onFocus={() => !st.available && setNote(off)}
-                  onBlur={() => setNote(null)}
-                  className={`rounded-full px-4 py-1.5 text-[13px] tracking-wide transition ${
-                    active ? "bg-ivory/[0.1] text-ivory" : st.available ? "text-ivory/70 hover:text-ivory" : "cursor-not-allowed text-ash/60"
-                  }`}
-                >
-                  {st.label}
-                  {!st.available && <span className="ml-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-ash/60">off</span>}
-                </button>
-              );
-            })}
+          <div className="relative">
+            <div role="group" aria-label="Style" className="flex items-center gap-1 rounded-full bg-ivory/[0.04] p-1 ring-1 ring-ivory/10">
+              {manifest.styles.map((st) => {
+                const active = st.id === styleId;
+                const off = `${st.label} is off. ${st.reason ?? ""}`;
+                return (
+                  <button
+                    key={st.id}
+                    type="button"
+                    aria-pressed={active}
+                    aria-disabled={!st.available}
+                    aria-label={st.available ? st.label : off}
+                    onClick={() => void chooseStyle(st.id)}
+                    onMouseEnter={() => !st.available && setNote(off)}
+                    onMouseLeave={() => setNote(null)}
+                    onFocus={() => !st.available && setNote(off)}
+                    onBlur={() => setNote(null)}
+                    className={`rounded-full px-4 py-1.5 text-[13px] tracking-wide transition ${
+                      active ? "bg-ivory/[0.1] text-ivory" : st.available ? "text-ivory/70 hover:text-ivory" : "cursor-not-allowed text-ash/60"
+                    }`}
+                  >
+                    {st.label}
+                    {!st.available && <span className="ml-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-ash/60">off</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {/* PT-02: the full reason is an overlay tooltip, never in flow. In-flow
+                text wrapped to several lines, grew the footer, shrank the stage
+                (flex-1 + container query) and moved the button under the cursor:
+                hover -> resize -> mouseleave -> resize, i.e. the glitch. The
+                native title tooltip duplicated it and is gone. */}
+            {note && (
+              <p role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-80 max-w-[80vw] -translate-x-1/2 rounded-xl bg-night/95 px-4 py-3 font-mono text-[11px] leading-relaxed text-ivory/85 ring-1 ring-ivory/15">
+                {note}
+              </p>
+            )}
           </div>
         )}
 
         <p role="status" aria-live="polite" className="min-w-0 flex-1 font-mono text-[11px] leading-relaxed text-ivory/60">
-          {note ?? status[phase]}
+          {status[phase]}
         </p>
 
-        <p className="eyebrow text-ivory/70!">{FOOTER}</p>
+        <p className="eyebrow text-ivory/70!">{isGeneral ? (manifest?.label ?? FOOTER) : FOOTER}</p>
 
         {manifest && manifest.styles.some((st) => !st.available) && (
           <p className="basis-full font-mono text-[10.5px] leading-relaxed text-ash/80">

@@ -48,8 +48,12 @@ export type Manifest = {
 
 export const ASSET_ROOT = "/prototype/";
 
-export async function loadManifest(): Promise<Manifest> {
-  const res = await fetch(`${ASSET_ROOT}manifest.json`, { cache: "no-store" });
+/** Asset root for a generalised listing's cascade (Work 3), built by
+ *  `python -m prototype.general`; the POC root stays the default. */
+export const generalRoot = (listingId: string) => `/prototype-general/${listingId}/`;
+
+export async function loadManifest(root: string = ASSET_ROOT): Promise<Manifest> {
+  const res = await fetch(`${root}manifest.json`, { cache: "no-store" });
   const type = res.headers.get("content-type") ?? "";
   if (!res.ok || !type.includes("json")) throw new Error("missing");
   return res.json();
