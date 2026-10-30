@@ -18,6 +18,10 @@ import meta_client
 OBSERVATIONS = {
     "living": ["floor-to-ceiling windows", "stone fireplace", "wide-plank oak floors"],
     "kitchen": ["marble island", "brass fixtures"],
+    "bathroom": ["tiled walk-in shower"],
+    "bedroom": ["carpeted floor"],
+    "other": ["washer and dryer"],
+    "hallway": ["white doors"],
 }
 
 
@@ -25,8 +29,16 @@ class FakeMeta(meta_client._ClientBase):
     def __init__(self, *, bad_claim: bool = False, warp_staging: bool = False,
                  face_survives: bool = False, wrong_number: bool = False,
                  fail_concept: str | None = None, fail_frame: str | None = None,
-                 fail_staged_faces: bool = False):
+                 fail_staged_faces: bool = False, furnished_before: bool = False,
+                 warp_live: bool = False, warp_live_once: bool = False,
+                 fail_live_image: bool = False, warp_room: str | None = None,
+                 fix_at_level: int = 1, fail_restage: bool = False,
+                 layout: list[str] | None = None):
         super().__init__()
+        # Room type per frame number (f01 -> layout[0]; the last entry repeats). Default:
+        # odd frames living, even frames kitchen.
+        self.layout = layout
+        self.classify_batches: list[dict] = []
         self.bad_claim = bad_claim
         self.warp_staging = warp_staging
         self.face_survives = face_survives
@@ -34,6 +46,13 @@ class FakeMeta(meta_client._ClientBase):
         self.fail_concept = fail_concept
         self.fail_frame = fail_frame
         self.fail_staged_faces = fail_staged_faces
+        self.furnished_before = furnished_before
+        self.warp_live = warp_live
+        self.warp_live_once = warp_live_once
+        self.fail_live_image = fail_live_image
+        self.warp_room = warp_room
+        self.fix_at_level = fix_at_level
+        self.fail_restage = fail_restage
         self.base_url = "fake://meta"
         self.spark_model = "muse-spark-1.3"
         self.wonder_model = "muse-wonder-1.0"
@@ -67,6 +86,23 @@ class FakeMeta(meta_client._ClientBase):
                 if self.face_survives:
                     return [self._box(size, 0.30, 0.20, 0.70, 0.70, concept)], "1 face box(es)"
                 return [], "0 face box(es)"
+            if purpose == "live.sam.pieces":
+                piece_boxes = {
+                    "sofa": (0.08, 0.55, 0.48, 0.88),
+                    "table": (0.50, 0.66, 0.72, 0.86),
+                    "lamp": (0.74, 0.30, 0.84, 0.62),
+                    "rug": (0.05, 0.75, 0.80, 0.98),
+                }
+                if concept in piece_boxes:
+                    return [self._box(size, *piece_boxes[concept], concept)], f"1 {concept} box(es)"
+                return [], f"0 {concept} box(es)"
+            if purpose == "live.sam.plate":
+                if concept == "sofa" and self.furnished_before:
+                    return [self._box(size, 0.08, 0.55, 0.48, 0.88, concept)], "1 sofa box(es)"
+                return [], f"0 {concept} box(es)"
+            if purpose in ("live.sam.faces", "live.sam.focus"):
+                return [], f"0 {concept} box(es)"
+            # live.sam.structure falls through to the window rule below.
             if concept == "window":
                 return [self._box(size, 0.15, 0.20, 0.45, 0.60, concept)], "1 window box(es)"
             return [], f"0 {concept} box(es)"
@@ -75,12 +111,21 @@ class FakeMeta(meta_client._ClientBase):
                             self.sam_model, f"{concept}|{purpose}",
                             [Path(image_path).read_bytes()], fn)
 
-    def wonder_classify(self, frames: list[dict], *, trace=None,
+    def _room_type(self, frame_id: str) -> str:
+        n = int(frame_id.lstrip("f") or 1)
+        if self.layout:
+            return self.layout[min(n, len(self.layout)) - 1]
+        return "living" if n % 2 == 1 else "kitchen"
+
+    def wonder_classify(self, frames: list[dict], *, known_rooms: str = "", trace=None,
                         purpose: str = "wonder.classify", target: dict | None = None) -> dict:
+        assert len(frames) <= meta_client.MAX_CLASSIFY_FRAMES, "classify must batch long walkthroughs"
+        self.classify_batches.append({"frames": [f["id"] for f in frames], "known_rooms": known_rooms})
+
         def fn():
             entries, order = [], []
-            for i, frame in enumerate(frames):
-                room_type = "living" if i % 2 == 0 else "kitchen"
+            for frame in frames:
+                room_type = self._room_type(frame["id"])
                 room_key = f"{room_type}_1"
                 if room_key not in order:
                     order.append(room_key)
@@ -90,12 +135,12 @@ class FakeMeta(meta_client._ClientBase):
                     "room_type": room_type,
                     "usable": True,
                     "coverage": 0.8,
-                    "observations": OBSERVATIONS[room_type],
+                    "observations": OBSERVATIONS.get(room_type, ["neutral walls"]),
                     "condition": "well kept",
                 })
             return {"frames": entries, "order": order}, f"{len(entries)} frames classified"
 
-        prompt = "classify:" + ",".join(f["id"] for f in frames)
+        prompt = "classify:" + ",".join(f["id"] for f in frames) + "|" + known_rooms
         blobs = [Path(f["path"]).read_bytes() for f in frames if f.get("path")]
         return self._invoke(trace, purpose, target or {"frames": len(frames)},
                             self.wonder_model, prompt, blobs, fn)
@@ -103,8 +148,21 @@ class FakeMeta(meta_client._ClientBase):
     def image_stage(self, image_path, style_prompt: str, *, trace=None,
                     purpose: str = "image.stage", target: dict | None = None) -> bytes:
         def fn():
+            if self.fail_live_image and purpose == "live.image.stage":
+                raise meta_client.MetaError("boom: live image stage")
+            if self.fail_restage and purpose == "image.restage":
+                raise meta_client.MetaError("boom: image restage")
             img = Image.open(image_path).convert("RGB")
-            if self.warp_staging and (target or {}).get("room") == "room_2":
+            room = (target or {}).get("room")
+            if self.warp_staging and room == "room_2":
+                img = ImageOps.mirror(img)
+            elif (self.warp_live or (self.warp_live_once and "Critical:" not in style_prompt)) \
+                    and purpose == "live.image.stage" and (target or {}).get("style") == "coastal":
+                img = ImageOps.mirror(img)
+            elif self.warp_room is not None and room == self.warp_room and (
+                    purpose == "image.stage"
+                    or (purpose == "image.restage"
+                        and (target or {}).get("level", 0) < self.fix_at_level)):
                 img = ImageOps.mirror(img)
             else:
                 img = Image.eval(img, lambda p: min(255, int(p * 0.96 + 8)))

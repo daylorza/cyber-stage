@@ -42,6 +42,8 @@ MAX_SIDE = 1024
 MAX_CLASSIFY_FRAMES = 24
 
 BOX_RE = re.compile(r"(\d+)<\|box;x1=(\d+);y1=(\d+);x2=(\d+);y2=(\d+);w=(\d+);h=(\d+)(?:;c=([\d.]+))?\|>")
+# A record is a box then its mask; the mask payload's base85 alphabet never contains "|".
+RECORD_RE = re.compile(BOX_RE.pattern + r"<\|mask;x=\d+;y=\d+(?:;c=[\d.]+)?;data=(\d+),(\d+),([^|]*)\|>")
 
 ROOM_TYPES = "living, kitchen, dining, bedroom, bathroom, office, terrace, hallway, closet, exterior, other"
 
@@ -58,8 +60,12 @@ For EVERY frame, in order, return one entry:
 
 Also return "order": the room keys in walkthrough order.
 
+Room types: an open-plan living area (open floor for seating, large windows, sliding glass doors to a balcony) is "living" with its own living room key, even when part of a kitchen is visible; use "kitchen" only when cabinets, appliances or an island fill most of the frame. Entryways, corridors and close-ups of doors are "hallway". Laundry and utility spaces are "other".
+
 Rules: describe only what is visible in the frame. No guesses about location, views, finishes, or amenities not in frame. Do not count anything beyond what is visible.
 Reply with JSON only: {{"frames": [...], "order": [...]}}"""
+
+KNOWN_ROOMS_PROMPT = """These frames continue the same walkthrough. Room keys already used for earlier frames (key, type, time range): {rooms}. Reuse one of these keys only when a frame shows that same room; otherwise make a new key."""
 
 SPARK_PROMPT = """You are writing luxury real-estate listing copy. Tone: refined, concise, confident. No exclamation marks, no hype.
 
@@ -206,6 +212,27 @@ def parse_sam_output(output_text: str, orig_w: int, orig_h: int) -> list[dict[st
             "score": score,
         })
     return boxes
+
+
+def parse_sam_masks(output_text: str, orig_w: int, orig_h: int) -> list[dict[str, Any]]:
+    """Boxes (ORIGINAL image coords) with their masks. A mask is an H x W raster over its box
+    on the image SAM saw (`source_box` in `source_size`); `encoding` "~" is lossless 8-bit
+    coverage, "!" one-bit. Decode with meta-sam-parser."""
+    records = []
+    for m in RECORD_RE.finditer(output_text or ""):
+        x1, y1, x2, y2, w, h = (int(m.group(i)) for i in range(2, 8))
+        if w <= 0 or h <= 0:
+            continue
+        sx, sy = orig_w / w, orig_h / h
+        payload = m.group(11)
+        records.append({
+            "box": [round(x1 * sx), round(y1 * sy), round(x2 * sx), round(y2 * sy)],
+            "score": float(m.group(8)) if m.group(8) else None,
+            "source_box": [x1, y1, x2, y2], "source_size": [w, h],
+            "mask": {"height": int(m.group(9)), "width": int(m.group(10)),
+                     "encoding": "lossless" if payload.startswith("~") else "one_bit", "payload": payload},
+        })
+    return records
 
 
 class _ClientBase:
@@ -365,15 +392,42 @@ class MetaClient(_ClientBase):
         return self._invoke(trace, purpose, target or {"concept": concept},
                             self.sam_model, concept, [blob], fn)
 
-    def wonder_classify(self, frames: list[dict[str, Any]], *, trace: list | None = None,
-                        purpose: str = "wonder.classify", target: dict | None = None) -> dict[str, Any]:
+    def sam_masks(self, image_path: str | Path, concept: str, *, trace: list | None = None,
+                  purpose: str = "sam.masks", target: dict | None = None) -> list[dict[str, Any]]:
+        """Same SAM 3.1 call as sam_segment, keeping each record's mask (see parse_sam_masks)."""
+        img, orig_w, orig_h = _load_scaled(image_path)
+        blob = _jpeg_bytes(img)
+
+        def fn() -> tuple[list[dict[str, Any]], str]:
+            response = self._client().responses.create(
+                model=self.sam_model,
+                input=[{"role": "user", "content": [
+                    {"type": "input_text", "text": concept},
+                    {"type": "input_image", "image_url": _data_url(blob)},
+                ]}],
+            )
+            records = parse_sam_masks(response.output_text, orig_w, orig_h)
+            for r in records:
+                r["concept"] = concept
+            return records, f"{len(records)} {concept} mask(s)"
+
+        return self._invoke(trace, purpose, target or {"concept": concept},
+                            self.sam_model, concept, [blob], fn)
+
+    def wonder_classify(self, frames: list[dict[str, Any]], *, known_rooms: str = "",
+                        trace: list | None = None, purpose: str = "wonder.classify",
+                        target: dict | None = None) -> dict[str, Any]:
+        """One call classifies up to MAX_CLASSIFY_FRAMES frames; pipeline/classify.py batches
+        longer walkthroughs and passes the room keys seen so far as `known_rooms`."""
         frames = frames[:MAX_CLASSIFY_FRAMES]
-        content: list[dict[str, Any]] = [{"type": "input_text", "text": WONDER_PROMPT}]
-        prompt_parts = [WONDER_PROMPT]
+        head = WONDER_PROMPT + (f"\n\n{KNOWN_ROOMS_PROMPT.format(rooms=known_rooms)}" if known_rooms else "")
+        content: list[dict[str, Any]] = [{"type": "input_text", "text": head}]
+        prompt_parts = [head]
         blobs: list[bytes] = []
         for frame in frames:
             label = f"Frame {frame['id']}"
-            label += f" (t={frame['t']:g}s)" if frame.get("t") is not None else " (photo)"
+            # Whole seconds are enough context for Wonder (and keep the prompt stable).
+            label += f" (t={round(frame['t'])}s)" if frame.get("t") is not None else " (photo)"
             content.append({"type": "input_text", "text": label})
             prompt_parts.append(label)
             img, _, _ = _load_scaled(frame["path"])

@@ -216,7 +216,10 @@ def test_meta_status_has_no_key(client):
     assert "key" not in res.text.lower()
 
 
-@pytest.mark.parametrize("client", [{"fail_concept": "face", "fail_frame": "f01"}], indirect=True)
+# Every frame reads as living room, so the frames that survive still include the main living
+# space and the token guard lets staging run.
+@pytest.mark.parametrize("client", [{"fail_concept": "face", "fail_frame": "f01", "layout": ["living"]}],
+                         indirect=True)
 def test_partial_sam_failure_holds_frame_back(client, walkthrough_video):
     ids = upload_video(client, walkthrough_video)
     lid = ids["listing_id"]

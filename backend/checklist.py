@@ -7,6 +7,8 @@ open -> generated/failed (generator writes) -> done/flagged (verifier reconciles
 from datetime import UTC, datetime
 from typing import Any
 
+import config
+
 ITEMS: list[tuple[str, str]] = [
     ("frames", "Frames extracted"),
     ("sam_masks", "SAM 3.1 masks"),
@@ -60,3 +62,9 @@ def blocking(listing: dict[str, Any]) -> list[dict[str, Any]]:
 
 def is_clear(listing: dict[str, Any]) -> bool:
     return not blocking(listing)
+
+
+def checks_block(listing: dict[str, Any]) -> bool:
+    """Open items block Approve/Publish only with VRE_BLOCKING_CHECKS=1. Seeded placeholders
+    (no footage) always stay blocked; uploads get warnings only in demo mode."""
+    return config.settings.blocking_checks or listing.get("source") != "upload"

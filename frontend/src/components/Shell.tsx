@@ -6,9 +6,10 @@ const LINKS = [
   { to: "/", label: "Residences", end: true },
   { to: "/inventory", label: "Inventory", end: false },
   { to: "/new", label: "New walkthrough", end: false },
+  { to: "/prototype-testing", label: "Prototype Testing", end: false },
 ];
 
-function HoverNav() {
+export function HoverNav() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
   useEffect(() => setOpen(false), [pathname]);

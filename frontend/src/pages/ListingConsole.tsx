@@ -1,29 +1,38 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, factLine, media, money, type Job, type Listing, type MetaStatus } from "../api";
+import { api, clock, factLine, media, money, type Job, type Listing, type MetaStatus } from "../api";
 import AttentionList from "../components/AttentionList";
 import BeforeAfter from "../components/BeforeAfter";
 import ChecklistPanel, { openItems } from "../components/ChecklistPanel";
 import CompsTable from "../components/CompsTable";
 import DecisionPanel from "../components/DecisionPanel";
 import PipelineIndicator from "../components/PipelineIndicator";
+import LiveControl from "../components/live/LiveControl";
+import SourcePanel from "../components/SourcePanel";
 import StatusMark from "../components/StatusMark";
 import { ClaimTrust, EvidenceBlock, ITEM_SHORT, ResultLine, roomIssues } from "../components/trust";
 
 const clean = (lines: string[]) => lines.map((l) => l.trim()).filter(Boolean);
 
-function Header({ listing }: { listing: Listing }) {
+function Header({ listing, onTestLabel }: { listing: Listing; onTestLabel?: (test: boolean) => void }) {
   const { facts, copy, comps } = listing;
   const range = comps?.suggested_range;
   const price = facts.price
     ? money(facts.price, facts.currency)
     : range && `Guide ${money(range.low, range.currency)} – ${money(range.high, range.currency)}`;
+  const isTest = !!listing.note && /not a real listing/i.test(listing.note);
   return (
     <header>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
         <span className="eyebrow">{facts.city || "City not set"}</span>
         {listing.source === "seed" && <span className="eyebrow">Seeded hero listing</span>}
         <StatusMark status={listing.status} />
+        {listing.note && <span className="eyebrow rounded-full bg-rose/10 px-2.5 py-1 text-rose! ring-1 ring-rose/30">{listing.note}</span>}
+        {onTestLabel && listing.source === "upload" && (
+          <button type="button" onClick={() => onTestLabel(!isTest)} className="eyebrow transition hover:text-ivory!">
+            {isTest ? "Remove test label" : "Mark as test upload"}
+          </button>
+        )}
       </div>
       <h1 className="mt-4 max-w-4xl font-serif text-5xl leading-[1.05]">{copy?.title || "Untitled residence"}</h1>
       <div className="mt-5 flex flex-wrap items-center gap-x-8 gap-y-2">
@@ -40,7 +49,9 @@ function Processing({ listing, job }: { listing: Listing; job: Job | null }) {
     <section className="grid min-h-[60dvh] items-center gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
       <div className="grid content-center gap-14">
         <div aria-live="polite">
-          <p className="eyebrow">{job?.kind === "verify" ? "Re-running independent checks" : "Processing"}</p>
+          <p className="eyebrow">
+            {job?.kind === "restage" ? "Re-staging with a stricter prompt" : job?.kind === "verify" ? "Re-running independent checks" : "Processing"}
+          </p>
           <p className="mt-3 text-ash">{listing.uploads.map((u) => u.name).join(", ")}</p>
         </div>
         <PipelineIndicator job={job} />
@@ -53,11 +64,13 @@ function Processing({ listing, job }: { listing: Listing; job: Job | null }) {
 function Review({
   listing,
   meta,
+  gates,
   onChange,
   reload,
 }: {
   listing: Listing;
   meta: MetaStatus | null;
+  gates: boolean;
   onChange: (l: Listing) => void;
   reload: () => void;
 }) {
@@ -87,8 +100,12 @@ function Review({
   const claimFor = (text: string) => copy.highlights.find((h) => h.text === text.trim());
   const room = listing.rooms[selected];
   const checks = listing.verification?.checks ?? [];
+  const stagingFlagged =
+    !!room &&
+    (roomIssues(checks, room.id).some((c) => c.item === "staging_geometry") || !!room.staging?.error);
+  const restageLevel = room?.staging?.level ?? 0;
   const open = openItems(listing);
-  const blocked = open.length > 0;
+  const blocked = open.length > 0 && gates;
   const descriptionClean = description.trim() === copy.description;
   const blockedHint = `Resolve first: ${open.map((i) => i.label).join(", ")}${dirty ? ". Save your edits to re-run the checks." : ""}`;
   const publishHint =
@@ -98,7 +115,7 @@ function Review({
         ? "Save your edits first"
         : blocked
           ? blockedHint
-          : !listing.verification?.passed
+          : gates && !listing.verification?.passed
             ? "Independent verification has not passed"
             : undefined;
 
@@ -119,6 +136,26 @@ function Review({
       api.review(listing.id, { action, copy_edit: { title, description, highlights: clean(highlights) }, rejected_rooms: rejected }),
     );
 
+  const restage = async () => {
+    if (!room) return;
+    if (
+      !window.confirm(
+        `Re-stage ${room.name} with a stricter prompt? Only this room changes. This clears approval and makes a new Meta Image call.`,
+      )
+    )
+      return;
+    setBusy("restage");
+    setError("");
+    try {
+      await api.restage(listing.id, room.id);
+      reload();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const focusClaim = (id: string) => {
     const el = document.querySelector<HTMLElement>(`[data-claim~="${id}"]`);
     el?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -136,14 +173,20 @@ function Review({
     <>
       <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="space-y-10">
-          <Header listing={listing} />
+          <Header
+            listing={listing}
+            onTestLabel={locked ? undefined : (test) => run("label", () => api.review(listing.id, { action: "save", test_listing: test }))}
+          />
           {listing.source === "upload" ? (
-            <AttentionList listing={listing} onClaim={focusClaim} onRoom={pickRoom} />
+            <>
+              <SourcePanel listing={listing} />
+              <AttentionList listing={listing} blocking={gates} onClaim={focusClaim} onRoom={pickRoom} />
+            </>
           ) : (
             <p className="max-w-md text-sm text-ash">Seeded placeholder. The pipeline has not run on footage, so publishing stays blocked.</p>
           )}
         </div>
-        <ChecklistPanel listing={listing} meta={meta} onRerun={reload} />
+        <ChecklistPanel listing={listing} meta={meta} blocking={gates} onRerun={reload} />
       </div>
 
       <div className="mt-12 grid gap-12 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
@@ -158,7 +201,11 @@ function Review({
                 <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-lg font-light">{room.name}</p>
-                    <p className="eyebrow mt-1">{room.type === "unclassified" ? "Room type pending" : room.type}</p>
+                    <p className="eyebrow mt-1">
+                      {room.type === "unclassified" ? "Room type pending" : room.type}
+                      {room.main && " · main living space"}
+                      {room.t != null && ` · ${clock(room.span?.[0] ?? room.t)}–${clock(room.span?.[1] ?? room.t)} in the video`}
+                    </p>
                   </div>
                   {!locked && (
                     <button
@@ -173,7 +220,7 @@ function Review({
                     </button>
                   )}
                 </div>
-                {(roomIssues(checks, room.id).length > 0 || room.staging?.error) && (
+                {(roomIssues(checks, room.id).length > 0 || room.staging?.error || room.restage_error) && (
                   <div className="mt-3 space-y-1.5" role="status">
                     {roomIssues(checks, room.id).map((c) => (
                       <ResultLine
@@ -184,6 +231,27 @@ function Review({
                       />
                     ))}
                     {room.staging?.error && <ResultLine tone="fail" label="Staging" reason={room.staging.error} />}
+                    {room.restage_error && <ResultLine tone="fail" label="Re-stage" reason={room.restage_error.error} />}
+                    {!locked && !rejected.includes(room.id) && stagingFlagged && (
+                      <div className="pl-3 pt-1">
+                        {restageLevel < 2 ? (
+                          <>
+                            <button
+                              type="button"
+                              className="btn-glass"
+                              disabled={!!busy || dirty}
+                              title={dirty ? "Save your edits first" : undefined}
+                              onClick={restage}
+                            >
+                              {busy === "restage" ? "Queueing" : "Re-stage with a stricter prompt"}
+                            </button>
+                            <p className="mt-1.5 text-xs text-ash">Attempt {restageLevel + 1} of 2 · only this room changes</p>
+                          </>
+                        ) : (
+                          <p className="text-xs text-ash">Stricter re-stage tried twice. Exclude this room or re-film it.</p>
+                        )}
+                      </div>
+                    )}
                     {!locked && !rejected.includes(room.id) && <p className="pl-3 text-xs text-ash">Exclude this room to remove it from the listing.</p>}
                   </div>
                 )}
@@ -205,6 +273,7 @@ function Review({
                           <span className="eyebrow grid h-16 w-28 place-items-center bg-smoke px-2 text-center text-[0.55rem]! leading-snug">Held back</span>
                         )}
                         {roomIssues(checks, r.id).length > 0 && <span aria-hidden className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-rose" />}
+                        {r.main && <span className="eyebrow absolute bottom-1 left-1.5 text-[0.5rem]! text-ice!">Main</span>}
                       </button>
                     ))}
                   </div>
@@ -313,9 +382,12 @@ function Review({
 
       <div className="glass fixed bottom-6 right-6 z-30 flex flex-wrap items-center gap-1.5 rounded-full! p-1.5">
         {locked ? (
-          <Link to={`/p/${listing.id}`} className="btn-primary">
-            View published page
-          </Link>
+          <>
+            <LiveControl listing={listing} />
+            <Link to={`/p/${listing.id}`} className="btn-primary">
+              View published page
+            </Link>
+          </>
         ) : (
           <>
             {dirty && <span className="eyebrow px-3 text-ice/80!">Unsaved edits</span>}
@@ -360,6 +432,7 @@ export default function ListingConsole() {
   const [listing, setListing] = useState<Listing | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [meta, setMeta] = useState<MetaStatus | null>(null);
+  const [blockingChecks, setBlockingChecks] = useState(true);
   const [error, setError] = useState("");
 
   const load = useCallback(
@@ -377,6 +450,7 @@ export default function ListingConsole() {
 
   useEffect(() => {
     api.metaStatus().then(setMeta).catch(() => setMeta(null));
+    api.settings().then((s) => setBlockingChecks(s.blocking_checks)).catch(() => setBlockingChecks(true));
   }, []);
 
   const jobId = listing?.status === "processing" ? listing.job?.id : undefined;
@@ -443,7 +517,7 @@ export default function ListingConsole() {
           </Link>
         </section>
       )}
-      {reviewing && <Review listing={listing} meta={meta} onChange={setListing} reload={() => load().catch((e: Error) => setError(e.message))} />}
+      {reviewing && <Review listing={listing} meta={meta} gates={blockingChecks || listing.source !== "upload"} onChange={setListing} reload={() => load().catch((e: Error) => setError(e.message))} />}
     </>
   );
 }

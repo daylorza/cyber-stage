@@ -12,12 +12,14 @@ import checklist
 import config
 import db
 import verify
-from pipeline import comps, copy
+from pipeline import comps, copy, video
 
 REVIEWABLE = {"draft", "approved", "rejected"}
 BROKER_EDIT = {"kind": "broker", "ref": "edited"}
 STYLES = {"modern-luxury", "coastal", "minimal"}
 DEFAULT_STYLE = "modern-luxury"
+# Shown on the console, the published page and inside Live-In-It for test uploads.
+TEST_NOTE = "Test upload · Not a real listing. Placeholder facts."
 
 
 class ReviewError(Exception):
@@ -159,8 +161,20 @@ def _edit_rooms(listing: dict[str, Any], rejected: list[str]) -> list[str]:
     return ["rooms"] if changed else []
 
 
+def set_test_label(listing: dict[str, Any], test: bool) -> None:
+    """Label (or unlabel) an upload as a test: "Not a real listing" everywhere it shows.
+    A label, not content: it never clears an approval."""
+    if listing.get("source") != "upload":
+        return
+    if test:
+        listing["note"] = TEST_NOTE
+    elif listing.get("note") == TEST_NOTE:
+        listing.pop("note", None)
+
+
 def apply_review(listing: dict[str, Any], *, action: str, copy_edit: dict[str, Any] | None = None,
-                 rejected_rooms: list[str] | None = None, notes: str | None = None) -> dict[str, Any]:
+                 rejected_rooms: list[str] | None = None, notes: str | None = None,
+                 test_listing: bool | None = None) -> dict[str, Any]:
     normalize(listing)
     if listing["status"] not in REVIEWABLE:
         message = {
@@ -177,6 +191,8 @@ def apply_review(listing: dict[str, Any], *, action: str, copy_edit: dict[str, A
     review["edited_fields"] = sorted(set(review["edited_fields"]) | set(edited))
     if notes is not None:
         review["notes"] = notes.strip()
+    if test_listing is not None:
+        set_test_label(listing, test_listing)
 
     verify.run(listing, meta=False)
 
@@ -184,11 +200,12 @@ def apply_review(listing: dict[str, Any], *, action: str, copy_edit: dict[str, A
         if not listing["copy"]["title"]:
             raise ReviewError(422, "Add a title before approving.")
         blocked = checklist.blocking(listing)
-        if blocked:
+        if blocked and checklist.checks_block(listing):
             labels = ", ".join(item["label"] for item in blocked)
             raise ReviewError(409, f"Resolve {len(blocked)} checklist items before approving: {labels}.")
         listing["status"] = "approved"
-        review.update(decision="approved", decided_at=db.now())
+        review.update(decision="approved", decided_at=db.now(),
+                      open_checks=[item["label"] for item in blocked])
     elif action == "reject":
         listing["status"] = "rejected"
         review.update(decision="rejected", decided_at=db.now())
@@ -204,14 +221,15 @@ def publish(listing: dict[str, Any]) -> dict[str, Any]:
     if listing["status"] != "approved":
         raise ReviewError(409, "Approve the listing before publishing.")
     blocked = checklist.blocking(listing)
-    if blocked:
-        labels = ", ".join(item["label"] for item in blocked)
-        raise ReviewError(409, f"Resolve {len(blocked)} checklist items before publishing: {labels}.")
     verification = listing.get("verification") or {}
-    if not verification.get("passed"):
-        flags = verification.get("flags", [])
-        detail = "; ".join(f["message"] for f in flags[:3]) or "verification did not pass"
-        raise ReviewError(409, f"Verification has open flags: {detail}")
+    if checklist.checks_block(listing):
+        if blocked:
+            labels = ", ".join(item["label"] for item in blocked)
+            raise ReviewError(409, f"Resolve {len(blocked)} checklist items before publishing: {labels}.")
+        if not verification.get("passed"):
+            flags = verification.get("flags", [])
+            detail = "; ".join(f["message"] for f in flags[:3]) or "verification did not pass"
+            raise ReviewError(409, f"Verification has open flags: {detail}")
     facts, listing_copy = listing["facts"], listing["copy"]
     published_at = db.now()
     listing["published"] = {
@@ -222,11 +240,13 @@ def publish(listing: dict[str, Any]) -> dict[str, Any]:
         "facts": {k: v for k, v in facts.items() if k != "estimate_price"},
         "price_display": copy.format_price(facts.get("price"), facts.get("currency")),
         "rooms": [r for r in listing["rooms"] if not r["rejected"]],
+        "video": video.public(listing),
         "comps": listing["comps"],
         "verification": {
-            "passed": True,
-            "ran_at": verification["ran_at"],
+            "passed": bool(verification.get("passed")) and not blocked,
+            "ran_at": verification.get("ran_at"),
             "checks": len(verification.get("checks", [])),
+            "open": len(blocked),
         },
         "approved_at": listing["review"]["decided_at"],
         "published_at": published_at,

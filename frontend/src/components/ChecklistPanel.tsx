@@ -1,16 +1,17 @@
 import { useState } from "react";
-import { api, shortTime, type Listing, type MetaStatus } from "../api";
+import { api, exportLogsUrl, shortTime, type Listing, type MetaStatus } from "../api";
 import { StatusDot, STATUS_TEXT, STATUS_WORD } from "./trust";
 
 export const openItems = (listing: Listing) => listing.checklist.items.filter((i) => i.status !== "done");
 
-function Summary({ listing, live }: { listing: Listing; live: boolean }) {
+function Summary({ listing, live, blocking }: { listing: Listing; live: boolean; blocking: boolean }) {
   const open = openItems(listing);
   const trouble = open.some((i) => i.status === "flagged" || i.status === "failed");
   if (live) return <span className="eyebrow text-ice/80!">Filling in · {listing.checklist.items.length - open.length} of {listing.checklist.items.length} ready</span>;
   if (!open.length && listing.verification?.passed)
     return <span className="eyebrow text-ice!">All checks passed · {shortTime(listing.verification.ran_at)}</span>;
   if (!open.length) return <span className="eyebrow text-ivory/70!">Awaiting verification</span>;
+  if (!blocking) return <span className="eyebrow text-champagne!">{open.length} open · warnings only</span>;
   return <span className={`eyebrow ${trouble ? "text-rose!" : "text-ivory/70!"}`}>Publish blocked · {open.length} open</span>;
 }
 
@@ -18,11 +19,13 @@ export default function ChecklistPanel({
   listing,
   meta,
   live = false,
+  blocking = true,
   onRerun,
 }: {
   listing: Listing;
   meta?: MetaStatus | null;
   live?: boolean;
+  blocking?: boolean;
   onRerun?: () => void;
 }) {
   const [busy, setBusy] = useState<"verify" | "reprocess" | null>(null);
@@ -48,7 +51,7 @@ export default function ChecklistPanel({
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 id="checks-heading" className="eyebrow">Pipeline checks</h2>
         <span aria-live="polite">
-          <Summary listing={listing} live={live} />
+          <Summary listing={listing} live={live} blocking={blocking} />
         </span>
       </div>
 
@@ -78,17 +81,24 @@ export default function ChecklistPanel({
       </ol>
 
       {meta && !meta.configured && (
-        <p className="mt-5 text-xs text-ash">Meta Model API not configured. Meta steps can't run, so publishing stays blocked.</p>
+        <p className="mt-5 text-xs text-ash">Meta Model API not configured. Meta steps can't run{blocking ? ", so publishing stays blocked" : ""}.</p>
       )}
 
-      {canAct && (
+      {!live && (
         <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-1">
-          <button type="button" disabled={!!busy} onClick={() => act("verify")} className="text-xs text-ash transition hover:text-ivory disabled:opacity-40">
-            {busy === "verify" ? "Starting checks" : "Re-run checks"}
-          </button>
-          <button type="button" disabled={!!busy} onClick={() => act("reprocess")} className="text-xs text-ash transition hover:text-ivory disabled:opacity-40">
-            {busy === "reprocess" ? "Starting" : "Reprocess walkthrough"}
-          </button>
+          {canAct && (
+            <>
+              <button type="button" disabled={!!busy} onClick={() => act("verify")} className="text-xs text-ash transition hover:text-ivory disabled:opacity-40">
+                {busy === "verify" ? "Starting checks" : "Re-run checks"}
+              </button>
+              <button type="button" disabled={!!busy} onClick={() => act("reprocess")} className="text-xs text-ash transition hover:text-ivory disabled:opacity-40">
+                {busy === "reprocess" ? "Starting" : "Reprocess walkthrough"}
+              </button>
+            </>
+          )}
+          <a href={exportLogsUrl(listing.id)} download className="text-xs text-ash transition hover:text-ivory">
+            Export logs
+          </a>
         </div>
       )}
       {error && (

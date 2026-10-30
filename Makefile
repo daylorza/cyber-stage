@@ -1,4 +1,4 @@
-.PHONY: install backend frontend test build serve
+.PHONY: install backend frontend test build serve prototype
 
 ENV_FILE := $(if $(wildcard .env),--env-file ../.env)
 
@@ -21,3 +21,8 @@ build:
 
 serve: build
 	cd backend && uv run uvicorn main:create_app --factory --port 8000 $(ENV_FILE)
+
+# Prototype Testing page assets (local only, git-ignored): needs the POC clip at
+# ../poc-luxury-empty-apartment.mp4 and its broker-approved listing in the local DB.
+prototype:
+	cd backend && uv run $(ENV_FILE) --with "numpy>=2.3,<3" --with "meta-sam-parser==0.1.0" python -m prototype.assets

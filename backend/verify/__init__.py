@@ -19,10 +19,13 @@ def _now() -> str:
 
 
 DEFAULT_RESOLUTION = "Resolve in the broker console; the listing cannot publish while this is open."
+WARNING_RESOLUTION = "Warning only (demo mode): review it in the broker console; it does not block publishing."
 
 
 class _Ctx:
     def __init__(self, listing: dict[str, Any], use_meta: bool):
+        self.default_resolution = (
+            DEFAULT_RESOLUTION if checklist.checks_block(listing) else WARNING_RESOLUTION)
         self.use_meta = use_meta
         self.client = meta_client.get_client() if use_meta else None
         self.trace = listing.setdefault("trace", [])
@@ -39,7 +42,7 @@ class _Ctx:
             "item": item,
             "target": target or {},
             "message": message,
-            "resolution": resolution or DEFAULT_RESOLUTION,
+            "resolution": resolution or self.default_resolution,
         })
 
     def code(self, item: str, check_id: str, status: str, reason: str,

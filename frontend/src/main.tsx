@@ -8,6 +8,7 @@ import Inventory from "./pages/Inventory";
 import NewWalkthrough from "./pages/NewWalkthrough";
 import ListingConsole from "./pages/ListingConsole";
 import PublishedPage from "./pages/PublishedPage";
+import LiveInIt from "./pages/LiveInIt";
 
 const router = createBrowserRouter([
   { index: true, element: <Home /> },
@@ -20,6 +21,13 @@ const router = createBrowserRouter([
     ],
   },
   { path: "p/:id", element: <PublishedPage /> },
+  { path: "p/:id/live", element: <LiveInIt /> },
+  // Three.js only loads on this page.
+  {
+    path: "prototype-testing",
+    hydrateFallbackElement: <div className="fixed inset-0 bg-night" />,
+    lazy: () => import("./pages/PrototypeTesting").then((m) => ({ Component: m.default })),
+  },
 ]);
 
 createRoot(document.getElementById("root")!).render(
