@@ -26,6 +26,7 @@ export type Style = {
   reason?: string;
   reason_short?: string;
   source: string;
+  image?: string;
   pieces?: Piece[];
   draw_order?: string[];
 };

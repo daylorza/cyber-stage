@@ -8,6 +8,7 @@ const STYLES = [
   { value: "modern-luxury", label: "Modern luxury" },
   { value: "coastal", label: "Coastal" },
   { value: "minimal", label: "Minimal" },
+  { value: "2142", label: "Cyberpunk concept" },
 ];
 
 function Field({ label, children, className = "" }: { label: string; children: ReactNode; className?: string }) {

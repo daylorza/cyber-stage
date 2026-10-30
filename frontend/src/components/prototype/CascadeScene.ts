@@ -181,7 +181,7 @@ export class CascadeScene {
 
   /** Build the pieces for a style (textures loaded); nothing is shown until cascade(). */
   async setStyle(style: Style) {
-    const pieces = style.pieces ?? [];
+    const pieces = (style.pieces ?? []).filter((piece) => piece.kind !== "rug");
     const loader = new THREE.TextureLoader();
     const load = async (name: string) => {
       const tex = await loader.loadAsync(this.assetRoot + name);
@@ -630,8 +630,8 @@ export class CascadeScene {
     // contact, then the staged contact shadow takes over and the approach shadow leaves.
     const near = 1 - clamp01(y / y0);
     const after = p < contact ? 0 : (p - contact) / (1 - contact);
-    if (it.shadow) (it.shadow.material as THREE.ShaderMaterial).uniforms.opacity.value = (1 - clamp01(y / 1.1)) ** 2;
-    this.placeBlob(it, near ** 2 * 0.42 * (1 - after), 1 + 1.6 * (1 - near), Math.atan2(-it.axis.z, it.axis.x));
+    if (it.shadow) (it.shadow.material as THREE.ShaderMaterial).uniforms.opacity.value = 0.2 * (1 - clamp01(y / 1.1)) ** 2;
+    this.placeBlob(it, near ** 2 * 0.1 * (1 - after), 1 + 1.6 * (1 - near), Math.atan2(-it.axis.z, it.axis.x));
   }
 
   private poseRug(it: Item, p: number) {
@@ -681,7 +681,7 @@ export class CascadeScene {
     pos.needsUpdate = true;
     it.mesh.position.set(cx, 0, cz);
     const height = edge + billow * 0.5;
-    this.placeBlob(it, 0.28 * (1 - clamp01(height / 1.6)) ** 2 * (p < touch ? 1 : 1 - (p - touch) / (1 - touch)), 1, 0);
+    this.placeBlob(it, 0.12 * (1 - clamp01(height / 1.6)) ** 2 * (p < touch ? 1 : 1 - (p - touch) / (1 - touch)), 1, 0);
   }
 
   private placeBlob(it: Item, opacity: number, scale: number, yaw: number) {
@@ -699,8 +699,8 @@ function blobTexture() {
   c.width = c.height = 128;
   const ctx = c.getContext("2d")!;
   const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  g.addColorStop(0, "rgba(0,0,0,1)");
-  g.addColorStop(0.45, "rgba(0,0,0,0.5)");
+  g.addColorStop(0, "rgba(0,0,0,0.7)");
+  g.addColorStop(0.45, "rgba(0,0,0,0.3)");
   g.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 128, 128);

@@ -14,6 +14,12 @@ import cascade
 import config
 
 GEOMETRY_MIN_CORR = 0.25
+# Concept styles (Day, Oct 30): 2142 is a fantasy concept, not a verified staged
+# photo of the filmed room. Its geometry/structure gates are loosened ONLY for
+# that style, in live reruns, and the loosening is recorded in the check reason.
+# All other styles keep GEOMETRY_MIN_CORR / STRUCTURE_IOU unchanged.
+CONCEPT_STYLES = {"2142"}
+GEOMETRY_MIN_CORR_CONCEPT = 0.05
 ASPECT_MAX_DEVIATION = 0.03
 STRUCTURE_IOU = 0.3
 STRUCTURE_EXTRA_ALLOWED = 1
@@ -103,7 +109,7 @@ def aligned_correlation(src: Path, dst: Path, a: dict[str, float]) -> float:
     return _pearson(_edges_of(source.crop(box)), _edges_of(warped.crop(box)))
 
 
-def geometry(src: Path, dst: Path, align: dict[str, float] | None = None) -> dict[str, Any]:
+def geometry(src: Path, dst: Path, align: dict[str, float] | None = None, min_corr: float = GEOMETRY_MIN_CORR) -> dict[str, Any]:
     """Same aspect ratio and same edge structure as the source frame, with the framing correction."""
     with Image.open(src) as si, Image.open(dst) as di:
         (sw, sh), (dw, dh) = si.size, di.size
@@ -112,11 +118,11 @@ def geometry(src: Path, dst: Path, align: dict[str, float] | None = None) -> dic
     out: dict[str, Any] = {"correlation": round(corr, 3), "corrected": False}
     if deviation > ASPECT_MAX_DEVIATION:
         return {**out, "status": "fail", "reason": f"Aspect ratio changed {deviation:.1%} (> {ASPECT_MAX_DEVIATION:.0%})."}
-    if corr >= GEOMETRY_MIN_CORR:
+    if corr >= min_corr:
         return {**out, "status": "pass",
                 "reason": f"Geometry preserved (correlation {corr:.2f}, aspect deviation {deviation:.1%})."}
     a = align if align is not None else cascade.align(src, dst)
-    failed = f"Edge structure changed (correlation {corr:.3f} < {GEOMETRY_MIN_CORR})."
+    failed = f"Edge structure changed (correlation {corr:.3f} < {min_corr})."
     if _is_identity(a):
         return {**out, "status": "fail", "reason": failed}
     drift = image_drift(a)
@@ -125,13 +131,13 @@ def geometry(src: Path, dst: Path, align: dict[str, float] | None = None) -> dic
                 "reason": f"{failed} Framing drift {drift:.1%} is over {FRAMING_MAX_DRIFT:.0%}; not corrected."}
     fixed = aligned_correlation(src, dst, a)
     out["corrected_correlation"] = round(fixed, 3)
-    if fixed < GEOMETRY_MIN_CORR:
+    if fixed < min_corr:
         return {**out, "status": "fail",
                 "reason": f"{failed} Still {fixed:.3f} after framing correction ({describe_alignment(a)})."}
     return {**out, "status": "pass", "corrected": True,
             "reason": (f"Geometry preserved after framing correction from the whole picture "
                        f"({describe_alignment(a)}): correlation {corr:.2f} as generated, {fixed:.2f} corrected "
-                       f"(threshold {GEOMETRY_MIN_CORR} unchanged).")}
+                       f"(threshold {min_corr}{' unchanged' if min_corr == GEOMETRY_MIN_CORR else ''}).") }
 
 
 def _iou(a: list[float], b: list[float]) -> float:

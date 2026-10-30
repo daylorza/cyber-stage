@@ -8,7 +8,7 @@ const FOOTER = "Prototype Testing — Not a real listing — AI-modified";
 /** Walk in at half speed: the room should be felt, not skimmed. */
 const WALK_RATE = 0.5;
 /** The beat between stopping in the living room and the first piece leaving the ceiling. */
-const ARRIVE_BEAT_MS = 650;
+const ARRIVE_BEAT_MS = 0;
 
 type Phase = "loading" | "missing" | "ready" | "walking" | "paused" | "arriving" | "furnishing" | "furnished" | "ended";
 const AT_ROOM: Phase[] = ["arriving", "furnishing", "furnished"];
@@ -46,7 +46,6 @@ export default function PrototypeTesting() {
   const armed = useRef(true);
   const busy = useRef(false);
   const timer = useRef(0);
-  const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const go = (p: Phase) => {
     phaseRef.current = p;
@@ -178,13 +177,8 @@ export default function PrototypeTesting() {
   async function furnish() {
     const s = scene.current;
     if (!s || !AT_ROOM.includes(phaseRef.current)) return;
-    if (reduced) {
-      s.showLanded();
-      go("furnished");
-      return;
-    }
-    go("furnishing");
-    if (await s.cascade()) go("furnished");
+    s.showLanded();
+    go("furnished");
   }
 
   async function togglePlay() {
@@ -199,7 +193,7 @@ export default function PrototypeTesting() {
     }
     busy.current = true;
     clearTimeout(timer.current);
-    if (AT_ROOM.includes(p)) await s.lift(); // placed for this frame only: it leaves before the camera moves
+    if (AT_ROOM.includes(p)) s.clear();
     if (p === "ended") {
       armed.current = true;
       v.currentTime = 0;
@@ -210,13 +204,12 @@ export default function PrototypeTesting() {
     busy.current = false;
   }
 
-  async function replay() {
+  async function chooseFurniture() {
     const s = scene.current;
     if (!s || busy.current) return;
     busy.current = true;
     clearTimeout(timer.current);
     if (AT_ROOM.includes(phaseRef.current)) {
-      await s.lift();
       go("arriving");
     } else await holdHero();
     busy.current = false;
@@ -230,14 +223,13 @@ export default function PrototypeTesting() {
     busy.current = true;
     setStyleId(id);
     const there = AT_ROOM.includes(phaseRef.current);
-    if (there) await s.lift();
     await s.setStyle(style);
     busy.current = false;
     if (there) await furnish();
   }
 
   const style = manifest?.styles.find((st) => st.id === styleId);
-  const count = style?.pieces?.length ?? 0;
+  const placeholder = style?.pieces?.find((piece) => piece.concept === "sofa")?.box;
   const status: Record<Phase, string> = {
     loading: "Loading the walkthrough",
     missing: "",
@@ -246,7 +238,7 @@ export default function PrototypeTesting() {
     paused: `Paused · ${stamp(time)}`,
     arriving: "Living room",
     furnishing: `Furnishing · ${style?.label ?? ""}`,
-    furnished: `${style?.label ?? ""} · ${count} pieces in place · placed for this frame; Play lifts them and walks on`,
+    furnished: `${style?.label ?? ""} · AI-staged`,
     ended: "End of the walkthrough",
   };
   const playing = phase === "walking";
@@ -284,7 +276,12 @@ export default function PrototypeTesting() {
                 className="absolute inset-0 h-full w-full object-fill [dynamic-range-limit:standard]"
                 onEnded={() => go("ended")}
               />
-              <canvas ref={canvas} aria-hidden className="pointer-events-none absolute inset-0 h-full w-full" />
+              <canvas ref={canvas} aria-hidden className={`pointer-events-none absolute inset-0 h-full w-full ${phase === "furnished" && style?.image ? "invisible" : ""}`} />
+              {phase === "furnished" && style?.image && <img src={`/api/media/${style.image}`} alt="AI-staged room" className="pointer-events-none absolute inset-0 h-full w-full object-fill" />}
+              {playing && !armed.current && placeholder && time <= manifest.hero.pts + 3 && (
+                <div aria-label="Furniture placeholder, not motion tracked" className="pointer-events-none absolute grid place-items-center rounded-md border border-ice/70 bg-ice/25 text-center text-xs text-white"
+                  style={{ left: `${placeholder[0] * 100}%`, top: `${placeholder[1] * 100}%`, width: `${(placeholder[2] - placeholder[0]) * 100}%`, height: `${(placeholder[3] - placeholder[1]) * 100}%` }}>Furniture placeholder</div>
+              )}
             </>
           )}
           {phase === "missing" && (
@@ -317,13 +314,13 @@ export default function PrototypeTesting() {
             <PlayIcon playing={playing} />
             {playing ? "Pause" : "Play"}
           </button>
-          <button type="button" onClick={replay} disabled={!manifest || !style?.available || phase === "loading"} className="btn-glass">
-            Replay cascade
+          <button type="button" onClick={chooseFurniture} disabled={!manifest || !style?.available || phase === "loading"} className="btn-glass">
+            Choose furniture
           </button>
         </div>
 
         {manifest && (
-          <div className="relative">
+          <div className="relative transition-opacity duration-700 [@media(hover:hover)]:opacity-20 [@media(hover:hover)]:hover:opacity-100 focus-within:opacity-100">
             <div role="group" aria-label="Style" className="flex items-center gap-1 rounded-full bg-ivory/[0.04] p-1 ring-1 ring-ivory/10">
               {manifest.styles.map((st) => {
                 const active = st.id === styleId;

@@ -367,6 +367,7 @@ function upload(form: FormData, onProgress: (fraction: number) => void) {
 export const api = {
   listings: () => request<ListingSummary[]>("/listings"),
   listing: (id: string) => request<Listing>(`/listings/${id}`),
+  deleteListing: (id: string) => request<{ deleted: boolean }>(`/listings/${id}`, { method: "DELETE" }),
   job: (id: string) => request<Job>(`/jobs/${id}`),
   upload,
   review: (id: string, body: ReviewBody) => request<Listing>(`/listings/${id}/review`, json(body)),
@@ -376,6 +377,7 @@ export const api = {
   settings: () => request<{ blocking_checks: boolean }>("/settings"),
   reprocess: (id: string) => request<{ listing_id: string; job_id: string }>(`/listings/${id}/reprocess`, { method: "POST" }),
   live: (id: string) => request<LivePayload>(`/listings/${id}/live`),
+  rerunLiveStyle: (id: string, room: string, style: string) => request<{ job_id: string }>(`/listings/${id}/live/rooms/${encodeURIComponent(room)}/styles/${encodeURIComponent(style)}/rerun`, { method: "POST" }),
   /** `residence` only links a Miami listing to the seeded home-page residence; any listing can be prepared. */
   prepareLive: (id: string, residence: string | null = null) =>
     request<{ listing_id: string; job_id: string }>(`/listings/${id}/live`, json({ residence })),

@@ -22,6 +22,8 @@ const linkClass = "eyebrow mt-8 inline-block text-ivory/70! transition hover:tex
 
 export default function LiveInIt() {
   const { id = "" } = useParams();
+  const laDemo = id === "lst_190d1a7673a8" && new URLSearchParams(window.location.search).get("room") === "room_2";
+  const listingPath = laDemo ? "/p/seed_los_angeles" : `/p/${id}`;
   const [payload, setPayload] = useState<LivePayload | null>(null);
   const [error, setError] = useState("");
 
@@ -54,7 +56,7 @@ export default function LiveInIt() {
         <p className="mt-5 font-serif text-xl text-ivory/90">
           {unpublished ? "Live-In-It opens after the broker publishes this listing." : error}
         </p>
-        <Link to={unpublished ? "/" : `/p/${id}`} className={linkClass}>
+        <Link to={unpublished ? "/" : listingPath} className={linkClass}>
           {unpublished ? "Back to the residences" : "View the listing"}
         </Link>
       </Quiet>
@@ -74,11 +76,12 @@ export default function LiveInIt() {
     return (
       <Quiet eyebrow="Live-In-It">
         <p className="mt-5 font-serif text-xl text-ivory/90">{payload.error ?? "This residence isn't ready to walk through."}</p>
-        <Link to={`/p/${id}`} className={linkClass}>
+        <Link to={listingPath} className={linkClass}>
           View the listing
         </Link>
       </Quiet>
     );
 
-  return <LiveTour key={payload.listing_id} payload={payload} />;
+  const display = laDemo ? { ...payload, title: "Los Angeles", residence: null, note: "Demo imagery — not a real listing." } : payload;
+  return <LiveTour key={`${payload.listing_id}-${laDemo}`} payload={display} />;
 }

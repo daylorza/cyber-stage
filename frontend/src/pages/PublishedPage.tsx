@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { api, clock, factLine, media, money, shortDate, type PublishedPage as Page, type Room } from "../api";
 import BeforeAfter from "../components/BeforeAfter";
 import CompsTable from "../components/CompsTable";
-import { Wordmark } from "../components/Shell";
+import { HoverNav, Wordmark } from "../components/Shell";
 
 const enterClass =
   "group flex w-fit items-center gap-4 rounded-full bg-ivory/[0.08] py-2 pl-2 pr-6 text-[15px] tracking-wide text-ivory ring-1 ring-ivory/25 backdrop-blur-xl transition hover:bg-ivory/[0.14] hover:ring-ivory/40";
@@ -136,12 +136,13 @@ export default function PublishedPage() {
       </div>
     );
 
+  const rooms = id === "lst_190d1a7673a8" ? page.rooms.filter((room) => room.id === "room_1") : page.rooms;
   const range = page.comps.suggested_range;
   const price =
     page.price_display ?? (range ? `Guide ${money(range.low, range.currency)} – ${money(range.high, range.currency)}` : null);
-  const timed = page.rooms.filter((r) => r.t != null).sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
-  const backdrop = page.rooms.find((r) => r.main)?.before ?? page.rooms[0]?.before;
-  const heroSrc = page.rooms[0]?.after ?? page.rooms[0]?.before;
+  const timed = rooms.filter((r) => r.t != null).sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+  const backdrop = rooms.find((r) => r.main)?.before ?? rooms[0]?.before;
+  const heroSrc = rooms[0]?.after ?? rooms[0]?.before;
   const portrait = page.video ? page.video.height > page.video.width : false;
 
   const details = (
@@ -175,8 +176,9 @@ export default function PublishedPage() {
 
   return (
     <div>
-      <header className="pointer-events-none fixed inset-x-0 top-0 z-40 px-6 py-6 sm:px-10">
+      <header className="pointer-events-none fixed inset-x-0 top-0 z-40 flex items-start justify-between px-6 py-6 sm:px-10">
         <Wordmark />
+        <HoverNav />
       </header>
 
       {page.video ? (
@@ -228,15 +230,15 @@ export default function PublishedPage() {
 
         <CompsTable comps={page.comps} />
 
-        {page.rooms.length > 0 &&
+        {rooms.length > 0 &&
           (page.video ? (
             <details className="group">
               <summary className="eyebrow cursor-pointer list-none transition hover:text-ivory!">
                 <span className="mr-2 inline-block transition group-open:rotate-90">›</span>
-                AI-staged stills · {page.rooms.length} {page.rooms.length === 1 ? "room" : "rooms"}
+                AI-staged stills · {rooms.length} {rooms.length === 1 ? "room" : "rooms"}
               </summary>
               <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {page.rooms.map((room) => (
+                {rooms.map((room) => (
                   <BeforeAfter key={room.id} room={room} />
                 ))}
               </div>
@@ -247,7 +249,7 @@ export default function PublishedPage() {
                 Rooms
               </h2>
               <div className="mt-6 grid gap-6 md:grid-cols-2">
-                {page.rooms.map((room) => (
+                {rooms.map((room) => (
                   <BeforeAfter key={room.id} room={room} />
                 ))}
               </div>

@@ -13,6 +13,9 @@ export default function LiveControl({ listing }: { listing: Listing }) {
   const isMiami = listing.facts.city.trim().toLowerCase() === "miami";
   const rooms = (listing.published?.rooms ?? listing.rooms).filter((r) => !r.rejected);
   const eligible = rooms.some((r) => r.main || MAIN_TYPES.includes(r.type));
+  const [payload, setPayload] = useState<LivePayload | null>(null);
+  const [styleJob, setStyleJob] = useState<string | null>(null);
+  const [styleMessage, setStyleMessage] = useState("");
   const [s, setS] = useState<State>({ status: "unknown", error: "", progress: 0, jobId: null });
 
   const fromPayload = (p: LivePayload): State => ({ status: p.status, error: p.error ?? "", progress: 0, jobId: p.job_id });
@@ -21,7 +24,7 @@ export default function LiveControl({ listing }: { listing: Listing }) {
     let stopped = false;
     api
       .live(listingId)
-      .then((p) => !stopped && setS(fromPayload(p)))
+      .then((p) => { if (!stopped) { setPayload(p); setS(fromPayload(p)); } })
       .catch(() => !stopped && setS({ status: "none", error: "", progress: 0, jobId: null }));
     return () => {
       stopped = true;
@@ -40,7 +43,7 @@ export default function LiveControl({ listing }: { listing: Listing }) {
         if (job.status === "done" || job.status === "failed") {
           const p = await api.live(listingId).catch(() => null);
           if (stopped) return;
-          if (p && p.status !== "preparing") return setS(fromPayload(p));
+          if (p && p.status !== "preparing") { setPayload(p); return setS(fromPayload(p)); }
           return setS({ status: "failed", error: job.error ?? p?.error ?? "Live-In-It couldn't be prepared.", progress: 0, jobId: null });
         }
         setS((prev) => ({ ...prev, progress: job.progress }));
@@ -67,13 +70,53 @@ export default function LiveControl({ listing }: { listing: Listing }) {
     }
   }
 
+  useEffect(() => {
+    if (!styleJob) return;
+    let stopped = false;
+    let timer = 0;
+    const tick = async () => {
+      try {
+        const job = await api.job(styleJob);
+        if (stopped) return;
+        if (job.status === "done" || job.status === "failed") {
+          setStyleMessage(job.status === "done" ? "Style updated." : (job.error ?? "Style rerun failed; previous image retained."));
+          setStyleJob(null);
+          if (job.status === "done") setPayload(await api.live(listingId));
+        } else timer = window.setTimeout(tick, 1000);
+      } catch (e) {
+        if (!stopped) { setStyleMessage((e as Error).message); setStyleJob(null); }
+      }
+    };
+    void tick();
+    return () => { stopped = true; clearTimeout(timer); };
+  }, [styleJob, listingId]);
+
+  async function rerunStyle(room: string, style: string, label: string) {
+    if (!window.confirm(`Generate ${label} again for this room? This uses Meta credits and replaces the current image only if checks pass.`)) return;
+    setStyleMessage("Starting style rerun…");
+    try { setStyleJob((await api.rerunLiveStyle(listingId, room, style)).job_id); }
+    catch (e) { setStyleMessage((e as Error).message); }
+  }
+
   if (s.status === "unknown") return null;
 
   if (s.status === "ready")
     return (
-      <Link to={`/p/${listingId}/live`} className="btn-glass">
-        Enter residence
-      </Link>
+      <span className="flex items-center gap-1.5">
+        <button type="button" className="btn-glass" onClick={() => {
+          if (window.confirm("Re-run full Live-In-It preparation? The current experience will be unavailable while it runs and could be replaced if preparation fails. Cached results may be reused; new Meta calls may use credits.")) void prepare();
+        }}>
+          Re-run preparation
+        </button>
+        <Link to={`/p/${listingId}/live`} className="btn-glass">Enter residence</Link>
+        <details className="relative">
+          <summary className="btn-glass cursor-pointer">Re-run a style</summary>
+          <div className="absolute bottom-full right-0 mb-3 w-72 max-h-80 overflow-auto rounded-xl bg-night p-4 shadow-xl ring-1 ring-ivory/20">
+            {payload?.rooms.filter((room) => ["living", "bedroom", "dining"].includes(room.type)).map((room) => <div key={room.id} className="mb-3"><p className="eyebrow mb-2">{room.name}</p>{payload.styles.map((style) => <button key={style.id} type="button" disabled={!!styleJob} onClick={() => void rerunStyle(room.id, style.id, style.label)} className="block w-full py-1 text-left text-sm text-ivory/80 hover:text-ivory disabled:opacity-40">{room.styles[style.id] ? "Re-run" : "Generate"} {style.label}</button>)}</div>)}
+            <p role="status" className="text-xs text-ivory/70">{styleJob ? "Preparing style…" : styleMessage}</p>
+          </div>
+        </details>
+      </span>
     );
 
   if (s.status === "preparing")
