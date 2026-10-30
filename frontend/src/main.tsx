@@ -28,6 +28,12 @@ const router = createBrowserRouter([
     hydrateFallbackElement: <div className="fixed inset-0 bg-night" />,
     lazy: () => import("./pages/PrototypeTesting").then((m) => ({ Component: m.default })),
   },
+  // Three.js only loads on this page too: static photo + real 3D furniture.
+  {
+    path: "prototype-static",
+    hydrateFallbackElement: <div className="fixed inset-0 bg-night" />,
+    lazy: () => import("./pages/PrototypeStatic").then((m) => ({ Component: m.default })),
+  },
 ]);
 
 createRoot(document.getElementById("root")!).render(
