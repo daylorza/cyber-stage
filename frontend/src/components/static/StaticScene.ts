@@ -185,13 +185,13 @@ export class StaticScene {
     ]);
     let at = TIMING.firstPiece;
     for (const piece of pieces) {
+      // No carpet in this test (Day, Oct 30): the rug piece is not built,
+      // so the filmed floor stays bare where it would have lain.
+      if (piece.kind === "rug") continue;
       const { centre, axis, width } = this.placement(piece);
       let group: THREE.Group;
       let start = at;
-      if (piece.kind === "rug") {
-        group = this.buildRug(piece);
-        start = TIMING.rug;
-      } else if (piece.id === "sofa") {
+      if (piece.id === "sofa") {
         group = this.finishModel(sofaGlb.scene, width, piece.palette);
         at += TIMING.stagger;
       } else if (piece.id === "armchair") {
@@ -201,44 +201,14 @@ export class StaticScene {
         group = this.buildTable(width);
         at += TIMING.stagger;
       }
-      // The rug's geometry is already in floor coordinates; other pieces sit
-      // with their front-bottom centre on the SAM contact line.
-      if (piece.kind !== "rug") {
-        group.position.copy(centre);
-        group.rotation.y = this.yawFor(axis, centre);
-      }
+      // Each piece sits with its front-bottom centre on the SAM contact line.
+      group.position.copy(centre);
+      group.rotation.y = this.yawFor(axis, centre);
       group.visible = false;
       this.scene.add(group);
       this.items.push({ id: piece.id, group, start, dur: TIMING.drop, drop: this.cal.ceiling_m + 1.2 });
     }
     this.pose(0);
-  }
-
-  private buildRug(piece: Piece): THREE.Group {
-    const [x1, y1, x2, y2] = piece.rect;
-    // The rug's four corners on the floor plane: a flat quad in floor
-    // coordinates, so it follows the photo's perspective exactly (a box
-    // centred between the corners spills across the foreground).
-    const corners = [
-      this.onFloor(x1, y1), this.onFloor(x2, y1),
-      this.onFloor(x1, Math.max(y2, 0.52)), this.onFloor(x2, Math.max(y2, 0.52)),
-    ];
-    const group = new THREE.Group();
-    if (corners.some((p) => !p)) return group;
-    const [a, b, c, d] = corners as THREE.Vector3[];
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array([
-      a.x, 0.02, a.z, b.x, 0.02, b.z, c.x, 0.02, c.z,
-      b.x, 0.02, b.z, d.x, 0.02, d.z, c.x, 0.02, c.z,
-    ]), 3));
-    geo.setAttribute("uv", new THREE.BufferAttribute(new Float32Array([0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0]), 2));
-    geo.computeVertexNormals();
-    const rug = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-      map: weaveTexture(piece.palette), roughness: 0.96, metalness: 0, side: THREE.DoubleSide, transparent: true,
-    }));
-    rug.receiveShadow = true;
-    group.add(rug);
-    return group;
   }
 
   private buildTable(width: number): THREE.Group {
@@ -335,43 +305,6 @@ export class StaticScene {
       it.group.scale.set(1 + 0.012 * settle, 1 - 0.03 * settle, 1 + 0.012 * settle);
     }
   }
-}
-
-function weaveTexture(palette: string): THREE.Texture {
-  const c = document.createElement("canvas");
-  c.width = c.height = 256;
-  const ctx = c.getContext("2d")!;
-  ctx.fillStyle = palette;
-  ctx.fillRect(0, 0, 256, 256);
-  for (let y = 0; y < 256; y += 2) {
-    for (let x = 0; x < 256; x += 4) {
-      const v = Math.sin(x * 1.7 + y * 0.6) + Math.sin(y * 2.3) + Math.sin((x + y) * 0.35);
-      ctx.fillStyle = v > 0 ? "rgba(70,52,30,0.09)" : "rgba(255,250,235,0.08)";
-      ctx.fillRect(x, y, 3, 1.6);
-    }
-  }
-  // Feather the quad's edges in texture space so the rug melts into the
-  // filmed floor instead of ending on a hard rectangle edge.
-  const fade = ctx.createLinearGradient(0, 0, 0, 256);
-  fade.addColorStop(0, "rgba(0,0,0,1)");
-  fade.addColorStop(0.05, "rgba(0,0,0,0)");
-  fade.addColorStop(0.95, "rgba(0,0,0,0)");
-  fade.addColorStop(1, "rgba(0,0,0,1)");
-  ctx.globalCompositeOperation = "destination-out";
-  ctx.fillStyle = fade;
-  ctx.fillRect(0, 0, 256, 256);
-  const side = ctx.createLinearGradient(0, 0, 256, 0);
-  side.addColorStop(0, "rgba(0,0,0,1)");
-  side.addColorStop(0.05, "rgba(0,0,0,0)");
-  side.addColorStop(0.95, "rgba(0,0,0,0)");
-  side.addColorStop(1, "rgba(0,0,0,1)");
-  ctx.fillStyle = side;
-  ctx.fillRect(0, 0, 256, 256);
-  ctx.globalCompositeOperation = "source-over";
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
 }
 
 function stoneTexture(): THREE.Texture {
