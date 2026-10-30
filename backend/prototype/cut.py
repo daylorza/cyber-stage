@@ -338,6 +338,8 @@ def cut_style(staged: Image.Image, plate: Image.Image, pieces: list[dict[str, An
               out_dir: Path, prefix: str, debug_dir: Path | None = None) -> dict[str, Any]:
     """`staged` and each piece's `coverage` (a SAM mask, L image) are in hero-frame coordinates.
     Each piece: {id, kind: rug|upright, box, coverage}. `camera`: fx, fy, horizon_y (normalized)."""
+    if not pieces:
+        raise ValueError("cut_style needs at least one SAM piece; this style has nothing to drop")
     s_out, p_out = _load(staged, OUT), _load(plate, OUT)
     s, p = _load(staged, WORK), _load(plate, WORK)
     # SAM's coverage tops out just under 1 inside a piece (0.97-0.99) and dips where it is

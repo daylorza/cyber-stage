@@ -161,6 +161,9 @@ def build(listing_id: str, video: Path, lines_a: Any, lines_b: Any,
                     if host:
                         host["_records"].append(rec)
                         host.setdefault("riders", []).append({"concept": concept, "box": box})
+            if not assets.require_pieces(entry, pieces):
+                styles.append(entry)
+                continue
             for pc in pieces:
                 pc["coverage"] = assets.coverage(pc.pop("_records"), align)
             cut_out = cut.cut_style(aligned, Image.open(plate), pieces, camera, out, style_id, debug_dir=work)

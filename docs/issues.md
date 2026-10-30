@@ -45,12 +45,12 @@ Next, in order:
 1. Rug / shadow fixes PT-01/03/04 — FIXED Oct 30, 2026,
    commit 14092c0, branch next-stage-rug-shadow-hover.
 2. Hover glitch PT-02 — FIXED Oct 30, 2026, commit 14092c0.
-3. Cascade from uploaded video, not only POC — IN PROGRESS
-   Oct 30, 2026: generalised builder + page support landed
-   (commit 14092c0, guards tested); end-to-end non-POC run
-   NOT verified — hero footage due Oct 29 is still open and
-   no clean non-POC clip was available. Do not claim it
-   works until a clean clip runs end to end.
+3. Cascade from uploaded video, not only POC — VERIFIED
+   Oct 30, 2026 on Day's video_apartment.mp4 (see the
+   Work 3 section below): full upload-to-cascade run at
+   /prototype-testing?listing=lst_47088d7cfbba, Mac-only
+   screenshots, Meta calls reported. Generalised builder
+   and guards landed in commit 14092c0.
 4. Submission video capture plan PT-07 — plan DELIVERED
    Oct 30, 2026, docs/submission-video-plan.md, awaiting
    Day's approval; final video is Nov 4 only.
@@ -64,26 +64,37 @@ Timeline: freeze Tue Nov 3 evening, submission Wed Nov 4,
 9 PM ET. Do NOT start Idea 4 now — it would blow the timeline.
 
 ## In progress
-- Work 3 generalisation end-to-end verification — blocked on
-  clean empty-room footage (hero footage due Oct 29, still
-  open Oct 30). Branch next-stage-rug-shadow-hover. Builder
-  and guards are in; a non-POC cascade run is not claimed.
-  Footage audit Oct 30, 2026 (every non-POC clip in the
-  workspace and local DB, hero frames inspected): Houston
-  short clip (lst_3e6b85419854) has burned-in text ("empty
-  apartment tour / 1182 SQ FT") and sunset glare; Chicago
-  (lst_801e604bc803) has a burned-in caption and a hand in
-  its opening frames (its living-room frame itself is
-  clean, but the full clip is not); the apt-tour listing
-  (lst_fc5bb8faf809) is the watermarked TikTok clip and has
-  no main living room in Live-In-It; sample_vid listings
-  have no main living room. No clean non-POC clip exists
-  yet. Needed from Day: one clean empty-room clip (slow,
-  steady, well-lit, framed windows/doors, empty, no people,
-  no text, no watermark, living-room segment long enough to
-  pause and cascade). Calibration lines for that clip are
-  measured from its hero frame at build time — Day does
-  not need to supply them.
+- (none)
+
+## Work 3 — verified on a non-POC clip, Oct 30, 2026
+Day supplied video_apartment.mp4 (1920x1080, 6.1 s, no
+text, no watermark, no people; room not fully empty — a
+potted plant and TV console are filmed in it). It ran the
+same process end to end as test listing lst_47088d7cfbba
+(Not a real listing, placeholder facts, local only):
+upload -> 1 living room, staging geometry passed, all 7
+checklist items done -> broker approve -> publish ->
+Prepare Live-In-It (main living room, hero 2.47 s) ->
+prototype.general with calibration lines measured from
+this clip's own hero frame (hfov 102 deg, POC camera not
+reused) -> cascade at /prototype-testing?listing=
+lst_47088d7cfbba: rug falls, sofa and coffee table fall
+piece by piece, landed frame matches the staged image
+(cut diff 5.71/255, floor anchor pass), Play lifts the
+pieces and the clip walks on. Style table: Modern Luxury
+on (3 pieces); Coastal off (SAM curtains 21% of window
+wall, real cover); Minimal off (SAM can cut no piece from
+that staging — nothing to drop). Meta calls: 47 traced
+for the listing (13 independent) plus 15 SAM calls in the
+general build, all cached. Evidence Mac-only. Still
+rough: the filmed plant remains visible behind the sofa
+at landing (the staging removed it; the cascade only adds
+pieces), the staged floor lamp is not a cascade piece,
+and pieces are still flat cards for one frame (PT-06).
+Earlier footage audit (superseded for this clip, kept for
+the record): Houston has burned-in text and glare,
+Chicago has a caption and a hand in its opening frames,
+the apt-tour clip is watermarked — none was used.
 
 ## Fixed
 - PT-01 — Shadow already on the rug during cascade [P1].

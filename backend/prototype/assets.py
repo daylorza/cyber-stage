@@ -264,6 +264,18 @@ def plan_style(style_id: str, label: str, live_style: dict[str, Any] | None, ima
     return entry
 
 
+def require_pieces(entry: dict[str, Any], pieces: list[dict[str, Any]]) -> bool:
+    """A style SAM can cut no cascade piece from is off, with the usual reason:
+    nothing to drop. (Zero pieces reaching the cutter died inside it.)"""
+    if pieces:
+        return True
+    entry["available"] = False
+    entry["reason"] = ("Meta Image added no furniture to this room in this style that SAM 3.1 can cut: "
+                       "no rug, sofa, chair, table or armchair mask, so there is nothing to drop.")
+    entry["reason_short"] = "no furniture to drop"
+    return False
+
+
 def build() -> dict[str, Any]:
     video = video_path()
     clip = verify_video(video)
@@ -330,6 +342,9 @@ def build() -> dict[str, Any]:
                     if host:
                         host["_records"].append(rec)
                         host.setdefault("riders", []).append({"concept": concept, "box": box})
+            if not require_pieces(entry, pieces):
+                styles.append(entry)
+                continue
             for pc in pieces:
                 pc["coverage"] = coverage(pc.pop("_records"), align)
             out = cut.cut_style(aligned, Image.open(plate), pieces, camera, OUT_DIR, style_id, debug_dir=work)

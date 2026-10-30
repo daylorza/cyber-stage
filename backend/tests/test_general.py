@@ -57,3 +57,19 @@ def test_missing_clip_is_never_substituted(tmp_path):
 def test_every_generalised_page_is_labelled():
     assert general.LABEL == "Not a real listing — AI-modified"
     assert general.REAL_CONFIRMED == set()
+
+
+def test_style_sam_cannot_cut_is_off_not_a_crash():
+    # Regression: a style whose staged image yields no SAM piece under the
+    # cascade concepts (e.g. Minimal here) reached cut_style with zero
+    # pieces and died inside dilate() on a 0-d array. It must be marked
+    # off with the usual reason instead.
+    from prototype import assets
+
+    entry = {"id": "minimal", "label": "Minimal", "available": True}
+    assert assets.require_pieces(entry, []) is False
+    assert entry["available"] is False
+    assert entry["reason_short"] == "no furniture to drop"
+    entry2 = {"id": "modern-luxury", "label": "Modern Luxury", "available": True}
+    assert assets.require_pieces(entry2, [{"id": "rug"}]) is True
+    assert entry2["available"] is True
