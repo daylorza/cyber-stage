@@ -68,6 +68,22 @@ Timeline: freeze Tue Nov 3 evening, submission Wed Nov 4,
   clean empty-room footage (hero footage due Oct 29, still
   open Oct 30). Branch next-stage-rug-shadow-hover. Builder
   and guards are in; a non-POC cascade run is not claimed.
+  Footage audit Oct 30, 2026 (every non-POC clip in the
+  workspace and local DB, hero frames inspected): Houston
+  short clip (lst_3e6b85419854) has burned-in text ("empty
+  apartment tour / 1182 SQ FT") and sunset glare; Chicago
+  (lst_801e604bc803) has a burned-in caption and a hand in
+  its opening frames (its living-room frame itself is
+  clean, but the full clip is not); the apt-tour listing
+  (lst_fc5bb8faf809) is the watermarked TikTok clip and has
+  no main living room in Live-In-It; sample_vid listings
+  have no main living room. No clean non-POC clip exists
+  yet. Needed from Day: one clean empty-room clip (slow,
+  steady, well-lit, framed windows/doors, empty, no people,
+  no text, no watermark, living-room segment long enough to
+  pause and cascade). Calibration lines for that clip are
+  measured from its hero frame at build time — Day does
+  not need to supply them.
 
 ## Fixed
 - PT-01 — Shadow already on the rug during cascade [P1].
