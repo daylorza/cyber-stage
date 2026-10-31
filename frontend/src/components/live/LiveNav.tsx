@@ -1,12 +1,10 @@
 import { Link } from "react-router-dom";
 import type { LiveMoment, LiveRoom } from "../../api";
-import type { Plan } from "../../residences";
-import FloorPlan from "../FloorPlan";
+import RoomSchematic from "./RoomSchematic";
 import { styleStatus } from "./stage";
 
 type Props = {
   listingPath: string;
-  title: string;
   rooms: LiveRoom[];
   roomIndex: number;
   onRoom: (i: number) => void;
@@ -15,16 +13,13 @@ type Props = {
   onStyle: (id: string) => void;
   moments: LiveMoment[];
   onMoment: (m: LiveMoment) => void;
-  plan: Plan | null;
-  /** Shown under a schematic (not measured) plan. */
-  planNote?: string | null;
-  heading: number;
+  mapRoom: LiveRoom;
   open: boolean;
   setOpen: (open: boolean) => void;
   closeTimer: { current: number };
 };
 
-const item = "flex items-center gap-2.5 font-serif text-[15px] transition hover:text-ivory disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-ivory/75";
+const item = "flex max-w-full min-w-0 items-center gap-2.5 break-words text-left [overflow-wrap:anywhere] font-serif text-[15px] transition hover:text-ivory disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-ivory/75";
 
 /** Hover menu, upper right. The floor plan lives here and nowhere else. */
 export default function LiveNav(p: Props) {
@@ -54,14 +49,15 @@ export default function LiveNav(p: Props) {
         <span aria-hidden className="mr-[21.5px] h-8 w-px bg-gradient-to-b from-ivory/45 to-transparent" />
         <div
           id="live-menu"
-          className="mt-1 max-h-[78dvh] w-[250px] max-w-[calc(100vw-3rem)] space-y-6 overflow-y-auto rounded-2xl bg-night/45 p-5 backdrop-blur-xl ring-1 ring-ivory/10"
+          className="mt-1 max-h-[78dvh] w-[250px] max-w-[calc(100vw-3rem)] space-y-6 overflow-x-hidden overflow-y-auto rounded-2xl bg-night/45 p-5 backdrop-blur-xl ring-1 ring-ivory/10"
         >
           <section aria-label="Rooms" className="space-y-4">
             <p className="eyebrow">Rooms</p>
-            {p.plan && (
-              <div className="hidden sm:block">
-                <FloorPlan plan={p.plan} heading={p.heading} label={p.title} />
-                {p.planNote && <p className="eyebrow mt-2 text-[0.55rem]! text-ivory/45!">{p.planNote}</p>}
+            {p.mapRoom && (
+              <div className="min-w-0">
+                <RoomSchematic room={p.mapRoom} styleId={p.styleId} />
+                <p className="mt-2 text-[11px] leading-snug text-ivory/70">*Floor plan estimation — derived from SAM detections for this room, not a measured floor plan, not to scale.</p>
+                {!p.mapRoom.sam_map && <p className="mt-2 text-[11px] leading-snug text-ivory/70">Map approximate — room geometry not detected</p>}
               </div>
             )}
             <ul className="space-y-2.5">

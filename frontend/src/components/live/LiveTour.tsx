@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { clock, media, type LiveMoment, type LivePayload } from "../../api";
-import { RESIDENCES } from "../../residences";
 import { Wordmark } from "../Shell";
 import Backdrop from "./Backdrop";
 import { cutout } from "./cutout";
@@ -9,13 +8,11 @@ import { playCyberpunk } from "./cyberpunk";
 import { useReducedMotion, useViewport } from "./hooks";
 import LiveNav from "./LiveNav";
 import MomentFx, { NO_FX, type Fx } from "./MomentFx";
-import { schematicPlan, stopsForPlan } from "./plan";
 import ReserveControl from "./ReserveControl";
 import RoomStage, { type Overlay, type StagePhase } from "./RoomStage";
 import {
   aim,
   IDENTITY,
-  LOOK_DEGREES,
   maxPanFor,
   preload,
   resolveStyle,
@@ -37,9 +34,6 @@ const ARRIVAL_BEAT = 1400;
 const MAIN_BEAT = 2400;
 const WALK_RATE = 1;
 const FIT_TILT = 5;
-
-/** Which plan room lights up for each room type. */
-const PLAN_ROOM: Record<string, string> = { living: "living", kitchen: "kitchen", dining: "dining", bedroom: "primary", terrace: "terrace" };
 
 const CAPTION: Record<LiveMoment["id"], string> = { view: "Look out at the view", sit: "Sit down", coffee: "Make coffee" };
 
@@ -170,18 +164,6 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   // Latest values for the async moment runner.
   const latest = useRef({ stage, viewport, styleId });
   latest.current = { stage, viewport, styleId };
-
-  const seeded = RESIDENCES.find((r) => r.id === payload.residence)?.plan ?? null;
-  const planRoom = seeded ? (PLAN_ROOM[room.type] ?? seeded.current) : inRoom ? room.id : (pathStop?.id ?? room.id);
-  // FloorPlan resets its rotation when this object changes, so only rebuild it when the lit room changes.
-  const plan = useMemo(
-    () =>
-      seeded
-        ? { ...seeded, current: planRoom }
-        : schematicPlan(payload.path?.length ? stopsForPlan(payload.path) : rooms.map((r) => ({ id: r.id, name: r.name })), planRoom),
-    [seeded, planRoom, payload.path, rooms],
-  );
-  const heading = (plan?.facing ?? 0) + (maxPan.x > 0 ? (pan.x / maxPan.x) * LOOK_DEGREES : 0);
 
   const later = (fn: () => void, ms: number) => {
     timers.current.push(window.setTimeout(fn, ms));
@@ -652,7 +634,6 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
           <div className="absolute right-6 top-6 sm:right-10 sm:top-9">
             <LiveNav
               listingPath={listingPath}
-              title={payload.title}
               rooms={rooms}
               roomIndex={inRoom ? roomIndex : -1}
               onRoom={goTo}
@@ -661,9 +642,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               onStyle={choose}
               moments={moments}
               onMoment={requestMoment}
-              plan={plan}
-              planNote={seeded ? null : "Schematic · rooms in walkthrough order, not to scale"}
-              heading={heading}
+              mapRoom={room}
               open={navOpen}
               setOpen={setNavOpen}
               closeTimer={closeTimer}

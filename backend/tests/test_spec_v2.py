@@ -29,7 +29,7 @@ def long_video(tmp_path_factory) -> Path:
     out = tmp_path_factory.mktemp("long") / "long.mp4"
     subprocess.run(
         ["ffmpeg", "-nostdin", "-loglevel", "error", "-f", "lavfi", "-i",
-         "cellauto=s=160x90:rate=10:rule=110,format=yuv420p", "-t", "30", str(out)],
+         "cellauto=s=160x90:rate=10:rule=110:seed=1,format=yuv420p", "-t", "30", str(out)],
         check=True,
     )
     return out
