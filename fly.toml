@@ -1,0 +1,25 @@
+# Cyber Stage — Fly.io config
+# App name: change "cyber-stage" here if that name is already taken on Fly.
+# Deploy with: fly launch --no-deploy (to confirm) then fly deploy
+# Secrets (never commit these): fly secrets set META_API_KEY=... META_API_BASE_URL=https://api.meta.ai/v1
+# Optional: fly secrets set VRE_BLOCKING_CHECKS=0  (default demo mode; 1 = strict blocking)
+
+app = "cyber-stage"
+primary_region = "mia"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[mounts]]
+  source = "cyber_stage_data"
+  destination = "/data"
+
+[env]
+  VRE_DATA_DIR = "/data"
