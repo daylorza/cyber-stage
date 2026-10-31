@@ -1,7 +1,7 @@
 """Virtual staging via Muse Image, image-to-image from each room's hero frame.
 
-The prompt hard-requires geometry preservation: same room, same camera, every
-wall/window/door/floor exactly where it was — only furniture and decor change.
+Listing styles preserve the room and its architecture. The 2142 style is
+concept art: it preserves the layout while allowing futuristic transformations.
 Each staged image then gets a SAM face check and any hit is blurred in place.
 
 A room the verifier still flags can be re-staged once or twice with a stricter
@@ -24,65 +24,109 @@ from pipeline.classify import is_utility
 STYLE_PRESETS = {
     "modern-luxury": {
         "label": "Modern luxury",
-        "description": "Restyle this room as a modern luxury interior with a few large pieces "
-                       "only, low and clean-lined: one large warm-ivory sofa, one low sculptural "
-                       "travertine or stone coffee table, one large warm-neutral rug grounding "
-                       "the set, and exactly one accent piece — either a charcoal armchair or a "
-                       "champagne-metal floor lamp, never both. Palette: warm ivory upholstery, "
-                       "charcoal and champagne-metal accents, at most one small muted-cyan "
-                       "cushion or artwork. No small decor: no vases, books, throws, plants, "
-                       "dried stems, or objects on counters and shelves. Warm light, not flat "
-                       "daylight. Light and space first — do not fill empty floor.",
+        "description": (
+            "Stage in a refined modern luxury style with clean-lined, sculptural furnishings. "
+            "Use warm ivory upholstery, rich textured fabrics, honed travertine or veined "
+            "stone, restrained champagne metal and subtle charcoal accents. Favor a calm, "
+            "gallery-like composition with generous open space and a few substantial, "
+            "appropriately scaled pieces. Add a small, curated selection of abstract wall art "
+            "in a slim refined frame and sculptural decor such as a ceramic vessel or tray, "
+            "where suitable surfaces and clear wall space exist."
+        ),
     },
     "coastal": {
         "label": "Coastal",
-        "description": "Restyle this room as a relaxed coastal luxury interior with a few generous, "
-                       "comfortable pieces: a soft ivory linen sofa, a low light-oak coffee table, "
-                       "a natural woven rug and one sculptural rattan or light-oak accent chair. "
-                       "Use soft whites, sand and weathered wood, with a restrained muted ocean-blue "
-                       "accent. Keep textures natural and tactile, lighting warm and airy, and open "
-                       "floor space generous. Avoid nautical motifs, clutter and small decorative objects.",
+        "description": (
+            "Stage in a refined coastal style with comfortable, relaxed, tailored furnishings. "
+            "Use soft white and sand tones, linen, natural woven textures, light oak and "
+            "a restrained muted ocean-blue accent. Keep the room airy and uncluttered; "
+            "add understated landscape or abstract wall art in a light wood frame and a few "
+            "natural ceramic or woven accents where space allows. Avoid nautical motifs and "
+            "beach-themed decor."
+        ),
     },
     "minimal": {
         "label": "Minimal",
-        "description": "Restyle this room as a warm minimal interior with a few purposeful, "
-                       "sculptural pieces: a low clean-lined sofa in warm ivory, a simple pale stone "
-                       "or light-wood coffee table and a large understated neutral rug. Use a quiet "
-                       "palette of ivory, pale plaster and warm wood, with subtle texture and soft "
-                       "natural light. Preserve generous negative space; avoid busy patterns, clutter "
-                       "and small decorative objects.",
+        "description": (
+            "Stage in a warm, understated minimal style with simple, sculptural furnishings. "
+            "Use ivory, warm neutral textiles, pale stone and light wood with subtle texture. "
+            "Keep the composition quiet and uncluttered, with generous negative space; "
+            "add one understated abstract artwork and a few simple ceramic or natural-material "
+            "accents where space allows. Avoid busy patterns and visual clutter."
+        ),
     },
     "2142": {
         "label": "Cyberpunk",
-        "description": "Restyle this room as an elegant cyberpunk penthouse in 2142, keeping the "
-                    "walls, windows and layout identical. Use a luxury high-tech aesthetic "
-                    "in warm off-white tones and glossy materials — polished lacquer, glass, "
-                    "chrome and reflective stone instead of carbon fiber. Add sleek, "
-                    "low-profile furniture only: one low warm-ivory sofa with sharp clean "
-                    "lines and a glossy metal base, one low glossy stone-and-glass coffee "
-                    "table, one large dark neutral rug, and one transparent glass display "
-                    "cabinet. Use geometric linear lighting and a moody neon glow in cyan "
-                    "and violet as sharp architectural accents along edges and recesses — "
-                    "refined and atmospheric, never garish. "
-                    "Doors: keep every door opening in exactly the same place and size, "
-                    "but make the doors retractable translucent panels with no doorknobs — "
-                    "a laser-gate privacy shimmer that frosts on touch, with the door frame "
-                    "still clearly visible so every door still reads as a door. "
-                    "Replace any ceiling fan with a levitating halo climate ring, no blades, "
-                    "in the same ceiling position. "
-                    "Outside the existing windows, show a 2142 skyline of super tall buildings "
-                    "with exactly one single flying car in the sky — the window frames themselves do not move. "
-                    "Keep the space open, luxurious and uncluttered. No carbon fiber, exposed "
-                    "wires, robots, weapons, dystopian grime, or small decorative clutter.",
+        "description": (
+            "Create photorealistic futuristic concept art of this exact room as a luxurious penthouse in 2142, not a listing-accurate staging. "
+            "Preserve the original camera position, perspective, room proportions, walls, "
+            "ceiling shape, floor, windows, door openings and architectural layout. "
+            "Keep all windows and doors in their existing positions and retain their frames. "
+            "Adapt the furniture arrangement to the available space without blocking openings "
+            "or walkways. "
+            "Create a warm, sophisticated interior with a palette of ivory, cream, champagne, "
+            "soft taupe and warm gray. Use polished white marble with subtle gray veining, "
+            "reflective stone, smoked or mirrored glass, and polished chrome. "
+            "Choose futuristic furnishings suited to the room's function and available space. "
+            "For a living room, use a curved ivory sofa, a sculptural low chrome or reflective "
+            "stone coffee table and a textured taupe-gray rug, scaled to fit. Include a "
+            "matching rounded chaise or ottoman only if space allows. Keep the arrangement "
+            "open and balanced. "
+            "Enhance an existing feature wall with elegant backlit marble panels, slim mirrored "
+            "display shelving and a low floating console, while preserving the wall's shape and "
+            "any existing openings. Use only a few carefully placed decorative objects and "
+            "one understated plant or branch arrangement. Add sophisticated futuristic abstract "
+            "wall art or a subtle luminous art panel on clear wall space, if appropriate. "
+            "Light the room with a warm golden glow from recessed ceiling coves, concealed "
+            "shelf lighting and slim vertical wall lights. Add thin, controlled cyan and violet "
+            "light accents along existing ceiling curves, beneath the sofa or console, and "
+            "around architectural edges. Include a sculptural concentric-ring ceiling light "
+            "only where the existing ceiling and fixtures allow it. "
+            "Doors: keep every door opening in exactly the same place and size, but make the "
+            "doors retractable translucent panels with no doorknobs — a laser-gate privacy "
+            "shimmer that frosts on touch, with the door frame still clearly visible so every "
+            "door still reads as a door. Replace any ceiling fan with a levitating halo climate "
+            "ring, no blades, in the same ceiling position. "
+            "Through the existing windows, show a believable futuristic city skyline at blue "
+            "hour or night, with distant illuminated skyscrapers. Preserve the window frames "
+            "and the view's perspective. The finished image should look like a photorealistic "
+            "high-end real estate photograph: inviting, polished and subtly futuristic. "
+            "Avoid garish neon, dark dystopian interiors, carbon fiber, exposed wires, robots, "
+            "weapons, excessive clutter and changes to the room's structure."
+        ),
     },
 }
 
 GEOMETRY_RULES = (
-    "This must remain the exact same room photographed from the exact same camera position, "
-    "perspective and lens. Keep every wall, window, door, ceiling, floor and built-in exactly "
-    "where it is; do not move, resize, add or remove any architectural feature. Change only "
-    "furniture, lighting and decor. No people, no text, no logos, no personal photographs."
+    "Virtually stage the source photo for a real estate listing. Preserve the exact camera "
+    "position, framing, perspective and lens, and keep all walls, windows, doors, ceilings, "
+    "floors, built-ins, fixtures, finishes and the exterior view as they are. Preserve the "
+    "existing time of day and natural light direction. Choose furnishings suited to the "
+    "room's function and scale them to fit. Keep doorways, windows, cabinets and walkways "
+    "accessible; leave tight spaces open rather than forcing furniture into them. Add "
+    "tasteful, appropriately scaled wall art and a few coordinated decorative accents "
+    "only where suitable clear wall space or surfaces exist. Keep art off windows, "
+    "doors, mirrors and built-ins, and avoid covering important features. Do not add "
+    "art or wall decor in kitchens or bathrooms; follow their room-specific instructions. Match "
+    "perspective, lighting, shadows and reflections for a photorealistic result. "
+    "No people, text, logos or personal photographs."
 )
+
+FANTASY_RULES = (
+    "This is futuristic concept art, not listing-accurate staging. Preserve the original "
+    "camera position, framing, room proportions, structural layout, and the position and "
+    "size of all window and door openings. Futuristic door panels, ceiling fixtures, "
+    "surface treatments and the skyline described above are intentional. Keep openings "
+    "recognizable and walkways clear. No people, text, logos or personal photographs."
+)
+
+ROOM_GUIDANCE = {
+    "living": "Furnish as a living room, with seating and a coffee table or rug where space allows.",
+    "bedroom": "Furnish as a bedroom, with an appropriately sized bed and bedside pieces where space allows.",
+    "dining": "Furnish as a dining room, with an appropriately sized dining table and chairs where space allows.",
+    "office": "Furnish as an office, with an appropriately sized desk and chair where space allows.",
+    "terrace": "Furnish as a terrace with appropriately scaled outdoor seating where space allows.",
+}
 
 MAX_RESTAGE_LEVEL = 2
 
@@ -104,9 +148,15 @@ def _now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
-def prompt_for(style: str) -> str:
+def prompt_for(style: str, room: dict[str, Any] | None = None) -> str:
     preset = STYLE_PRESETS.get(style, STYLE_PRESETS["modern-luxury"])
-    return f"{preset['description']} {GEOMETRY_RULES}"
+    room = room or {}
+    guidance = ROOM_GUIDANCE.get(room.get("type"),
+        "Choose furnishings appropriate to the room's apparent function; if uncertain, "
+        "keep the staging neutral and do not impose a new function.")
+    rules = FANTASY_RULES if style == "2142" else GEOMETRY_RULES
+    wet_note = "" if style == "2142" else _wet_room_note(room)
+    return " ".join(part for part in (preset["description"], guidance, rules, wet_note) if part)
 
 
 def _structure_counts(frame: dict[str, Any] | None) -> str:
@@ -139,6 +189,8 @@ def restage_prompt(style: str, room: dict[str, Any], frame: dict[str, Any] | Non
     keep the wording stable and deterministic."""
     preset = STYLE_PRESETS.get(style, STYLE_PRESETS["modern-luxury"])
     counts = _structure_counts(frame)
+    if style == "2142":
+        return " ".join(part for part in (prompt_for(style, room), STRICT_FRAMING, counts) if part)
     if level >= 2:
         surface = {
             "kitchen": "on the countertop or island",
@@ -152,8 +204,8 @@ def restage_prompt(style: str, room: dict[str, Any], frame: dict[str, Any] | Non
         return " ".join(part for part in
                         (head, GEOMETRY_RULES, STRICT_FRAMING, STRICT_STRUCTURE, counts)
                         if part)
-    head = f"{preset['description']} {GEOMETRY_RULES} {STRICT_FRAMING} {STRICT_STRUCTURE}"
-    return " ".join(part for part in (head, counts, _wet_room_note(room)) if part)
+    head = f"{prompt_for(style, room)} {STRICT_FRAMING} {STRICT_STRUCTURE}"
+    return " ".join(part for part in (head, counts) if part)
 
 
 def _staged_image(listing: dict[str, Any], room: dict[str, Any], prompt: str,
@@ -201,7 +253,6 @@ def stage_rooms(listing: dict[str, Any]) -> dict[str, Any]:
     stage before utility rooms. The order is recorded in listing["token_guard"]."""
     meta = meta_client.get_client()
     style = listing.get("style") or "modern-luxury"
-    prompt = prompt_for(style)
     staged = 0
     first_error: str | None = None
     included = [r for r in listing["rooms"] if not r.get("rejected")]
@@ -212,6 +263,7 @@ def stage_rooms(listing: dict[str, Any]) -> dict[str, Any]:
                              "at": _now()}
 
     for room in order:
+        prompt = prompt_for(style, room)
         record = {"model": getattr(meta, "image_model", None), "prompt": prompt, "style": style, "error": None}
         if main is None or (room is not main and main.get("after") is None):
             record["error"] = NO_MAIN_ROOM if main is None else MAIN_FAILED
