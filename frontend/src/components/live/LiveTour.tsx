@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { clock, media, type LiveMoment, type LivePayload } from "../../api";
-import { RESIDENCES } from "../../residences";
 import { Wordmark } from "../Shell";
 import Backdrop from "./Backdrop";
 import { cutout } from "./cutout";
@@ -9,7 +8,7 @@ import { playCyberpunk } from "./cyberpunk";
 import { useReducedMotion, useViewport } from "./hooks";
 import LiveNav from "./LiveNav";
 import MomentFx, { NO_FX, type Fx } from "./MomentFx";
-import { schematicPlan, stopsForPlan } from "./plan";
+import { schematicPlan } from "./plan";
 import ReserveControl from "./ReserveControl";
 import RoomStage, { type Overlay, type StagePhase } from "./RoomStage";
 import {
@@ -37,9 +36,6 @@ const ARRIVAL_BEAT = 1400;
 const MAIN_BEAT = 2400;
 const WALK_RATE = 1;
 const FIT_TILT = 5;
-
-/** Which plan room lights up for each room type. */
-const PLAN_ROOM: Record<string, string> = { living: "living", kitchen: "kitchen", dining: "dining", bedroom: "primary", terrace: "terrace" };
 
 const CAPTION: Record<LiveMoment["id"], string> = { view: "Look out at the view", sit: "Sit down", coffee: "Make coffee" };
 
@@ -171,16 +167,9 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const latest = useRef({ stage, viewport, styleId });
   latest.current = { stage, viewport, styleId };
 
-  const seeded = RESIDENCES.find((r) => r.id === payload.residence)?.plan ?? null;
-  const planRoom = seeded ? (PLAN_ROOM[room.type] ?? seeded.current) : inRoom ? room.id : (pathStop?.id ?? room.id);
-  // FloorPlan resets its rotation when this object changes, so only rebuild it when the lit room changes.
-  const plan = useMemo(
-    () =>
-      seeded
-        ? { ...seeded, current: planRoom }
-        : schematicPlan(payload.path?.length ? stopsForPlan(payload.path) : rooms.map((r) => ({ id: r.id, name: r.name })), planRoom),
-    [seeded, planRoom, payload.path, rooms],
-  );
+  // SAM currently stores image-space openings, not a room outline or camera pose.
+  // Use the explicitly labelled fallback until geometry can be recovered reliably.
+  const plan = useMemo(() => schematicPlan([{ id: room.id, name: room.name }], room.id), [room.id, room.name]);
   const heading = (plan?.facing ?? 0) + (maxPan.x > 0 ? (pan.x / maxPan.x) * LOOK_DEGREES : 0);
 
   const later = (fn: () => void, ms: number) => {
@@ -662,7 +651,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               moments={moments}
               onMoment={requestMoment}
               plan={plan}
-              planNote={seeded ? null : "Schematic · rooms in walkthrough order, not to scale"}
+              planNote="Map approximate — room geometry not detected"
               heading={heading}
               open={navOpen}
               setOpen={setNavOpen}

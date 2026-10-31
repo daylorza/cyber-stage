@@ -24,7 +24,7 @@ type Props = {
   closeTimer: { current: number };
 };
 
-const item = "flex items-center gap-2.5 font-serif text-[15px] transition hover:text-ivory disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-ivory/75";
+const item = "flex max-w-full min-w-0 items-center gap-2.5 break-words text-left [overflow-wrap:anywhere] font-serif text-[15px] transition hover:text-ivory disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-ivory/75";
 
 /** Hover menu, upper right. The floor plan lives here and nowhere else. */
 export default function LiveNav(p: Props) {
@@ -54,13 +54,13 @@ export default function LiveNav(p: Props) {
         <span aria-hidden className="mr-[21.5px] h-8 w-px bg-gradient-to-b from-ivory/45 to-transparent" />
         <div
           id="live-menu"
-          className="mt-1 max-h-[78dvh] w-[250px] max-w-[calc(100vw-3rem)] space-y-6 overflow-y-auto rounded-2xl bg-night/45 p-5 backdrop-blur-xl ring-1 ring-ivory/10"
+          className="mt-1 max-h-[78dvh] w-[250px] max-w-[calc(100vw-3rem)] space-y-6 overflow-x-hidden overflow-y-auto rounded-2xl bg-night/45 p-5 backdrop-blur-xl ring-1 ring-ivory/10"
         >
           <section aria-label="Rooms" className="space-y-4">
             <p className="eyebrow">Rooms</p>
             {p.plan && (
-              <div className="hidden sm:block">
-                <FloorPlan plan={p.plan} heading={p.heading} label={p.title} />
+              <div className="min-w-0">
+                <FloorPlan compact plan={p.plan} heading={p.heading} label={p.title} />
                 {p.planNote && <p className="eyebrow mt-2 text-[0.55rem]! text-ivory/45!">{p.planNote}</p>}
               </div>
             )}
