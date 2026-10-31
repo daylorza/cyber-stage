@@ -74,23 +74,17 @@ const glassButton =
 export default function LiveTour({ payload }: { payload: LivePayload }) {
   const navigate = useNavigate();
   const { styles } = payload;
-  const singleRoom = payload.listing_id === "lst_190d1a7673a8";
-  const selectedRoom = singleRoom && new URLSearchParams(window.location.search).get("room") === "room_2" ? "room_2" : null;
-  const listingPath = selectedRoom ? "/p/seed_los_angeles" : `/p/${payload.listing_id}`;
-  const video = singleRoom ? null : payload.video;
+  const listingPath = `/p/${payload.listing_id}`;
+  const video = payload.video;
   const viewport = useViewport();
   const reduced = useReducedMotion();
 
   // On the video walk, stop only where furniture can fall: rooms with at least one usable style.
   const rooms = useMemo(() => {
-    if (singleRoom) {
-      const main = payload.rooms.find((r) => r.id === selectedRoom) ?? payload.rooms.find((r) => r.main) ?? payload.rooms[0];
-      return main ? [main] : [];
-    }
     const timed = !!video && payload.rooms.some((r) => r.t != null);
     const usable = payload.rooms.filter((r) => Object.values(r.styles).some((s) => s.available && s.image));
     return timed && usable.length ? usable : payload.rooms;
-  }, [payload.rooms, video, singleRoom, selectedRoom]);
+  }, [payload.rooms, video]);
   const walking = !!video && rooms.some((r) => r.t != null);
   // TODO: Restore sit and coffee when they do more than zoom.
   const moments = useMemo(() => payload.moments.filter((m) => !["sit", "coffee", "view"].includes(m.id) && rooms.some((r) => r.id === m.room_id)), [payload.moments, rooms]);
@@ -184,7 +178,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
     () =>
       seeded
         ? { ...seeded, current: planRoom }
-        : schematicPlan(!singleRoom && payload.path?.length ? stopsForPlan(payload.path) : rooms.map((r) => ({ id: r.id, name: r.name })), planRoom),
+        : schematicPlan(payload.path?.length ? stopsForPlan(payload.path) : rooms.map((r) => ({ id: r.id, name: r.name })), planRoom),
     [seeded, planRoom, payload.path, rooms],
   );
   const heading = (plan?.facing ?? 0) + (maxPan.x > 0 ? (pan.x / maxPan.x) * LOOK_DEGREES : 0);
@@ -822,7 +816,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               className={`ml-auto transition-opacity duration-1000 ${finished ? "opacity-100" : "pointer-events-none opacity-0"}`}
               inert={!finished}
             >
-              {finished && !selectedRoom && <ReserveControl listingId={payload.listing_id} />}
+              {finished && <ReserveControl listingId={payload.listing_id} />}
             </div>
           </div>
         </div>

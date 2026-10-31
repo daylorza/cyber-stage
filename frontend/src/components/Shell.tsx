@@ -6,7 +6,7 @@ const LINKS = [
   { to: "/", label: "Residences", end: true },
   { to: "/inventory", label: "Inventory", end: false },
   { to: "/new", label: "New walkthrough", end: false },
-  { to: "/prototype-testing", label: "Prototype Testing", end: false },
+  ...(import.meta.env.DEV ? [{ to: "/prototype-testing", label: "Prototype Testing", end: false }] : []),
 ];
 
 export function HoverNav() {

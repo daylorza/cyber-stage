@@ -162,8 +162,10 @@ def _decode_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _load_scaled(path: str | Path, max_side: int = MAX_SIDE) -> tuple[Image.Image, int, int]:
-    img = Image.open(path).convert("RGB")
-    w, h = img.size
+    with Image.open(path) as source:
+        w, h = source.size
+        source.draft("RGB", (max_side, max_side))
+        img = source.convert("RGB")
     if max(w, h) > max_side:
         img.thumbnail((max_side, max_side))
     return img, w, h

@@ -136,7 +136,7 @@ export default function PublishedPage() {
       </div>
     );
 
-  const rooms = id === "lst_190d1a7673a8" ? page.rooms.filter((room) => room.id === "room_1") : page.rooms;
+  const rooms = page.rooms;
   const range = page.comps.suggested_range;
   const price =
     page.price_display ?? (range ? `Guide ${money(range.low, range.currency)} – ${money(range.high, range.currency)}` : null);

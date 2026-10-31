@@ -9,7 +9,6 @@ import NewWalkthrough from "./pages/NewWalkthrough";
 import ListingConsole from "./pages/ListingConsole";
 import PublishedPage from "./pages/PublishedPage";
 import LiveInIt from "./pages/LiveInIt";
-import LosAngelesListing from "./pages/LosAngelesListing";
 
 const router = createBrowserRouter([
   { index: true, element: <Home /> },
@@ -21,15 +20,14 @@ const router = createBrowserRouter([
       { path: "listings/:id", element: <ListingConsole /> },
     ],
   },
-  { path: "p/seed_los_angeles", element: <LosAngelesListing /> },
   { path: "p/:id", element: <PublishedPage /> },
   { path: "p/:id/live", element: <LiveInIt /> },
   // Three.js only loads on this page.
-  {
+  ...(import.meta.env.DEV ? [{
     path: "prototype-testing",
     hydrateFallbackElement: <div className="fixed inset-0 bg-night" />,
     lazy: () => import("./pages/PrototypeTesting").then((m) => ({ Component: m.default })),
-  },
+  }] : []),
 ]);
 
 createRoot(document.getElementById("root")!).render(

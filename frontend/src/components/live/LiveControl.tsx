@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ConfirmDialog from "../ConfirmDialog";
 import { Link } from "react-router-dom";
 import { api, type Listing, type LivePayload } from "../../api";
 
@@ -12,6 +13,7 @@ export default function LiveControl({ listing }: { listing: Listing }) {
   const listingId = listing.id;
   const rooms = (listing.published?.rooms ?? listing.rooms).filter((r) => !r.rejected);
   const eligible = rooms.some((r) => r.main || MAIN_TYPES.includes(r.type));
+  const [confirmPrepare, setConfirmPrepare] = useState(false);
   const [payload, setPayload] = useState<LivePayload | null>(null);
   const [styleJob, setStyleJob] = useState<string | null>(null);
   const [styleMessage, setStyleMessage] = useState("");
@@ -103,9 +105,8 @@ export default function LiveControl({ listing }: { listing: Listing }) {
   if (s.status === "ready")
     return (
       <span className="flex items-center gap-1.5">
-        <button type="button" className="btn-glass" onClick={() => {
-          if (window.confirm("Re-run full Live-In-It preparation? The current experience will be unavailable while it runs and could be replaced if preparation fails. Cached results may be reused; new Meta calls may use credits.")) void prepare();
-        }}>
+        {confirmPrepare && <ConfirmDialog message="Re-run full Live-In-It preparation? The current experience will be unavailable while it runs and could be replaced if preparation fails. Cached results may be reused; new Meta calls may use credits." onCancel={() => setConfirmPrepare(false)} onConfirm={() => { setConfirmPrepare(false); void prepare(); }} />}
+        <button type="button" className="btn-glass" onClick={() => setConfirmPrepare(true)}>
           Re-run preparation
         </button>
         <Link to={`/p/${listingId}/live`} className="btn-glass">Enter residence</Link>

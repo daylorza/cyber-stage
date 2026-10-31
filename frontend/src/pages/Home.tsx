@@ -35,6 +35,7 @@ export default function Home() {
   const [dragging, setDragging] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [inside, setInside] = useState(false);
+  const [entryError, setEntryError] = useState("");
   const [concierge, setConcierge] = useState(false);
   const [glitchCycle, setGlitchCycle] = useState(0);
   const drag = useRef({ x: 0, pan: 0 });
@@ -43,7 +44,8 @@ export default function Home() {
   const navigate = useNavigate();
 
   const residence = RESIDENCES[index];
-  const summary = listings[residence.id];
+  const summary = Object.values(listings).find((item) => item.city?.toLowerCase() === residence.city.toLowerCase() && item.status === "published")
+    ?? Object.values(listings).find((item) => item.city?.toLowerCase() === residence.city.toLowerCase() && item.source === "seed");
   const name = summary?.title || residence.city;
   const scale = REST_SCALE;
   const heading = residence.plan.facing + (pan / maxPan(scale)) * LOOK_DEGREES;
@@ -71,6 +73,7 @@ export default function Home() {
   const go = (next: number) => {
     clearTimeout(enterTimer.current);
     setIndex((next + RESIDENCES.length) % RESIDENCES.length);
+    setEntryError("");
     setPan(0);
   };
 
@@ -215,11 +218,11 @@ export default function Home() {
                   Broker console
                 </Link>
               </li>
-              <li>
+              {import.meta.env.DEV && <li>
                 <Link to="/prototype-testing" className="eyebrow text-ivory/70! transition hover:text-ivory!">
                   Prototype Testing
                 </Link>
-              </li>
+              </li>}
             </ul>
           </div>
         </nav>
@@ -232,24 +235,18 @@ export default function Home() {
         <div className={`absolute inset-x-0 bottom-24 flex flex-col items-center gap-3.5 sm:bottom-9 ${hud}`}>
           <button
             type="button"
-            onClick={() => {
-              setInside(true);
-              setRevealed(false);
-              setConcierge(false);
-              {
-                const livePath =
-                  residence.id === "seed_miami"
-                    ? "/p/lst_190d1a7673a8/live"
-                    : residence.id === "seed_los_angeles"
-                      ? "/p/lst_7c9646a84f90/live"
-                      : residence.id === "seed_london"
-                        ? "/p/lst_859a884e29f9/live"
-                        : null;
-                if (livePath) {
-                  clearTimeout(enterTimer.current);
-                  navigate(livePath);
-                }
+            onClick={async () => {
+              if (!summary) {
+                setEntryError("This residence is not available yet.");
+                return;
               }
+              setEntryError("");
+              if (summary.status !== "published") {
+                navigate(`/listings/${summary.id}`);
+                return;
+              }
+              const live = await api.live(summary.id).catch(() => null);
+              navigate(live?.status === "ready" ? `/p/${summary.id}/live` : `/p/${summary.id}`);
             }}
             className="group pointer-events-auto flex items-center gap-4 rounded-full bg-ivory/[0.08] py-2 pl-2 pr-6 text-[15px] tracking-wide text-ivory ring-1 ring-ivory/25 backdrop-blur-xl transition hover:bg-ivory/[0.14] hover:ring-ivory/40"
           >
@@ -259,6 +256,7 @@ export default function Home() {
             Enter residence
             <span aria-hidden className="transition group-hover:translate-x-1">→</span>
           </button>
+          {entryError && <p role="status" className="pointer-events-auto text-sm text-ivory">{entryError}</p>}
         </div>
 
         <div className={`absolute bottom-10 left-6 sm:left-10 ${hud}`}>
