@@ -8,13 +8,11 @@ import { playCyberpunk } from "./cyberpunk";
 import { useReducedMotion, useViewport } from "./hooks";
 import LiveNav from "./LiveNav";
 import MomentFx, { NO_FX, type Fx } from "./MomentFx";
-import { schematicPlan } from "./plan";
 import ReserveControl from "./ReserveControl";
 import RoomStage, { type Overlay, type StagePhase } from "./RoomStage";
 import {
   aim,
   IDENTITY,
-  LOOK_DEGREES,
   maxPanFor,
   preload,
   resolveStyle,
@@ -166,11 +164,6 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   // Latest values for the async moment runner.
   const latest = useRef({ stage, viewport, styleId });
   latest.current = { stage, viewport, styleId };
-
-  // SAM currently stores image-space openings, not a room outline or camera pose.
-  // Use the explicitly labelled fallback until geometry can be recovered reliably.
-  const plan = useMemo(() => schematicPlan([{ id: room.id, name: room.name }], room.id), [room.id, room.name]);
-  const heading = (plan?.facing ?? 0) + (maxPan.x > 0 ? (pan.x / maxPan.x) * LOOK_DEGREES : 0);
 
   const later = (fn: () => void, ms: number) => {
     timers.current.push(window.setTimeout(fn, ms));
@@ -641,7 +634,6 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
           <div className="absolute right-6 top-6 sm:right-10 sm:top-9">
             <LiveNav
               listingPath={listingPath}
-              title={payload.title}
               rooms={rooms}
               roomIndex={inRoom ? roomIndex : -1}
               onRoom={goTo}
@@ -650,9 +642,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               onStyle={choose}
               moments={moments}
               onMoment={requestMoment}
-              plan={plan}
-              planNote="Map approximate — room geometry not detected"
-              heading={heading}
+              mapRoom={room}
               open={navOpen}
               setOpen={setNavOpen}
               closeTimer={closeTimer}

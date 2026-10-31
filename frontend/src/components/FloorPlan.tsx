@@ -4,7 +4,7 @@ import type { Plan } from "../residences";
 const DEG_PER_MS = 0.06;
 
 /** Floor plan with the viewer's position and view cone. Click and hold to rotate it. */
-export default function FloorPlan({ plan, heading, label, compact = false }: { plan: Plan; heading: number; label: string; compact?: boolean }) {
+export default function FloorPlan({ plan, heading, label }: { plan: Plan; heading: number; label: string }) {
   const [rotation, setRotation] = useState(0);
   const frame = useRef(0);
 
@@ -26,13 +26,13 @@ export default function FloorPlan({ plan, heading, label, compact = false }: { p
   const labelled = plan.rooms.filter((r) => r.label);
 
   return (
-    <div className={compact ? "min-w-0" : "flex items-center gap-6"}>
+    <div className="flex items-center gap-6">
       <svg
         viewBox="0 0 200 140"
         role="img"
         aria-label={`${label} floor plan. Click and hold to rotate.`}
         tabIndex={0}
-        className={compact ? "h-auto w-full max-w-44 cursor-grab touch-none overflow-hidden active:cursor-grabbing" : "h-32 w-44 cursor-grab touch-none overflow-visible active:cursor-grabbing"}
+        className="h-32 w-44 cursor-grab touch-none overflow-visible active:cursor-grabbing"
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
           hold();
@@ -73,13 +73,13 @@ export default function FloorPlan({ plan, heading, label, compact = false }: { p
           <circle cx={x} cy={y} r={2.6} fill="#9be6ef" />
         </g>
       </svg>
-      <ul className={compact ? "mt-2 min-w-0 space-y-2" : "space-y-3"}>
+      <ul className="space-y-3">
         {labelled.map((r) => (
           <li
             key={r.id}
-            className={`flex min-w-0 items-center gap-3 break-words [overflow-wrap:anywhere] font-mono text-[10px] uppercase tracking-[0.2em] ${r.id === plan.current ? "text-ice" : "text-ivory/60"}`}
+            className={`flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] ${r.id === plan.current ? "text-ice" : "text-ivory/60"}`}
           >
-            <span className={`h-px w-5 shrink-0 ${r.id === plan.current ? "bg-ice/70" : "bg-ivory/30"}`} />
+            <span className={`h-px w-5 ${r.id === plan.current ? "bg-ice/70" : "bg-ivory/30"}`} />
             {r.label}
           </li>
         ))}

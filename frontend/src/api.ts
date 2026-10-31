@@ -263,6 +263,7 @@ export type LiveStyle = {
   align?: Align;
   mask?: string | null;
 };
+export type SamMap = { source_frame: string; has_wall_masks: boolean; detections: { concept: "window" | "door"; x_center: number; width: number; wall: "left" | "back" | "right" }[] };
 export type LiveRoom = {
   id: string;
   name: string;
@@ -278,6 +279,7 @@ export type LiveRoom = {
   plate_furnished?: boolean;
   plate_align?: Align;
   styles: Record<string, LiveStyle>;
+  sam_map?: SamMap | null;
   window: [number, number, number, number] | null;
   size: [number, number] | null;
 };

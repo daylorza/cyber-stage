@@ -647,11 +647,37 @@ def _walk_path(published: dict[str, Any], prepared: set[str]) -> list[dict[str, 
             for r in rooms]
 
 
+def _sam_map(frame: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Project stored image-space openings into a view schematic, not a floor plan."""
+    if not frame or not frame.get("width") or not frame.get("height"):
+        return None
+    width, height = frame["width"], frame["height"]
+    detections = []
+    for item in ((frame.get("sam") or {}).get("structure") or []):
+        box = item.get("box")
+        if item.get("concept") not in {"window", "door"} or not isinstance(box, (list, tuple)) or len(box) != 4:
+            continue
+        if not all(isinstance(v, (int, float)) for v in box):
+            continue
+        x1, y1, x2, y2 = box
+        if not (0 <= x1 < x2 <= width and 0 <= y1 < y2 <= height):
+            continue
+        x = (x1 + x2) / (2 * width)
+        # Without stored wall masks, assignment is based on image position only.
+        wall = "left" if x < 0.33 else "right" if x > 0.66 else "back"
+        detections.append({"concept": item["concept"], "x_center": x,
+                           "width": (x2 - x1) / width, "wall": wall})
+    return {"source_frame": frame.get("id"), "detections": detections, "has_wall_masks": False} if detections else None
+
+
 def payload(listing: dict[str, Any]) -> dict[str, Any]:
     published = listing.get("published") or {}
     live_block = listing.get("live") or {}
     ready = live_block.get("status") == "ready"
-    rooms = (live_block.get("rooms") or []) if ready else []
+    source_rooms = {r["id"]: r for r in listing.get("rooms") or []}
+    frames = {f["id"]: f for f in listing.get("frames") or []}
+    rooms = [{**r, "sam_map": _sam_map(frames.get(source_rooms.get(r["id"], {}).get("source_frame")))}
+             for r in (live_block.get("rooms") or [])] if ready else []
     video = published.get("video")
     calls_by_purpose: dict[str, int] = {}
     for entry in live_block.get("trace") or []:

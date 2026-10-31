@@ -1,12 +1,10 @@
 import { Link } from "react-router-dom";
 import type { LiveMoment, LiveRoom } from "../../api";
-import type { Plan } from "../../residences";
-import FloorPlan from "../FloorPlan";
+import RoomSchematic from "./RoomSchematic";
 import { styleStatus } from "./stage";
 
 type Props = {
   listingPath: string;
-  title: string;
   rooms: LiveRoom[];
   roomIndex: number;
   onRoom: (i: number) => void;
@@ -15,10 +13,7 @@ type Props = {
   onStyle: (id: string) => void;
   moments: LiveMoment[];
   onMoment: (m: LiveMoment) => void;
-  plan: Plan | null;
-  /** Shown under a schematic (not measured) plan. */
-  planNote?: string | null;
-  heading: number;
+  mapRoom: LiveRoom;
   open: boolean;
   setOpen: (open: boolean) => void;
   closeTimer: { current: number };
@@ -58,10 +53,11 @@ export default function LiveNav(p: Props) {
         >
           <section aria-label="Rooms" className="space-y-4">
             <p className="eyebrow">Rooms</p>
-            {p.plan && (
+            {p.mapRoom && (
               <div className="min-w-0">
-                <FloorPlan compact plan={p.plan} heading={p.heading} label={p.title} />
-                {p.planNote && <p className="eyebrow mt-2 text-[0.55rem]! text-ivory/45!">{p.planNote}</p>}
+                <RoomSchematic room={p.mapRoom} styleId={p.styleId} />
+                <p className="mt-2 text-[11px] leading-snug text-ivory/70">*Floor plan estimation — derived from SAM detections for this room, not a measured floor plan, not to scale.</p>
+                {!p.mapRoom.sam_map && <p className="mt-2 text-[11px] leading-snug text-ivory/70">Map approximate — room geometry not detected</p>}
               </div>
             )}
             <ul className="space-y-2.5">
