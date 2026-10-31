@@ -30,6 +30,39 @@ def test_living_style_rerun_accepts_sofa_when_table_detection_misses(client, mon
     assert job["status"] == "done", job
 
 
+def test_concept_style_may_exceed_drift_cap_on_rerun(client, monkeypatch):
+    import live
+    from tests.conftest import wait_for_job
+    from tests.test_stage2 import publish_listing, request_and_wait
+
+    lid = publish_listing(client)
+    assert request_and_wait(client, lid)["status"] == "done"
+    monkeypatch.setattr(live.checks, "image_drift", lambda align: 0.0825)
+    response = client.post(f"/api/listings/{lid}/live/rooms/room_1/styles/2142/rerun")
+    job = wait_for_job(client, response.json()["job_id"])
+    assert job["status"] == "done", job
+    style = client.get(f"/api/listings/{lid}/live").json()["rooms"][0]["styles"]["2142"]
+    assert style["available"] is True
+    assert style["concept"] is True
+    assert style["drift"]["status"] == "concept-pass"
+    assert style["drift"]["value"] == 0.0825
+    assert "not broker-verified" in style["drift"]["reason"]
+
+
+def test_standard_style_drift_cap_still_blocks_on_rerun(client, monkeypatch):
+    import live
+    from tests.conftest import wait_for_job
+    from tests.test_stage2 import publish_listing, request_and_wait
+
+    lid = publish_listing(client)
+    assert request_and_wait(client, lid)["status"] == "done"
+    monkeypatch.setattr(live.checks, "image_drift", lambda align: 0.0825)
+    response = client.post(f"/api/listings/{lid}/live/rooms/room_1/styles/minimal/rerun")
+    job = wait_for_job(client, response.json()["job_id"])
+    assert job["status"] == "failed", job
+    assert job["error"] == "Framing drift exceeds 5%; existing style retained."
+
+
 def test_concept_style_retains_failed_structure_verification(client, monkeypatch):
     import live
     from tests.conftest import wait_for_job
