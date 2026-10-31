@@ -675,40 +675,6 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
           </div>
 
           <div className="absolute inset-x-0 bottom-24 flex flex-col items-center gap-3.5 sm:bottom-9">
-            {inRoom && (
-              <div
-                role="group"
-                aria-label="Style"
-                className={`pointer-events-auto flex flex-col items-center gap-1.5 transition-opacity duration-700 ${phase === "staged" && !dark ? "opacity-100 [@media(hover:hover)]:opacity-20 [@media(hover:hover)]:hover:opacity-100 focus-within:opacity-100" : "opacity-0"}`}
-              >
-                <div className="flex items-center gap-1 rounded-full bg-night/35 p-1 ring-1 ring-ivory/15 backdrop-blur-xl">
-                  {styles.map((s) => {
-                    const status = styleStatus(room, s.id);
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        disabled={!status.ok || phase !== "staged"}
-                        title={status.ok ? `Restyle as ${s.label}` : status.reason}
-                        aria-pressed={s.id === styleId}
-                        onClick={() => setChosen(s.id)}
-                        className={`rounded-full px-3.5 py-1.5 text-[12px] tracking-wide transition disabled:cursor-not-allowed ${s.id === styleId ? "bg-ivory/90 text-night" : status.ok ? "text-ivory/80 hover:text-ivory" : "text-ivory/30 line-through decoration-ivory/30"}`}
-                      >
-                        {s.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                {styles
-                  .filter((s) => !styleStatus(room, s.id).ok)
-                  .map((s) => (
-                    <p key={s.id} className="max-w-md text-center text-[11px] leading-snug text-ivory/45">
-                      {s.label} unavailable here · {styleStatus(room, s.id).reason.split(" Not compared")[0].split(" Framing")[0]}
-                    </p>
-                  ))}
-              </div>
-            )}
-
             {roomMoments.length > 0 && (
               <div className={`flex flex-wrap items-center justify-center gap-x-7 gap-y-2 transition-opacity duration-700 ${phase === "staged" && !dark ? "opacity-100" : "opacity-0"}`}>
                 {roomMoments.map((m) => (
@@ -728,64 +694,6 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
             {walking && !inRoom && (
               <button type="button" onClick={() => goTo(Math.max(0, rooms.findIndex((r) => r.main)), true)} className="btn-glass pointer-events-auto">
                 Choose furniture
-              </button>
-            )}
-
-            {walking ? (
-              inRoom ? (
-                <button type="button" onClick={continueWalk} className={glassButton}>
-                  <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
-                    <span className="ice-dot" />
-                  </span>
-                  Continue walking
-                  <span aria-hidden className="transition group-hover:translate-x-1">→</span>
-                  <span className="font-mono text-[11px] tracking-widest text-ivory/55">
-                    {roomIndex + 1} / {rooms.length}
-                  </span>
-                </button>
-              ) : ended ? (
-                <div className="flex items-center gap-3">
-                  <button type="button" onClick={() => seekWalk(0)} className={glassButton}>
-                    <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
-                      <span className="ice-dot" />
-                    </span>
-                    Walk again
-                  </button>
-                  <Link to={listingPath} className="btn-glass pointer-events-auto">
-                    View listing
-                  </Link>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => (playing ? videoRef.current?.pause() : play())}
-                  className={glassButton}
-                  aria-label={playing ? "Pause the walk" : "Resume the walk"}
-                >
-                  <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
-                    <span className={playing ? "ice-dot animate-pulse" : "ice-dot"} />
-                  </span>
-                  {playing ? (nextRoom ? `Walking to the ${nextRoom.name.toLowerCase()}` : "Walking") : "Resume walking"}
-                </button>
-              )
-            ) : finishPressed ? (
-              <Link to={listingPath} className={glassButton}>
-                <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
-                  <span className="ice-dot" />
-                </span>
-                View listing
-                <span aria-hidden className="transition group-hover:translate-x-1">→</span>
-              </Link>
-            ) : (
-              <button type="button" onClick={() => (last ? setFinishPressed(true) : goTo(roomIndex + 1))} className={glassButton}>
-                <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
-                  <span className="ice-dot" />
-                </span>
-                {last ? "Finish" : "Next room"}
-                {!last && <span aria-hidden className="transition group-hover:translate-x-1">→</span>}
-                <span className="font-mono text-[11px] tracking-widest text-ivory/55">
-                  {roomIndex + 1} / {rooms.length}
-                </span>
               </button>
             )}
 
@@ -816,11 +724,105 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
             {dragToLookEnabled && <p className="eyebrow text-ivory/55!">Drag to look around</p>}
           </div>
 
-          <div
-            className={`absolute bottom-10 right-6 transition-opacity duration-1000 sm:right-10 ${finished ? "opacity-100" : "pointer-events-none opacity-0"}`}
-            inert={!finished}
-          >
-            {finished && !selectedRoom && <ReserveControl listingId={payload.listing_id} />}
+          <div className="absolute inset-x-0 bottom-10 flex items-center px-6 sm:px-10">
+            <div className="pointer-events-auto">
+              {walking ? (
+                inRoom ? (
+                  <button type="button" onClick={continueWalk} className={glassButton}>
+                    <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+                      <span className="ice-dot" />
+                    </span>
+                    Continue walking
+                    <span aria-hidden className="transition group-hover:translate-x-1">→</span>
+                    <span className="font-mono text-[11px] tracking-widest text-ivory/55">
+                      {roomIndex + 1} / {rooms.length}
+                    </span>
+                  </button>
+                ) : ended ? (
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => seekWalk(0)} className={glassButton}>
+                      <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+                        <span className="ice-dot" />
+                      </span>
+                      Walk again
+                    </button>
+                    <Link to={listingPath} className="btn-glass pointer-events-auto">
+                      View listing
+                    </Link>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => (playing ? videoRef.current?.pause() : play())}
+                    className={glassButton}
+                    aria-label={playing ? "Pause the walk" : "Resume the walk"}
+                  >
+                    <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+                      <span className={playing ? "ice-dot animate-pulse" : "ice-dot"} />
+                    </span>
+                    {playing ? (nextRoom ? `Walking to the ${nextRoom.name.toLowerCase()}` : "Walking") : "Resume walking"}
+                  </button>
+                )
+              ) : finishPressed ? (
+                <Link to={listingPath} className={glassButton}>
+                  <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+                    <span className="ice-dot" />
+                  </span>
+                  View listing
+                  <span aria-hidden className="transition group-hover:translate-x-1">→</span>
+                </Link>
+              ) : (
+                <button type="button" onClick={() => (last ? setFinishPressed(true) : goTo(roomIndex + 1))} className={glassButton}>
+                  <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+                    <span className="ice-dot" />
+                  </span>
+                  {last ? "Finish" : "Next room"}
+                  {!last && <span aria-hidden className="transition group-hover:translate-x-1">→</span>}
+                  <span className="font-mono text-[11px] tracking-widest text-ivory/55">
+                    {roomIndex + 1} / {rooms.length}
+                  </span>
+                </button>
+              )}
+            </div>
+            {inRoom && (
+              <div
+                role="group"
+                aria-label="Style"
+                className={`pointer-events-auto absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5 transition-opacity duration-700 ${phase === "staged" && !dark ? "opacity-100 [@media(hover:hover)]:opacity-20 [@media(hover:hover)]:hover:opacity-100 focus-within:opacity-100" : "opacity-0"}`}
+              >
+                <div className="flex items-center gap-1 rounded-full bg-night/35 p-1 ring-1 ring-ivory/15 backdrop-blur-xl">
+                  {styles.map((s) => {
+                    const status = styleStatus(room, s.id);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        disabled={!status.ok || phase !== "staged"}
+                        title={status.ok ? `Restyle as ${s.label}` : status.reason}
+                        aria-pressed={s.id === styleId}
+                        onClick={() => setChosen(s.id)}
+                        className={`rounded-full px-3.5 py-1.5 text-[12px] tracking-wide transition disabled:cursor-not-allowed ${s.id === styleId ? "bg-ivory/90 text-night" : status.ok ? "text-ivory/80 hover:text-ivory" : "text-ivory/30 line-through decoration-ivory/30"}`}
+                      >
+                        {s.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {styles
+                  .filter((s) => !styleStatus(room, s.id).ok)
+                  .map((s) => (
+                    <p key={s.id} className="max-w-md text-center text-[11px] leading-snug text-ivory/45">
+                      {s.label} unavailable here · {styleStatus(room, s.id).reason.split(" Not compared")[0].split(" Framing")[0]}
+                    </p>
+                  ))}
+              </div>
+            )}
+            <div
+              className={`ml-auto transition-opacity duration-1000 ${finished ? "opacity-100" : "pointer-events-none opacity-0"}`}
+              inert={!finished}
+            >
+              {finished && !selectedRoom && <ReserveControl listingId={payload.listing_id} />}
+            </div>
           </div>
         </div>
 
