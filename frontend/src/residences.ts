@@ -24,7 +24,7 @@ export const RESIDENCES: Residence[] = [
     id: "seed_miami",
     city: "Miami",
     collection: "Private collection",
-    hero: "/residences/miami.png",
+    hero: "/residences/miami.webp",
     plan: {
       outline: "M10 12 H112 Q184 34 190 128 H10 Z",
       rooms: [
@@ -43,7 +43,7 @@ export const RESIDENCES: Residence[] = [
     id: "seed_los_angeles",
     city: "Los Angeles",
     collection: "Private collection",
-    hero: "/residences/los-angeles.png",
+    hero: "/residences/los-angeles.webp",
     plan: {
       outline: "M10 20 H190 V120 H10 Z",
       rooms: [
@@ -62,7 +62,7 @@ export const RESIDENCES: Residence[] = [
     id: "seed_london",
     city: "London",
     collection: "Private collection",
-    hero: "/residences/london.jpg",
+    hero: "/residences/london.webp",
     plan: {
       outline: "M10 14 H190 V126 H10 Z",
       rooms: [
