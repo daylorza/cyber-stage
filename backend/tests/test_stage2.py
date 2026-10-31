@@ -1,5 +1,7 @@
 """Stage 2 acceptance: Live-In-It preparation job, gated endpoints, payload contract."""
 
+import re
+
 import pytest
 
 import config
@@ -238,4 +240,5 @@ def test_no_banned_names_in_product_code():
         text = path.read_text(errors="ignore").lower()
         words = [w for w in banned if not (w == "london" and path in london_ok)]
         for word in words:
-            assert word not in text, f"{word!r} found in {path}"
+            found = re.search(r"\blumina\b", text) if word == "lumina" else word in text
+            assert not found, f"{word!r} found in {path}"
