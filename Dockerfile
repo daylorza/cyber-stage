@@ -1,1 +1,29 @@
-IyBDdWJlciBTdGFnZSDigJQgc2luZ2xlLWNvbnRhaW5lciBkZXBsb3kgZm9yIEZseS5pbwpjIyBGcm9udGVuZCAoVml0ZSkgKyBGYXN0QVBJIGJhY2tlbmQgc2VydmVkIHRvZ2V0aGVyIGZyb20gOjgwMDAuCiM6IEJhY2tlbmQgbW91bnRzIGZyb250ZW5kL2Rpc3Qgd2hlbiBpbmRleC5odG1sIGV4aXN0cyAoYmFja2VuZC9tYWluLnB5KSwKIyBhbmQgZGF0YSAoU1FMaXRlICsgbWVkaWEpIGxpdmVzIGluIFZSRS9EQVRBX0RJUiBzZXQgdG8gL2RhdGEgaW4gZmx5LnRvbWwKIyBzbyBpdCBzdXJ2aXZlcyBkZXBsb3lzIG9uIGEgRmx5IHZvbHVtZS4gRG8gTk9UIGNvbW1pdCBhIHJlYWwKZGVudgoKIyBTdGFnZSAxOiBidWlsZCB0aGUgZnJvbnRlbmQKRlJPTSBub2RlOjIyIEFTIGZyb250ZW5kCldPUktESVIgL2FwcC9mcm9udGVuZApDT1BZIGZyb250ZW5kL3BhY2thZ2UuanNvbiBmcm9udGVuZC9wYWNrYWdlLWxvY2suanNvbiAuLwpSVU4gbnBtIGNpCkNPUFkgZnJvbnRlbmQvIC4vClJVTiBucG0gcnVuIGJ1aWxkCgojIFN0YWdlIDI6IGJhY2tlbmQKRlJPTSBweXRob246My4xMi1zbGltClJVTiBhcHQtZ2V0IHVwZGF0ZSBcCiAgICAmJiBhcHQtZ2V0IGluc3RhbGwgLXkgLS1uby1pbnN0YWxsLXJlY29tbWVuZHMgZmZtcGVnIFwKICAgICYmIHJtIC1yZiAvdmFyL2xpYi9hcHQvbGlzdHMvKwpXT1JLRElSIC9hcHAKQ09QWSBiYWNrZW5kLyAuL2JhY2tlbmQvQ09QWSAtLWZyb209ZnJvbnRlbmQgL2FwcC9mcm9udGVuZC9kaXN0IC4vZnJvbnRlbmQvZGlzdApXT1JLRElSIC9hcHAvaWJhY2tlbmQKIyB1diBpcyB0aGUgcHJvamVjdOKAmXMgcGFja2FnZSBtYW5hZ2VyIChzZWUgTWFrZWZpbGU6IHV2IHN5bmMpClJVTiBwaXAgaW5zdGFsbCAtLW5vLWNhY2hlLWRpciB1diBcCiAgICAmJiB1diBzeW5jCkVOViBWUkVfREFUQV9ESVI9L2RhdGEKRVhQT1NFIDgwMDAKQ01EIFt1diB1c2VkLCB1dmljb3JuLCBtYWluOmNyZWF0ZV9hcHAiLCAtLWZhY3RvcnkiLCAiLS1ob3N0IiwgIjAuMC4wLjAiLCAiLS1wb3J0IiwgIjgwMDAiXQo=
+# Cyber Stage — single-container deploy for Fly.io
+# Frontend (Vite) + FastAPI backend served together from :8000.
+# Backend mounts frontend/dist when index.html exists (backend/main.py),
+# and data (SQLite + media) lives in VRE_DATA_DIR, set to /data in fly.toml
+# so it survives deploys on a Fly volume. Do NOT commit a real .env.
+
+# Stage 1: build the frontend
+FROM node:22 AS frontend
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: backend
+FROM python:3.12-slim
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY backend/ ./backend/
+COPY --from=frontend /app/frontend/dist ./frontend/dist
+WORKDIR /app/backend
+# uv is the project's package manager (see Makefile: uv sync)
+RUN pip install --no-cache-dir uv \
+    && uv sync
+ENV VRE_DATA_DIR=/data
+EXPOSE 8000
+CMD ["uv", "run", "uvicorn", "main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
