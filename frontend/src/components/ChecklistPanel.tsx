@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ConfirmDialog from "./ConfirmDialog";
 import { api, exportLogsUrl, shortTime, type Listing, type MetaStatus } from "../api";
 import { StatusDot, STATUS_TEXT, STATUS_WORD } from "./trust";
 
@@ -30,10 +31,10 @@ export default function ChecklistPanel({
 }) {
   const [busy, setBusy] = useState<"verify" | "reprocess" | null>(null);
   const [error, setError] = useState("");
+  const [confirmReprocess, setConfirmReprocess] = useState(false);
   const canAct = !live && listing.source === "upload" && listing.status !== "published";
 
   async function act(kind: "verify" | "reprocess") {
-    if (kind === "reprocess" && !window.confirm("Reprocess the walkthrough? This replaces the current draft and any edits to it.")) return;
     setBusy(kind);
     setError("");
     try {
@@ -48,6 +49,7 @@ export default function ChecklistPanel({
 
   return (
     <section aria-labelledby="checks-heading" className="glass p-6 sm:p-7">
+      {confirmReprocess && <ConfirmDialog message="Reprocess the walkthrough? This replaces the current draft and any edits to it." onCancel={() => setConfirmReprocess(false)} onConfirm={() => { setConfirmReprocess(false); void act("reprocess"); }} />}
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 id="checks-heading" className="eyebrow">Pipeline checks</h2>
         <span aria-live="polite">
@@ -91,7 +93,7 @@ export default function ChecklistPanel({
               <button type="button" disabled={!!busy} onClick={() => act("verify")} className="text-xs text-ash transition hover:text-ivory disabled:opacity-40">
                 {busy === "verify" ? "Starting checks" : "Re-run checks"}
               </button>
-              <button type="button" disabled={!!busy} onClick={() => act("reprocess")} className="text-xs text-ash transition hover:text-ivory disabled:opacity-40">
+              <button type="button" disabled={!!busy} onClick={() => setConfirmReprocess(true)} className="text-xs text-ash transition hover:text-ivory disabled:opacity-40">
                 {busy === "reprocess" ? "Starting" : "Reprocess walkthrough"}
               </button>
             </>

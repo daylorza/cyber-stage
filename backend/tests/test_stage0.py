@@ -128,10 +128,9 @@ def test_video_over_length_limit_fails_job(client, walkthrough_video, monkeypatc
 
 
 def test_seeded_inventory(client):
-    # Seeded hero listings were removed: the seed file is empty and no seed
-    # listings exist in inventory.
     seeds = [item for item in client.get("/api/listings").json() if item["source"] == "seed"]
-    assert seeds == []
+    assert {item["id"] for item in seeds} == {"seed-miami", "seed-los-angeles", "seed-london"}
+    assert all(client.get(f"/api/listings/{item['id']}").status_code == 200 for item in seeds)
     assert client.get("/api/listings/seed_miami").status_code == 404
     assert client.get("/api/listings/seed_los_angeles").status_code == 404
     assert client.get("/api/listings/seed_new_york").status_code == 404

@@ -25,8 +25,7 @@ const linkClass = "eyebrow mt-8 inline-block text-ivory/70! transition hover:tex
 
 export default function LiveInIt() {
   const { id = "" } = useParams();
-  const laDemo = id === "lst_190d1a7673a8" && new URLSearchParams(window.location.search).get("room") === "room_2";
-  const listingPath = laDemo ? "/p/seed_los_angeles" : `/p/${id}`;
+  const listingPath = `/p/${id}`;
   const [payload, setPayload] = useState<LivePayload | null>(null);
   const [error, setError] = useState("");
   const [loadingScreen, setLoadingScreen] = useState(true);
@@ -106,6 +105,5 @@ export default function LiveInIt() {
       </Quiet>
     );
 
-  const display = laDemo ? { ...payload, title: "Los Angeles", residence: null, note: "Demo imagery — not a real listing." } : payload;
-  return <><LiveTour key={`${payload.listing_id}-${laDemo}`} payload={display} />{fadeLoader && <div className="spatial-scan spatial-scan-fixed" aria-hidden="true"><div className="spatial-scan-grid" /><div className="spatial-scan-line" /></div>}{loadingScreen && loader}</>;
+  return <><LiveTour key={payload.listing_id} payload={payload} />{fadeLoader && <div className="spatial-scan spatial-scan-fixed" aria-hidden="true"><div className="spatial-scan-grid" /><div className="spatial-scan-line" /></div>}{loadingScreen && loader}</>;
 }

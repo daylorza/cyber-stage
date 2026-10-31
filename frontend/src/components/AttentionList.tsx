@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Flag, Listing } from "../api";
 import { flagTarget } from "./trust";
 
@@ -22,11 +23,15 @@ export default function AttentionList({
   onClaim: (claimId: string) => void;
   onRoom: (roomId: string) => void;
 }) {
+  const [hidden, setHidden] = useState(false);
   const flags = uniqueFlags(listing.verification?.flags ?? []);
   if (!flags.length) return null;
 
+  if (hidden) return <button type="button" className="btn-glass" onClick={() => setHidden(false)}>Show warnings</button>;
+
   return (
     <section aria-labelledby="attention-heading" className="glass bg-rose/[0.05]! p-6">
+      <button type="button" className="float-right text-sm text-ivory/75" onClick={() => setHidden(true)}>Hide warnings</button>
       <h2 id="attention-heading" className="eyebrow text-rose!">
         Needs your attention · {flags.length}
         {!blocking && <span className="text-ash!"> · warnings only, won't block Approve or Publish</span>}

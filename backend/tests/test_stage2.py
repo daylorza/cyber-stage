@@ -228,12 +228,11 @@ def test_no_banned_names_in_product_code():
     )
     assert targets, "guard scanned no files"
     banned = ("london", "teleport", "lumina")
-    # "london" is allowed ONLY in the home-menu entries and the home page's
-    # per-city Enter wiring (Day's explicit Oct 31 direction: Miami /
-    # Los Angeles / London are separate spaces); banned elsewhere.
+    # London is also present in the restored seed inventory.
     london_ok = {
         root / "frontend" / "src" / "residences.ts",
         root / "frontend" / "src" / "pages" / "Home.tsx",
+        root / "seed" / "listings.json",
     }
     for path in targets:
         text = path.read_text(errors="ignore").lower()

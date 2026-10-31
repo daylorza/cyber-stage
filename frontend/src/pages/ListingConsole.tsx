@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, clock, factLine, media, money, type Job, type Listing, type MetaStatus } from "../api";
+import ConfirmDialog from "../components/ConfirmDialog";
 import AttentionList from "../components/AttentionList";
 import BeforeAfter from "../components/BeforeAfter";
 import ChecklistPanel, { openItems } from "../components/ChecklistPanel";
@@ -80,6 +81,7 @@ function Review({
   const [rejected, setRejected] = useState<string[]>([]);
   const [selected, setSelected] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState<"restage" | "unpublish" | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -137,12 +139,6 @@ function Review({
 
   const restage = async () => {
     if (!room) return;
-    if (
-      !window.confirm(
-        `Re-stage ${room.name} with a stricter prompt? Only this room changes. This clears approval and makes a new Meta Image call.`,
-      )
-    )
-      return;
     setBusy("restage");
     setError("");
     try {
@@ -170,6 +166,11 @@ function Review({
 
   return (
     <>
+      {confirmation && <ConfirmDialog
+        message={confirmation === "restage" ? `Re-stage ${room?.name} with a stricter prompt? Only this room changes. This clears approval and makes a new Meta Image call.` : "Unpublish for edits? The published page stays live until you publish again."}
+        onCancel={() => setConfirmation(null)}
+        onConfirm={() => { const action = confirmation; setConfirmation(null); if (action === "restage") void restage(); else void run("unpublish", () => api.unpublish(listing.id)); }}
+      />}
       <div>
         <div className="space-y-10">
           <Header
@@ -238,7 +239,7 @@ function Review({
                               className="btn-glass"
                               disabled={!!busy || dirty}
                               title={dirty ? "Save your edits first" : undefined}
-                              onClick={restage}
+                              onClick={() => setConfirmation("restage")}
                             >
                               {busy === "restage" ? "Queueing" : "Re-stage with a stricter prompt"}
                             </button>
@@ -394,11 +395,7 @@ function Review({
               type="button"
               className="btn-glass"
               disabled={!!busy}
-              onClick={() => {
-                if (window.confirm("Unpublish for edits? The published page stays live until you publish again.")) {
-                  void run("unpublish", () => api.unpublish(listing.id));
-                }
-              }}
+              onClick={() => setConfirmation("unpublish")}
             >
               {busy === "unpublish" ? "Unpublishing" : "Unpublish for edits"}
             </button>
@@ -446,6 +443,7 @@ export default function ListingConsole() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [listing, setListing] = useState<Listing | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [meta, setMeta] = useState<MetaStatus | null>(null);
@@ -536,8 +534,9 @@ export default function ListingConsole() {
       )}
       {reviewing && <Review listing={listing} meta={meta} gates={blockingChecks || listing.source !== "upload"} onChange={setListing} reload={() => load().catch((e: Error) => setError(e.message))} />}
       {listing.source === "upload" && (
-        <div className="mt-16"><button type="button" className="btn-glass text-rose!" disabled={deleting || listing.status === "processing"} onClick={async () => {
-          if (!window.confirm("Delete this listing and its job history? A published listing will no longer be available. Uploaded files remain on disk.")) return;
+        <div className="mt-16"><button type="button" className="btn-glass text-rose!" disabled={deleting || listing.status === "processing"} onClick={() => setConfirmDelete(true)}>{deleting ? "Deleting…" : "Delete listing"}</button>
+        {confirmDelete && <ConfirmDialog message="Delete this listing and its job history? A published listing will no longer be available. Uploaded files remain on disk." onCancel={() => setConfirmDelete(false)} onConfirm={async () => {
+          setConfirmDelete(false);
           setDeleting(true);
           try {
             await api.deleteListing(id);
@@ -546,7 +545,7 @@ export default function ListingConsole() {
             setError((e as Error).message);
             setDeleting(false);
           }
-        }}>{deleting ? "Deleting…" : "Delete listing"}</button></div>
+        }} />}</div>
       )}
     </>
   );
