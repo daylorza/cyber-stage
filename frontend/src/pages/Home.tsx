@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api, type ListingSummary } from "../api";
 import { BRAND } from "../brand";
 import FloorPlan from "../components/FloorPlan";
@@ -39,6 +39,7 @@ export default function Home() {
   const drag = useRef({ x: 0, pan: 0 });
   const closeTimer = useRef(0);
   const enterTimer = useRef(0);
+  const navigate = useNavigate();
 
   const residence = RESIDENCES[index];
   const summary = listings[residence.id];
@@ -81,39 +82,6 @@ export default function Home() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
-
-  if (!RESIDENCES.length) {
-    return (
-      <div className="fixed inset-0 overflow-hidden bg-night select-none">
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgb(13_14_16/0.7)_0%,rgb(13_14_16/0.28)_40%,transparent_62%)]" />
-        <div className="legible pointer-events-none absolute inset-0">
-          <div className="absolute left-6 top-6 sm:left-10 sm:top-9">
-            <span className="text-[11px] font-medium uppercase tracking-[0.3em] text-ivory/90 sm:text-[13px] sm:tracking-[0.42em]">
-              {BRAND}
-            </span>
-          </div>
-          <div className="absolute left-6 top-[31%] max-w-xl sm:left-10">
-            <h1 className="text-[clamp(3.75rem,8.5vw,7rem)] leading-[0.92] font-[250] tracking-[-0.025em] text-ivory">Presence.</h1>
-            <p className="mt-6 text-lg font-light text-ivory sm:text-xl">A different way to come home.</p>
-            <div className="pointer-events-auto mt-10 flex flex-wrap gap-4">
-              <Link
-                to="/new"
-                className="flex items-center gap-4 rounded-full bg-ivory/[0.08] py-2 pl-2 pr-6 text-[15px] tracking-wide text-ivory ring-1 ring-ivory/25 backdrop-blur-xl transition hover:bg-ivory/[0.14] hover:ring-ivory/40"
-              >
-                Upload a walkthrough
-              </Link>
-              <Link to="/inventory" className="eyebrow mt-2 text-ivory/70! transition hover:text-ivory!">
-                Broker console
-              </Link>
-              <Link to="/prototype-testing" className="eyebrow mt-2 text-ivory/70! transition hover:text-ivory!">
-                Prototype Testing
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const show = () => {
     clearTimeout(closeTimer.current);
@@ -255,6 +223,11 @@ export default function Home() {
               setInside(true);
               setRevealed(false);
               setConcierge(false);
+              if (residence.id === "seed_miami" || residence.id === "seed_los_angeles") {
+                clearTimeout(enterTimer.current);
+                const path = residence.id === "seed_miami" ? "/p/lst_190d1a7673a8/live" : "/p/lst_190d1a7673a8/live?room=room_2";
+                enterTimer.current = window.setTimeout(() => navigate(path), 900);
+              }
             }}
             className="group pointer-events-auto flex items-center gap-4 rounded-full bg-ivory/[0.08] py-2 pl-2 pr-6 text-[15px] tracking-wide text-ivory ring-1 ring-ivory/25 backdrop-blur-xl transition hover:bg-ivory/[0.14] hover:ring-ivory/40"
           >

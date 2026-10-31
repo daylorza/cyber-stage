@@ -22,7 +22,8 @@ const linkClass = "eyebrow mt-8 inline-block text-ivory/70! transition hover:tex
 
 export default function LiveInIt() {
   const { id = "" } = useParams();
-  const listingPath = `/p/${id}`;
+  const laDemo = id === "lst_190d1a7673a8" && new URLSearchParams(window.location.search).get("room") === "room_2";
+  const listingPath = laDemo ? "/p/seed_los_angeles" : `/p/${id}`;
   const [payload, setPayload] = useState<LivePayload | null>(null);
   const [error, setError] = useState("");
 
@@ -81,5 +82,6 @@ export default function LiveInIt() {
       </Quiet>
     );
 
-  return <LiveTour key={payload.listing_id} payload={payload} />;
+  const display = laDemo ? { ...payload, title: "Los Angeles", residence: null, note: "Demo imagery — not a real listing." } : payload;
+  return <LiveTour key={`${payload.listing_id}-${laDemo}`} payload={display} />;
 }

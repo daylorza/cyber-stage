@@ -75,7 +75,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const { styles } = payload;
   const singleRoom = payload.listing_id === "lst_190d1a7673a8";
   const selectedRoom = singleRoom && new URLSearchParams(window.location.search).get("room") === "room_2" ? "room_2" : null;
-  const listingPath = `/p/${payload.listing_id}`;
+  const listingPath = selectedRoom ? "/p/seed_los_angeles" : `/p/${payload.listing_id}`;
   const video = singleRoom ? null : payload.video;
   const viewport = useViewport();
   const reduced = useReducedMotion();

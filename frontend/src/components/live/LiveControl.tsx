@@ -61,6 +61,7 @@ export default function LiveControl({ listing }: { listing: Listing }) {
   async function prepare() {
     setS({ status: "preparing", error: "", progress: 0, jobId: null });
     try {
+      // Seeded home-page residences are removed: always prepare without a residence link.
       const { job_id } = await api.prepareLive(listingId, null);
       setS({ status: "preparing", error: "", progress: 0, jobId: job_id });
     } catch (e) {
