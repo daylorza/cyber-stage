@@ -183,6 +183,26 @@ def test_failed_live_images_degrade_per_style(client):
             assert entry["image"] is None
 
 
+def test_unpublish_returns_published_to_draft_for_title_edits(client):
+    lid = publish_listing(client)
+    res = client.post(f"/api/listings/{lid}/unpublish")
+    assert res.status_code == 200, res.text
+    assert res.json()["status"] == "draft"
+    assert client.post(f"/api/listings/{lid}/unpublish").status_code == 409
+    assert client.post("/api/listings/lst_nope/unpublish").status_code == 404
+
+    # The title-update round trip: edit, approve, publish again.
+    edit = {"title": "Renamed Test Residence", "description": "A short test description.",
+            "highlights": ["Test highlight"]}
+    res = client.post(f"/api/listings/{lid}/review", json={"action": "save", "copy_edit": edit})
+    assert res.status_code == 200, res.text
+    assert res.json()["copy"]["title"] == "Renamed Test Residence"
+    assert client.post(f"/api/listings/{lid}/review", json={"action": "approve"}).status_code == 200
+    res = client.post(f"/api/listings/{lid}/publish")
+    assert res.status_code == 200, res.text
+    assert res.json()["published"]["title"] == "Renamed Test Residence"
+
+
 def test_reserve_reports_no_payment(client):
     lid = publish_listing(client)
     res = client.post(f"/api/listings/{lid}/reserve")
