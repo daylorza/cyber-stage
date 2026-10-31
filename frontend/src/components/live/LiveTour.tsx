@@ -721,7 +721,6 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                 })}
               </div>
             )}
-            {dragToLookEnabled && <p className="eyebrow text-ivory/55!">Drag to look around</p>}
           </div>
 
           <div className="absolute inset-x-0 bottom-10 flex items-center px-6 sm:px-10">
