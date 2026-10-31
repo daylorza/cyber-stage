@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, type Reservation } from "../../api";
 import { playDing, primeAudio } from "./ding";
 
@@ -8,11 +8,20 @@ export default function ReserveControl({ listingId }: { listingId: string }) {
   const [error, setError] = useState("");
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [width, setWidth] = useState<number | null>(null);
+  const [faded, setFaded] = useState(false);
+  const [hover, setHover] = useState(false);
   const pill = useRef<HTMLButtonElement>(null);
 
   useLayoutEffect(() => {
     if (pill.current && width == null) setWidth(pill.current.offsetWidth);
   }, [width]);
+
+  useEffect(() => {
+    if (state !== "done") return;
+    setFaded(false);
+    const timer = window.setTimeout(() => setFaded(true), 5000);
+    return () => window.clearTimeout(timer);
+  }, [state]);
 
   async function reserve() {
     if (state !== "idle") return;
@@ -32,9 +41,15 @@ export default function ReserveControl({ listingId }: { listingId: string }) {
 
   const done = state === "done";
 
+  const showCard = done && reservation && (!faded || hover);
+
   return (
-    <div className="relative flex flex-col items-end gap-3">
-      {done && reservation && (
+    <div
+      className="relative flex flex-col items-end gap-3"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      {showCard && (
         <div role="status" className="glass animate-fade-in absolute bottom-full right-0 mb-3 w-72 p-5" style={{ animationDelay: "1000ms" }}>
           <p className="font-serif text-lg text-ivory">Hold requested</p>
           <p className="mt-2 text-sm leading-relaxed text-ivory/75">
@@ -49,11 +64,11 @@ export default function ReserveControl({ listingId }: { listingId: string }) {
         disabled={state !== "idle"}
         onClick={reserve}
         aria-label={done ? "Hold requested" : "Reserve this showing"}
-        className="pointer-events-auto flex h-14 items-center gap-4 overflow-hidden whitespace-nowrap rounded-full bg-ivory/[0.07] pl-2 pr-6 text-left text-ivory ring-1 ring-champagne/45 backdrop-blur-xl transition-colors hover:bg-ivory/[0.12] hover:ring-champagne/70 disabled:cursor-default"
+        className={`pointer-events-auto flex h-14 items-center gap-4 overflow-hidden whitespace-nowrap rounded-full bg-ivory/[0.07] pl-2 pr-6 text-left text-ivory ring-1 ring-champagne/45 backdrop-blur-xl transition hover:bg-ivory/[0.12] hover:ring-champagne/70 disabled:cursor-default ${done && faded && !hover ? "opacity-0" : "opacity-100"}`}
         style={{
           width: done ? 56 : (width ?? undefined),
           paddingRight: done ? 0 : undefined,
-          transition: "width 700ms cubic-bezier(0.6, 0, 0.2, 1), padding 700ms, background-color 300ms, box-shadow 300ms",
+          transition: "width 700ms cubic-bezier(0.6, 0, 0.2, 1), padding 700ms, background-color 300ms, box-shadow 300ms, opacity 700ms",
         }}
       >
         <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${done ? "" : "ring-1 ring-champagne/40"}`}>
