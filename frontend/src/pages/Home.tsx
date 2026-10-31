@@ -190,14 +190,14 @@ export default function Home() {
                     type="button"
                     aria-current={i === index ? "true" : undefined}
                     onClick={() => go(i)}
-                    className={`flex items-center gap-2 font-serif text-xs transition hover:text-ivory ${i === index ? "text-ivory" : "text-ivory/75"}`}
+                    className={`eyebrow flex items-center gap-2 transition hover:text-ivory! ${i === index ? "text-ivory!" : "text-ivory/70!"}`}
                   >
                     {i === index && <span className="ice-dot" />}
                     {r.city}
                   </button>
                 </li>
               ))}
-              <li className="pt-3">
+              <li>
                 <Link to="/inventory" className="eyebrow text-ivory/70! transition hover:text-ivory!">
                   Broker console
                 </Link>
