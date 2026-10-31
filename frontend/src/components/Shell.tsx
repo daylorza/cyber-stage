@@ -28,21 +28,21 @@ export function HoverNav() {
         aria-expanded={open}
         aria-controls="main-menu"
         onClick={() => setOpen((o) => !o)}
-        className="grid h-10 w-10 place-items-center rounded-full bg-ivory/[0.03] ring-1 ring-ivory/15 backdrop-blur transition hover:ring-ice/50"
+        className="grid h-11 w-11 place-items-center rounded-full bg-night/20 ring-1 ring-ivory/25 backdrop-blur-md transition hover:ring-ice/60"
       >
         <span className="ice-dot" />
       </button>
       <div
-        className={`flex flex-col items-end transition duration-300 ${open ? "visible translate-y-0 opacity-100" : "invisible -translate-y-1 opacity-0"}`}
+        className={`flex flex-col items-end transition duration-500 ${open ? "visible translate-y-0 opacity-100" : "invisible -translate-y-1 opacity-0"}`}
       >
-        <span aria-hidden className="mr-[19.5px] h-7 w-px bg-gradient-to-b from-ivory/30 to-transparent" />
-        <ul id="main-menu" className="mt-1 flex flex-col items-end gap-2.5 text-[13px]">
+        <span aria-hidden className="mr-[21.5px] h-8 w-px bg-gradient-to-b from-ivory/45 to-transparent" />
+        <ul id="main-menu" className="mt-1 flex flex-col items-end gap-3 rounded-2xl bg-night/30 py-3 pl-5 pr-3 backdrop-blur-md">
           {LINKS.map((l) => (
             <li key={l.to}>
               <NavLink
                 to={l.to}
                 end={l.end}
-                className={({ isActive }) => `tracking-wide transition hover:text-ivory ${isActive ? "text-ivory" : "text-ash"}`}
+                className={({ isActive }) => `font-serif text-[15px] transition hover:text-ivory ${isActive ? "text-ivory" : "text-ivory/75"}`}
               >
                 {l.label}
               </NavLink>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, clock, factLine, media, money, type Job, type Listing, type MetaStatus } from "../api";
 import AttentionList from "../components/AttentionList";
 import BeforeAfter from "../components/BeforeAfter";
@@ -429,6 +429,8 @@ function Review({
 
 export default function ListingConsole() {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
+  const [deleting, setDeleting] = useState(false);
   const [listing, setListing] = useState<Listing | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [meta, setMeta] = useState<MetaStatus | null>(null);
@@ -501,6 +503,21 @@ export default function ListingConsole() {
 
   return (
     <>
+      {listing.source === "upload" && (
+        <button type="button" className="btn-glass mb-8 text-rose!" disabled={deleting || listing.status === "processing"} onClick={async () => {
+          if (!window.confirm("Delete this listing and its job history? A published listing will no longer be available. Uploaded files remain on disk.")) return;
+          setDeleting(true);
+          try {
+            await api.deleteListing(id);
+            navigate("/inventory");
+          } catch (e) {
+            setError((e as Error).message);
+            setDeleting(false);
+          }
+        }}>
+          {deleting ? "Deleting…" : "Delete listing"}
+        </button>
+      )}
       {listing.status !== "processing" && !reviewing && <Header listing={listing} />}
       {error && (
         <p role="alert" className="mt-6 text-sm text-rose">

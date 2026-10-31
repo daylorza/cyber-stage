@@ -5,7 +5,7 @@ import FloorPlan from "../FloorPlan";
 import { styleStatus } from "./stage";
 
 type Props = {
-  listingId: string;
+  listingPath: string;
   title: string;
   rooms: LiveRoom[];
   roomIndex: number;
@@ -122,7 +122,7 @@ export default function LiveNav(p: Props) {
           )}
 
           <div className="flex justify-end pt-1">
-            <Link to={`/p/${p.listingId}`} className="eyebrow text-ivory/70! transition hover:text-ivory!">
+            <Link to={p.listingPath} className="eyebrow text-ivory/70! transition hover:text-ivory!">
               Leave
             </Link>
           </div>

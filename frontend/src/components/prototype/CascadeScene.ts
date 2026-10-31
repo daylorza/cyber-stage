@@ -34,6 +34,9 @@ uniform float opacity;
 uniform vec3 gain;
 uniform vec3 offset;
 uniform float fix;
+uniform vec4 foot[4];
+uniform float reveal[4];
+uniform vec3 plain;
 varying vec4 vRest;
 varying float vWorldY;
 void main() {
@@ -42,6 +45,23 @@ void main() {
   vec2 uv = (img - rect.xy) / (rect.zw - rect.xy);
   if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) discard;
   vec4 c = texture2D(map, uv);
+  // PT-01/03/04: where a piece will stand, the rug shows plain weave (its own
+  // detail flattened to one tone) until that piece lands. No pre-baked shadow,
+  // no filled patch, no base line can show through.
+  for (int i = 0; i < 4; i++) {
+    vec4 f = foot[i]; // (x, y) of the base line's left end, (z, w) of its right end
+    if (f.z > f.x) {
+      float t = clamp((img.x - f.x) / (f.z - f.x), 0.0, 1.0);
+      float baseY = mix(f.y, f.w, t);
+      float mx = smoothstep(f.x - 0.03, f.x - 0.005, img.x) * smoothstep(f.z + 0.03, f.z + 0.005, img.x);
+      float mask = mx * smoothstep(0.055, 0.02, abs(img.y - baseY));
+      // Plain weave: real rug weave sampled from the rug's clean front area
+      // (toward the camera, where nothing stands), so the footprint shows
+      // weave only — no shadow, no filled patch, no base line.
+      vec3 src = texture2D(map, clamp(uv + vec2(0.0, 0.35), 0.0, 1.0)).rgb;
+      c.rgb = mix(c.rgb, src, mask * (1.0 - reveal[i]));
+    }
+  }
   c.rgb = mix(c.rgb, clamp(c.rgb * gain + offset, 0.0, 1.0), fix);
   float a = c.a * opacity * (1.0 - smoothstep(ceiling - feather, ceiling, vWorldY));
   if (a < 0.002) discard;
@@ -126,12 +146,14 @@ export class CascadeScene {
   private dirty = true;
   private liftFrom: number[] = [];
   private settle: ((done: boolean) => void) | null = null;
+  /** Piece id -> rug footprint slot it reveals on landing. */
+  private footSlot = new Map<string, number>();
   /** Per-channel map from the extracted hero frame's colours to how this browser shows the clip. */
   private gain = new THREE.Vector3(1, 1, 1);
   private offset = new THREE.Vector3(0, 0, 0);
   colourFit: { gain: number[]; offset: number[]; pixels: number } | null = null;
 
-  constructor(canvas: HTMLCanvasElement, private cal: Calibration, aspect: number) {
+  constructor(canvas: HTMLCanvasElement, private cal: Calibration, aspect: number, private assetRoot: string = ASSET_ROOT) {
     // preserveDrawingBuffer: the landed room is drawn once and must stay on screen as drawn.
     this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, premultipliedAlpha: true, preserveDrawingBuffer: true });
     this.renderer.setClearColor(0x000000, 0);
@@ -159,10 +181,10 @@ export class CascadeScene {
 
   /** Build the pieces for a style (textures loaded); nothing is shown until cascade(). */
   async setStyle(style: Style) {
-    const pieces = style.pieces ?? [];
+    const pieces = (style.pieces ?? []).filter((piece) => piece.kind !== "rug");
     const loader = new THREE.TextureLoader();
     const load = async (name: string) => {
-      const tex = await loader.loadAsync(ASSET_ROOT + name);
+      const tex = await loader.loadAsync(this.assetRoot + name);
       tex.flipY = false;
       tex.colorSpace = THREE.NoColorSpace;
       tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
@@ -174,6 +196,24 @@ export class CascadeScene {
     );
     this.clearItems();
     const order = style.draw_order ?? pieces.map((p) => p.id);
+    // Each upright's footprint on the rug: its floor-contact (base) line, end to
+    // end, where its shadow, patch and base line all sit, in hero-frame
+    // coordinates, plus the slot each item reveals when it lands.
+    const footprints = pieces
+      .filter((p) => p.kind !== "rug")
+      .slice(0, 4)
+      .map((p) => {
+        const base = p.base?.length ? p.base : [[p.box[0], p.box[3]], [p.box[2], p.box[3]]] as [number, number][];
+        const left = base.reduce((a, b) => (b[0] < a[0] ? b : a));
+        const right = base.reduce((a, b) => (b[0] > a[0] ? b : a));
+        return new THREE.Vector4(left[0], left[1], right[0], right[1]);
+      });
+    this.footSlot.clear();
+    let slot = 0;
+    pieces.forEach((p) => {
+      if (p.kind !== "rug" && slot < 4) this.footSlot.set(p.id, slot++);
+    });
+    const rugPalette = pieces.find((p) => p.kind === "rug")?.palette ?? "#c8af86";
     let at = TIMING.firstUpright;
     pieces.forEach((piece, n) => {
       const [tex, shadowTex] = loaded[n];
@@ -181,7 +221,7 @@ export class CascadeScene {
       const rug = piece.kind === "rug";
       const start = rug ? 0 : at;
       if (!rug) at += TIMING.stagger;
-      this.items.push(rug ? this.buildRug(piece, tex) : this.buildUpright(piece, tex, shadowTex, n, start, order));
+      this.items.push(rug ? this.buildRug(piece, tex, footprints, rugPalette) : this.buildUpright(piece, tex, shadowTex, n, start, order));
     });
     this.total = Math.max(0, ...this.items.map((i) => i.start + i.dur));
     this.mode = "empty";
@@ -358,6 +398,9 @@ export class CascadeScene {
         gain: { value: this.gain },
         offset: { value: this.offset },
         fix: { value: colour ? 1 : 0 },
+        foot: { value: [new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4()] },
+        reveal: { value: [1, 1, 1, 1] },
+        plain: { value: new THREE.Vector3(1, 1, 1) },
       },
       vertexShader: VERT,
       fragmentShader: FRAG,
@@ -386,12 +429,19 @@ export class CascadeScene {
     return mesh;
   }
 
-  private buildRug(piece: Piece, tex: THREE.Texture): Item {
+  private buildRug(piece: Piece, tex: THREE.Texture, footprints: THREE.Vector4[], palette: string): Item {
     const [x1, , x2, y2] = piece.rect;
     const center = this.onFloor((x1 + x2) / 2, Math.max(0.52, (piece.rect[1] + y2) / 2)) ?? new THREE.Vector3();
     center.y = 0;
     const { geometry, rest } = this.floorGrid(piece.rect, 64, 40, center);
-    const mesh = new THREE.Mesh(geometry, this.material(tex, piece.rect));
+    const mat = this.material(tex, piece.rect);
+    footprints.forEach((f, i) => ((mat.uniforms.foot.value as THREE.Vector4[])[i].copy(f)));
+    mat.uniforms.reveal.value = footprints.map(() => 0).concat([1, 1, 1, 1]).slice(0, 4);
+    // Raw staged sRGB values, like the textures: no colour-space conversion,
+    // so the plain weave sits at the rug's own tone before the colour fit.
+    const hex = parseInt(palette.slice(1), 16);
+    mat.uniforms.plain.value = new THREE.Vector3(((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255);
+    const mesh = new THREE.Mesh(geometry, mat);
     mesh.renderOrder = 0;
     mesh.position.copy(center);
     mesh.visible = false;
@@ -529,6 +579,18 @@ export class CascadeScene {
   }
 
   private pose() {
+    // A footprint stays plain weave until its piece settles, then the staged
+    // rug under it is revealed beneath the piece and its own shadow.
+    for (const it of this.items) {
+      if (!it.rug) continue;
+      const reveal = (it.mesh.material as THREE.ShaderMaterial).uniforms.reveal.value as number[];
+      this.items.forEach((other, k) => {
+        const s = this.footSlot.get(other.piece.id);
+        if (s === undefined) return;
+        const p = clamp01(this.progress(other, k));
+        reveal[s] = clamp01((p - TIMING.contact) / (1 - TIMING.contact));
+      });
+    }
     this.items.forEach((it, k) => {
       const p = this.progress(it, k);
       const visible = p > 0;
@@ -568,8 +630,8 @@ export class CascadeScene {
     // contact, then the staged contact shadow takes over and the approach shadow leaves.
     const near = 1 - clamp01(y / y0);
     const after = p < contact ? 0 : (p - contact) / (1 - contact);
-    if (it.shadow) (it.shadow.material as THREE.ShaderMaterial).uniforms.opacity.value = (1 - clamp01(y / 1.1)) ** 2;
-    this.placeBlob(it, near ** 2 * 0.42 * (1 - after), 1 + 1.6 * (1 - near), Math.atan2(-it.axis.z, it.axis.x));
+    if (it.shadow) (it.shadow.material as THREE.ShaderMaterial).uniforms.opacity.value = 0.2 * (1 - clamp01(y / 1.1)) ** 2;
+    this.placeBlob(it, near ** 2 * 0.1 * (1 - after), 1 + 1.6 * (1 - near), Math.atan2(-it.axis.z, it.axis.x));
   }
 
   private poseRug(it: Item, p: number) {
@@ -619,7 +681,7 @@ export class CascadeScene {
     pos.needsUpdate = true;
     it.mesh.position.set(cx, 0, cz);
     const height = edge + billow * 0.5;
-    this.placeBlob(it, 0.28 * (1 - clamp01(height / 1.6)) ** 2 * (p < touch ? 1 : 1 - (p - touch) / (1 - touch)), 1, 0);
+    this.placeBlob(it, 0.12 * (1 - clamp01(height / 1.6)) ** 2 * (p < touch ? 1 : 1 - (p - touch) / (1 - touch)), 1, 0);
   }
 
   private placeBlob(it: Item, opacity: number, scale: number, yaw: number) {
@@ -637,8 +699,8 @@ function blobTexture() {
   c.width = c.height = 128;
   const ctx = c.getContext("2d")!;
   const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  g.addColorStop(0, "rgba(0,0,0,1)");
-  g.addColorStop(0.45, "rgba(0,0,0,0.5)");
+  g.addColorStop(0, "rgba(0,0,0,0.7)");
+  g.addColorStop(0.45, "rgba(0,0,0,0.3)");
   g.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 128, 128);

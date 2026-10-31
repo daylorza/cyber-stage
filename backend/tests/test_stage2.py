@@ -85,7 +85,7 @@ def test_live_happy_path(client):
     assert body["price_display"] == "$4,250,000"
     assert body["approved_at"] and body["published_at"]
     assert "placeholder" in body["note"].lower()
-    assert [s["id"] for s in body["styles"]] == ["modern-luxury", "coastal", "minimal"]
+    assert [s["id"] for s in body["styles"]] == ["modern-luxury", "coastal", "minimal", "2142"]
     assert body["default_style"] == "modern-luxury"
     assert body["calls"] > 0 and sum(body["calls_by_purpose"].values()) <= body["calls"]
     assert all(p.startswith("live.") for p in body["calls_by_purpose"])
@@ -97,7 +97,7 @@ def test_live_happy_path(client):
         assert room["before"] == published_room["before"]
         assert room["plate"] == room["before"] and room["plate_source"] == "before"
         assert room["plate_check"] is None and room["plate_furnished"] is False
-        assert set(room["styles"]) == {"modern-luxury", "coastal", "minimal"}
+        assert set(room["styles"]) == {"modern-luxury", "coastal", "minimal", "2142"}
         assert isinstance(room["size"], list) and len(room["size"]) == 2
         for style_id, entry in room["styles"].items():
             if style_id == "modern-luxury":
@@ -189,7 +189,7 @@ def test_failed_live_images_degrade_per_style(client):
     assert body["status"] == "ready"
     for room in body["rooms"]:
         assert room["styles"]["modern-luxury"]["available"] is True
-        for style_id in ("coastal", "minimal"):
+        for style_id in ("coastal", "minimal", "2142"):
             entry = room["styles"][style_id]
             assert entry["available"] is False and entry["error"]
             assert entry["image"] is None

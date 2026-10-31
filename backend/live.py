@@ -88,10 +88,11 @@ def _size(path: Path) -> tuple[int, int]:
         return img.size
 
 
-def _geometry_check(src: Path, dst: Path, align: dict[str, float] | None = None) -> dict[str, Any]:
+def _geometry_check(src: Path, dst: Path, align: dict[str, float] | None = None, min_corr: float | None = None) -> dict[str, Any]:
     """Code check: same aspect ratio and same edge structure as the source frame, with the
-    verifier's framing correction (<= 5% stretch/shift, stated, threshold unchanged)."""
-    return checks.geometry(src, dst, align)
+    verifier's framing correction (<= 5% stretch/shift, stated). Default threshold 0.25;
+    concept styles pass an explicit loosened threshold, recorded in the reason."""
+    return checks.geometry(src, dst, align, min_corr=min_corr if min_corr is not None else checks.GEOMETRY_MIN_CORR)
 
 
 def _save_checked(data: bytes, pre_path: Path, dest_path: Path, meta, trace: list,
@@ -701,3 +702,104 @@ def for_residence(residence_id: str) -> dict[str, Any] | None:
     ready = [item for item in candidates if item["live"].get("status") == "ready"]
     pick = (ready or candidates)[0]
     return {"listing_id": pick["id"], "status": pick["live"].get("status")}
+
+
+def rerun_style(job: dict[str, Any]) -> None:
+    """Regenerate one style; retain its existing image unless all checks succeed."""
+    _, room_id, style_id = job["kind"].split(":", 2)
+    listing = db.get_listing(job["listing_id"])
+    if not listing or listing.get("status") != "published":
+        raise ValueError("Listing is no longer published.")
+    room = next((r for r in listing.get("live", {}).get("rooms", []) if r.get("id") == room_id), None)
+    source_room = next((r for r in listing.get("published", {}).get("rooms", []) if r.get("id") == room_id), None)
+    if not room or not source_room or not room.get("before"):
+        raise ValueError("Source room is unavailable.")
+    frame = next((f for f in listing.get("frames", []) if f.get("id") == source_room.get("source_frame")), None)
+    before = config.settings.media_dir / room["before"]
+    raw_dir = config.settings.staged_raw_dir / "live" / listing["id"]
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    candidate = raw_dir / f"{job['id']}_checked.jpg"
+    trace: list = []
+    meta = meta_client.get_client()
+    meta.reset_budget()
+    required = {"living": ("sofa", "table"), "bedroom": ("bed",), "dining": ("table", "chair")}.get(room.get("type"))
+    if not required:
+        raise ValueError("Targeted furniture rerun is available for living rooms, bedrooms and dining rooms.")
+    prompt = (stage.prompt_for(style_id) + stage.STRICT_FRAMING + stage.STRICT_STRUCTURE
+              + f" Furnish this {room.get('type')} room with clearly visible " + " and ".join(required) + ". "
+              + f"Render variation {job['id']}.")
+    # Recheck a face-checked candidate rejected solely for missing source boxes,
+    # so adding the source scan does not spend another image-generation call.
+    previous = next((j for j in reversed(db.list_jobs(listing["id"]))
+                     if j["id"] != job["id"] and j["kind"] == job["kind"]), None)
+    reusable = previous and previous["status"] == "failed" and (
+        ((previous.get("error") or "").startswith("Verification did not pass: Geometry preserved")
+         and "No windows or doors detected in the source frame" in (previous.get("error") or ""))
+        or (room.get("type") == "living" and previous.get("error") == "Furniture not detected: table; existing style retained.")
+    )
+    previous_candidate = raw_dir / f"{previous['id']}_checked.jpg" if reusable else None
+    if previous_candidate and previous_candidate.is_file():
+        candidate.write_bytes(previous_candidate.read_bytes())
+    else:
+        data = meta.image_stage(before, prompt, trace=trace, purpose="live.image.stage",
+                                target={"room": room_id, "style": style_id, "job": job["id"]})
+        _save_checked(data, raw_dir / f"{job['id']}_raw.jpg", candidate, meta, trace, {"room": room_id, "style": style_id})
+    align = cascade.align(before, candidate)
+    is_concept = style_id in checks.CONCEPT_STYLES
+    geometry = _geometry_check(before, candidate, align)
+    concept_geometry = (_geometry_check(before, candidate, align, min_corr=checks.GEOMETRY_MIN_CORR_CONCEPT)
+                        if is_concept else geometry)
+    # Older frames can lack saved SAM boxes. Detect source structure now instead of
+    # treating missing evidence as a failed comparison or silently passing it.
+    if not (((frame or {}).get("sam") or {}).get("structure")):
+        source_boxes = []
+        for concept in STRUCTURE_CONCEPTS:
+            for box in meta.sam_segment(before, concept, trace=trace, purpose="live.sam.source_structure",
+                                        target={"room": room_id, "style": style_id, "concept": concept}):
+                source_boxes.append({**box, "concept": concept})
+        width, height = _size(before)
+        frame = {**(frame or {}), "width": width, "height": height,
+                 "sam": {**((frame or {}).get("sam") or {}), "structure": source_boxes}}
+    if not (frame.get("sam") or {}).get("structure"):
+        # Floor-to-ceiling glazing is often missed by SAM's generic "window" query.
+        src_glass = meta.sam_segment(before, "glass wall", trace=trace, purpose="live.sam.source_structure",
+                                     target={"room": room_id, "style": style_id, "concept": "glass wall"})
+        dst_glass = meta.sam_segment(candidate, "glass wall", trace=trace, purpose="live.sam.structure",
+                                     target={"room": room_id, "style": style_id, "concept": "glass wall"})
+        if src_glass and dst_glass:
+            src_boxes = [_norm(box["box"], _size(before)) for box in src_glass]
+            dst_boxes = [_norm(box["box"], _size(candidate)) for box in dst_glass]
+            result = checks.compare_structure({"window": src_boxes}, {"window": dst_boxes}, image_align=align)
+            if result["problems"] or result["compared"] == 0:
+                structure = {"status": "fail", "reason": "Glass wall comparison failed or was inconclusive." + result["note"]}
+            else:
+                structure = {"status": "pass", "reason": "Glass wall compared at IoU 0.3." + result["note"]}
+        else:
+            structure = {"status": "not_checked", "reason": "Glass wall not detected in both images; structure not compared."}
+    else:
+        structure, _ = _structure_check(source_room, frame, candidate, meta, trace, style_id, before, align)
+    if checks.image_drift(align) > checks.FRAMING_MAX_DRIFT:
+        raise ValueError("Framing drift exceeds 5%; existing style retained.")
+    if concept_geometry["status"] != "pass" or (not is_concept and structure["status"] != "pass"):
+        raise ValueError(f"Verification did not pass: {geometry['reason']} {structure['reason']}")
+    pieces = _pieces(candidate, meta, trace, room_id, style_id)
+    primary = {"living": ("sofa",), "bedroom": ("bed",), "dining": ("table",)}[room["type"]]
+    missing = [concept for concept in primary if not any(p["concept"] == concept for p in pieces)]
+    if missing:
+        raise ValueError(f"Furniture not detected: {', '.join(missing)}; existing style retained.")
+    rel = f"live/{listing['id']}/{room_id}_{style_id}_{job['id']}.jpg"
+    dest = config.settings.media_dir / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(candidate.read_bytes())
+    current = db.get_listing(listing["id"])
+    target = next((r for r in (current or {}).get("live", {}).get("rooms", []) if r.get("id") == room_id), None)
+    if not target or current.get("status") != "published":
+        dest.unlink(missing_ok=True)
+        raise ValueError("Listing changed during preparation; result not attached.")
+    target["styles"][style_id] = {**target["styles"].get(style_id, {}), "label": stage.STYLE_PRESETS[style_id]["label"], "image": rel, "source": "live", "available": True, "concept": is_concept,
+                                  "error": None, "geometry": geometry, "concept_geometry": concept_geometry if is_concept else None, "structure": structure, "pieces": pieces,
+                                  "align": align, "mask": None}
+    current["live"].setdefault("trace", []).extend(trace)
+    current["live"]["calls"] = current["live"].get("calls", 0) + meta.calls
+    db.save_listing(current)
+    db.update_job(job["id"], status="done", stage="ready", progress=100)

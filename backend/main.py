@@ -164,6 +164,23 @@ def get_listing(listing_id: str) -> dict[str, Any]:
     return listing
 
 
+@router.delete("/listings/{listing_id}")
+def delete_listing(listing_id: str) -> dict[str, bool]:
+    with db.connect() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT source FROM listings WHERE id = ?", (listing_id,)).fetchone()
+        if row is None:
+            raise HTTPException(404, "Listing not found.")
+        if row["source"] == "seed":
+            raise HTTPException(409, "Seeded hero listings cannot be deleted.")
+        if conn.execute("SELECT 1 FROM jobs WHERE listing_id = ? AND status IN ('queued', 'running')", (listing_id,)).fetchone():
+            raise HTTPException(409, "Wait for processing to finish before deleting.")
+        conn.execute("DELETE FROM reservations WHERE listing_id = ?", (listing_id,))
+        conn.execute("DELETE FROM jobs WHERE listing_id = ?", (listing_id,))
+        conn.execute("DELETE FROM listings WHERE id = ?", (listing_id,))
+    return {"deleted": True}
+
+
 class CopyEdit(BaseModel):
     title: str
     description: str
@@ -324,6 +341,28 @@ def request_live(listing_id: str, body: LiveRequest) -> dict[str, str]:
     return {"listing_id": listing_id, "job_id": job_id}
 
 
+@router.post("/listings/{listing_id}/live/rooms/{room_id}/styles/{style_id}/rerun", status_code=202)
+def rerun_live_style(listing_id: str, room_id: str, style_id: str) -> dict[str, str]:
+    if style_id not in stage.STYLE_PRESETS:
+        raise HTTPException(422, "Unknown style.")
+    listing = db.get_listing(listing_id)
+    if not listing:
+        raise HTTPException(404, "Listing not found.")
+    block = listing.get("live") or {}
+    if listing.get("status") != "published" or block.get("status") != "ready":
+        raise HTTPException(409, "A published, prepared residence is required.")
+    room = next((r for r in block.get("rooms", []) if r.get("id") == room_id), None)
+    if not room:
+        raise HTTPException(404, "Prepared room not found.")
+    job_id = db.new_id("job")
+    with db.connect() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        if conn.execute("SELECT 1 FROM jobs WHERE listing_id = ? AND status IN ('queued', 'running')", (listing_id,)).fetchone():
+            raise HTTPException(409, "Wait for the current job to finish.")
+        db.insert_job(conn, job_id, listing_id, f"live_style:{room_id}:{style_id}")
+    return {"listing_id": listing_id, "job_id": job_id}
+
+
 @router.get("/listings/{listing_id}/live")
 def get_live(listing_id: str) -> dict[str, Any]:
     listing = _listing_or_404(listing_id)
@@ -367,7 +406,9 @@ def _mount_frontend(app: FastAPI, dist: Path) -> None:
 
 
 def _dispatch(job: dict[str, Any]) -> None:
-    if job.get("kind") == "live":
+    if job.get("kind", "").startswith("live_style:"):
+        live.rerun_style(job)
+    elif job.get("kind") == "live":
         live.run(job)
     else:
         runner.run(job)

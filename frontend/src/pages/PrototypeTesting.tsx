@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { HoverNav } from "../components/Shell";
 import { CascadeScene } from "../components/prototype/CascadeScene";
-import { loadManifest, type Manifest } from "../components/prototype/manifest";
+import { ASSET_ROOT, generalRoot, loadManifest, type Manifest } from "../components/prototype/manifest";
 
 const HEADER = "Prototype Testing — Not a real listing — AI-modified — Proof of concept";
 const FOOTER = "Prototype Testing — Not a real listing — AI-modified";
 /** Walk in at half speed: the room should be felt, not skimmed. */
 const WALK_RATE = 0.5;
 /** The beat between stopping in the living room and the first piece leaving the ceiling. */
-const ARRIVE_BEAT_MS = 650;
+const ARRIVE_BEAT_MS = 0;
 
 type Phase = "loading" | "missing" | "ready" | "walking" | "paused" | "arriving" | "furnishing" | "furnished" | "ended";
 const AT_ROOM: Phase[] = ["arriving", "furnishing", "furnished"];
@@ -34,12 +34,18 @@ export default function PrototypeTesting() {
   const stage = useRef<HTMLDivElement>(null);
   const scene = useRef<CascadeScene | null>(null);
   const meta = useRef<Manifest | null>(null);
+  /** Work 3: ?listing=<id> renders that listing's generalised cascade assets
+   *  (built by prototype.general); no param keeps the POC prototype. */
+  const [assetRoot] = useState(() => {
+    const id = new URLSearchParams(window.location.search).get("listing");
+    return id ? generalRoot(id) : ASSET_ROOT;
+  });
+  const isGeneral = assetRoot !== ASSET_ROOT;
   const phaseRef = useRef<Phase>("loading");
   /** The hero frame stops the walk once per pass through the clip. */
   const armed = useRef(true);
   const busy = useRef(false);
   const timer = useRef(0);
-  const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const go = (p: Phase) => {
     phaseRef.current = p;
@@ -48,7 +54,7 @@ export default function PrototypeTesting() {
 
   useEffect(() => {
     document.title = "Prototype Testing";
-    loadManifest()
+    loadManifest(assetRoot)
       .then((m) => {
         meta.current = m;
         setManifest(m);
@@ -56,12 +62,13 @@ export default function PrototypeTesting() {
       })
       .catch(() => go("missing"));
     return () => clearTimeout(timer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // The Three.js layer: one canvas over the video, same box, resized with it.
   useEffect(() => {
     if (!manifest || !canvas.current || !stage.current) return;
-    const s = new CascadeScene(canvas.current, manifest.camera, manifest.video.width / manifest.video.height);
+    const s = new CascadeScene(canvas.current, manifest.camera, manifest.video.width / manifest.video.height, assetRoot);
     scene.current = s;
     const box = stage.current;
     const fit = () => s.resize(box.clientWidth, box.clientHeight);
@@ -170,13 +177,8 @@ export default function PrototypeTesting() {
   async function furnish() {
     const s = scene.current;
     if (!s || !AT_ROOM.includes(phaseRef.current)) return;
-    if (reduced) {
-      s.showLanded();
-      go("furnished");
-      return;
-    }
-    go("furnishing");
-    if (await s.cascade()) go("furnished");
+    s.showLanded();
+    go("furnished");
   }
 
   async function togglePlay() {
@@ -191,7 +193,7 @@ export default function PrototypeTesting() {
     }
     busy.current = true;
     clearTimeout(timer.current);
-    if (AT_ROOM.includes(p)) await s.lift(); // placed for this frame only: it leaves before the camera moves
+    if (AT_ROOM.includes(p)) s.clear();
     if (p === "ended") {
       armed.current = true;
       v.currentTime = 0;
@@ -202,13 +204,12 @@ export default function PrototypeTesting() {
     busy.current = false;
   }
 
-  async function replay() {
+  async function chooseFurniture() {
     const s = scene.current;
     if (!s || busy.current) return;
     busy.current = true;
     clearTimeout(timer.current);
     if (AT_ROOM.includes(phaseRef.current)) {
-      await s.lift();
       go("arriving");
     } else await holdHero();
     busy.current = false;
@@ -222,14 +223,13 @@ export default function PrototypeTesting() {
     busy.current = true;
     setStyleId(id);
     const there = AT_ROOM.includes(phaseRef.current);
-    if (there) await s.lift();
     await s.setStyle(style);
     busy.current = false;
     if (there) await furnish();
   }
 
   const style = manifest?.styles.find((st) => st.id === styleId);
-  const count = style?.pieces?.length ?? 0;
+  const placeholder = style?.pieces?.find((piece) => piece.concept === "sofa")?.box;
   const status: Record<Phase, string> = {
     loading: "Loading the walkthrough",
     missing: "",
@@ -238,7 +238,7 @@ export default function PrototypeTesting() {
     paused: `Paused · ${stamp(time)}`,
     arriving: "Living room",
     furnishing: `Furnishing · ${style?.label ?? ""}`,
-    furnished: `${style?.label ?? ""} · ${count} pieces in place · placed for this frame; Play lifts them and walks on`,
+    furnished: `${style?.label ?? ""} · AI-staged`,
     ended: "End of the walkthrough",
   };
   const playing = phase === "walking";
@@ -248,7 +248,7 @@ export default function PrototypeTesting() {
       <header className="relative z-40 flex h-16 items-center px-6 pr-20 sm:px-10 sm:pr-24">
         <p className="eyebrow flex items-center gap-2.5 text-ivory/80!">
           <span className="ice-dot" />
-          {HEADER}
+          {isGeneral ? (manifest?.label ?? HEADER) : HEADER}
         </p>
         {/* Over the page, not in its flow: opening the menu never resizes the video. */}
         <div className="absolute right-6 top-3 sm:right-10">
@@ -276,7 +276,12 @@ export default function PrototypeTesting() {
                 className="absolute inset-0 h-full w-full object-fill [dynamic-range-limit:standard]"
                 onEnded={() => go("ended")}
               />
-              <canvas ref={canvas} aria-hidden className="pointer-events-none absolute inset-0 h-full w-full" />
+              <canvas ref={canvas} aria-hidden className={`pointer-events-none absolute inset-0 h-full w-full ${phase === "furnished" && style?.image ? "invisible" : ""}`} />
+              {phase === "furnished" && style?.image && <img src={`/api/media/${style.image}`} alt="AI-staged room" className="pointer-events-none absolute inset-0 h-full w-full object-fill" />}
+              {playing && !armed.current && placeholder && time <= manifest.hero.pts + 3 && (
+                <div aria-label="Furniture placeholder, not motion tracked" className="pointer-events-none absolute grid place-items-center rounded-md border border-ice/70 bg-ice/25 text-center text-xs text-white"
+                  style={{ left: `${placeholder[0] * 100}%`, top: `${placeholder[1] * 100}%`, width: `${(placeholder[2] - placeholder[0]) * 100}%`, height: `${(placeholder[3] - placeholder[1]) * 100}%` }}>Furniture placeholder</div>
+              )}
             </>
           )}
           {phase === "missing" && (
@@ -284,8 +289,18 @@ export default function PrototypeTesting() {
               <div className="max-w-md">
                 <p className="font-serif text-xl text-ivory/90">The prototype assets are not built on this computer.</p>
                 <p className="mt-4 text-sm leading-relaxed text-ash">
-                  Put the proof-of-concept clip at meta-hackathon/poc-luxury-empty-apartment.mp4, then run{" "}
-                  <span className="font-mono text-ivory/80">make prototype</span>.
+                  {isGeneral ? (
+                    <>
+                      Build this listing&apos;s cascade with{" "}
+                      <span className="font-mono text-ivory/80">python -m prototype.general</span> (listing id, its
+                      uploaded clip, and per-video calibration lines), then reload.
+                    </>
+                  ) : (
+                    <>
+                      Put the proof-of-concept clip at meta-hackathon/poc-luxury-empty-apartment.mp4, then run{" "}
+                      <span className="font-mono text-ivory/80">make prototype</span>.
+                    </>
+                  )}
                 </p>
               </div>
             </div>
@@ -299,45 +314,57 @@ export default function PrototypeTesting() {
             <PlayIcon playing={playing} />
             {playing ? "Pause" : "Play"}
           </button>
-          <button type="button" onClick={replay} disabled={!manifest || !style?.available || phase === "loading"} className="btn-glass">
-            Replay cascade
+          <button type="button" onClick={chooseFurniture} disabled={!manifest || !style?.available || phase === "loading"} className="btn-glass">
+            Choose furniture
           </button>
         </div>
 
         {manifest && (
-          <div role="group" aria-label="Style" className="flex items-center gap-1 rounded-full bg-ivory/[0.04] p-1 ring-1 ring-ivory/10">
-            {manifest.styles.map((st) => {
-              const active = st.id === styleId;
-              const off = `${st.label} is off. ${st.reason ?? ""}`;
-              return (
-                <button
-                  key={st.id}
-                  type="button"
-                  aria-pressed={active}
-                  aria-disabled={!st.available}
-                  title={st.available ? st.source : off}
-                  onClick={() => void chooseStyle(st.id)}
-                  onMouseEnter={() => !st.available && setNote(off)}
-                  onMouseLeave={() => setNote(null)}
-                  onFocus={() => !st.available && setNote(off)}
-                  onBlur={() => setNote(null)}
-                  className={`rounded-full px-4 py-1.5 text-[13px] tracking-wide transition ${
-                    active ? "bg-ivory/[0.1] text-ivory" : st.available ? "text-ivory/70 hover:text-ivory" : "cursor-not-allowed text-ash/60"
-                  }`}
-                >
-                  {st.label}
-                  {!st.available && <span className="ml-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-ash/60">off</span>}
-                </button>
-              );
-            })}
+          <div className="relative transition-opacity duration-700 [@media(hover:hover)]:opacity-20 [@media(hover:hover)]:hover:opacity-100 focus-within:opacity-100">
+            <div role="group" aria-label="Style" className="flex items-center gap-1 rounded-full bg-ivory/[0.04] p-1 ring-1 ring-ivory/10">
+              {manifest.styles.map((st) => {
+                const active = st.id === styleId;
+                const off = `${st.label} is off. ${st.reason ?? ""}`;
+                return (
+                  <button
+                    key={st.id}
+                    type="button"
+                    aria-pressed={active}
+                    aria-disabled={!st.available}
+                    aria-label={st.available ? st.label : off}
+                    onClick={() => void chooseStyle(st.id)}
+                    onMouseEnter={() => !st.available && setNote(off)}
+                    onMouseLeave={() => setNote(null)}
+                    onFocus={() => !st.available && setNote(off)}
+                    onBlur={() => setNote(null)}
+                    className={`rounded-full px-4 py-1.5 text-[13px] tracking-wide transition ${
+                      active ? "bg-ivory/[0.1] text-ivory" : st.available ? "text-ivory/70 hover:text-ivory" : "cursor-not-allowed text-ash/60"
+                    }`}
+                  >
+                    {st.label}
+                    {!st.available && <span className="ml-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-ash/60">off</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {/* PT-02: the full reason is an overlay tooltip, never in flow. In-flow
+                text wrapped to several lines, grew the footer, shrank the stage
+                (flex-1 + container query) and moved the button under the cursor:
+                hover -> resize -> mouseleave -> resize, i.e. the glitch. The
+                native title tooltip duplicated it and is gone. */}
+            {note && (
+              <p role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-80 max-w-[80vw] -translate-x-1/2 rounded-xl bg-night/95 px-4 py-3 font-mono text-[11px] leading-relaxed text-ivory/85 ring-1 ring-ivory/15">
+                {note}
+              </p>
+            )}
           </div>
         )}
 
         <p role="status" aria-live="polite" className="min-w-0 flex-1 font-mono text-[11px] leading-relaxed text-ivory/60">
-          {note ?? status[phase]}
+          {status[phase]}
         </p>
 
-        <p className="eyebrow text-ivory/70!">{FOOTER}</p>
+        <p className="eyebrow text-ivory/70!">{isGeneral ? (manifest?.label ?? FOOTER) : FOOTER}</p>
 
         {manifest && manifest.styles.some((st) => !st.available) && (
           <p className="basis-full font-mono text-[10.5px] leading-relaxed text-ash/80">

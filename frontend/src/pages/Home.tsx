@@ -40,7 +40,6 @@ export default function Home() {
   const closeTimer = useRef(0);
   const enterTimer = useRef(0);
   const navigate = useNavigate();
-  const [miamiLive, setMiamiLive] = useState<string | null>(null);
 
   const residence = RESIDENCES[index];
   const summary = listings[residence.id];
@@ -54,10 +53,6 @@ export default function Home() {
       .listings()
       .then((items) => setListings(Object.fromEntries(items.map((i) => [i.id, i]))))
       .catch(() => setListings({}));
-    api
-      .residenceLive("seed_miami")
-      .then((r) => setMiamiLive(r.status === "ready" ? r.listing_id : null))
-      .catch(() => setMiamiLive(null));
     return () => {
       clearTimeout(closeTimer.current);
       clearTimeout(enterTimer.current);
@@ -228,9 +223,10 @@ export default function Home() {
               setInside(true);
               setRevealed(false);
               setConcierge(false);
-              if (residence.id === "seed_miami" && miamiLive) {
+              if (residence.id === "seed_miami" || residence.id === "seed_los_angeles") {
                 clearTimeout(enterTimer.current);
-                enterTimer.current = window.setTimeout(() => navigate(`/p/${miamiLive}/live`), 900);
+                const path = residence.id === "seed_miami" ? "/p/lst_190d1a7673a8/live" : "/p/lst_190d1a7673a8/live?room=room_2";
+                enterTimer.current = window.setTimeout(() => navigate(path), 900);
               }
             }}
             className="group pointer-events-auto flex items-center gap-4 rounded-full bg-ivory/[0.08] py-2 pl-2 pr-6 text-[15px] tracking-wide text-ivory ring-1 ring-ivory/25 backdrop-blur-xl transition hover:bg-ivory/[0.14] hover:ring-ivory/40"

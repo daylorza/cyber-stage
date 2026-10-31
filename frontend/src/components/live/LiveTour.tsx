@@ -73,18 +73,28 @@ const glassButton =
 export default function LiveTour({ payload }: { payload: LivePayload }) {
   const navigate = useNavigate();
   const { styles } = payload;
-  const video = payload.video;
+  const singleRoom = payload.listing_id === "lst_190d1a7673a8";
+  const selectedRoom = singleRoom && new URLSearchParams(window.location.search).get("room") === "room_2" ? "room_2" : null;
+  const listingPath = selectedRoom ? "/p/seed_los_angeles" : `/p/${payload.listing_id}`;
+  const video = singleRoom ? null : payload.video;
   const viewport = useViewport();
   const reduced = useReducedMotion();
 
   // On the video walk, stop only where furniture can fall: rooms with at least one usable style.
   const rooms = useMemo(() => {
+    if (singleRoom) {
+      const main = payload.rooms.find((r) => r.id === selectedRoom) ?? payload.rooms.find((r) => r.main) ?? payload.rooms[0];
+      return main ? [main] : [];
+    }
     const timed = !!video && payload.rooms.some((r) => r.t != null);
     const usable = payload.rooms.filter((r) => Object.values(r.styles).some((s) => s.available && s.image));
     return timed && usable.length ? usable : payload.rooms;
-  }, [payload.rooms, video]);
+  }, [payload.rooms, video, singleRoom, selectedRoom]);
   const walking = !!video && rooms.some((r) => r.t != null);
-  const moments = useMemo(() => payload.moments.filter((m) => rooms.some((r) => r.id === m.room_id)), [payload.moments, rooms]);
+  // TODO: Restore sit and coffee when they do more than zoom.
+  const moments = useMemo(() => payload.moments.filter((m) => !["sit", "coffee"].includes(m.id) && rooms.some((r) => r.id === m.room_id)), [payload.moments, rooms]);
+  // TODO: Restore drag-to-look when it behaves like a real look-around.
+  const dragToLookEnabled = false;
 
   const [mode, setMode] = useState<Mode>(walking ? "walk" : "room");
   const [arrived, setArrived] = useState(!walking);
@@ -115,6 +125,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const token = useRef<Token | null>(null);
   const timers = useRef<number[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const autoplayTimer = useRef(0);
   const nextStop = useRef(0);
 
   const room = rooms[roomIndex];
@@ -127,7 +138,9 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const stage = useMemo(() => stageSize(viewport.w, viewport.h, aspect), [viewport.w, viewport.h, aspect]);
   const fit = stage.fit;
   const maxPan = maxPanFor(stage, viewport.w, viewport.h);
-  const stagedStyle = styleId ? room.styles[styleId] : undefined;
+  // Keep framing anchored to the room, independent of the selected furniture style.
+  const framingStyle = resolveStyle(room, payload.default_style, payload.default_style).id;
+  const stagedStyle = framingStyle ? room.styles[framingStyle] : undefined;
   const restY = useMemo(
     () => (inRoom && stagedStyle ? restOffset(stagedStyle.pieces ?? [], stage, viewport.h, stagedStyle.align ?? IDENTITY) : 0),
     [inRoom, stagedStyle, stage, viewport.h],
@@ -163,7 +176,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
     () =>
       seeded
         ? { ...seeded, current: planRoom }
-        : schematicPlan(payload.path?.length ? stopsForPlan(payload.path) : rooms.map((r) => ({ id: r.id, name: r.name })), planRoom),
+        : schematicPlan(!singleRoom && payload.path?.length ? stopsForPlan(payload.path) : rooms.map((r) => ({ id: r.id, name: r.name })), planRoom),
     [seeded, planRoom, payload.path, rooms],
   );
   const heading = (plan?.facing ?? 0) + (maxPan.x > 0 ? (pan.x / maxPan.x) * LOOK_DEGREES : 0);
@@ -298,6 +311,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
       if (i < 0 || i >= rooms.length || switching.current || token.current) return;
       if (i === roomIndex && inRoom) return;
       switching.current = true;
+      clearTimeout(autoplayTimer.current);
       setNavOpen(false);
       if (!asStaged) setPending(null);
       const fromRoom = inRoom && arrived;
@@ -451,7 +465,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
       if (e.key === "Escape") {
         if (token.current) abortMoment();
         else if (navOpen) setNavOpen(false);
-        else navigate(`/p/${payload.listing_id}`);
+        else navigate(listingPath);
       }
       if (token.current) return;
       if (e.key === "ArrowRight") {
@@ -504,6 +518,8 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const y = cam ? cam.y : clamp(restY + pan.y, maxPan.y);
   const tilt = fit && !cam && maxPan.x > 0 ? (-pan.x / maxPan.x) * FIT_TILT : 0;
   const roomMoments = inRoom ? moments.filter((m) => m.room_id === room.id) : [];
+  const placeholder = stagedStyle?.pieces?.find((p) => p.concept === "sofa")?.box;
+  const showPlaceholder = walking && !inRoom && arrived && !!placeholder && now <= (room.span?.[1] ?? (room.t ?? 0) + 3);
   const chrome = `transition-opacity duration-700 ${moment || !entered ? "opacity-0" : "opacity-100"}`;
   const roomName = inRoom ? room.name : (pathStop?.name ?? "");
   const nextRoom = rooms[nextStop.current];
@@ -548,7 +564,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                 e.currentTarget.playbackRate = WALK_RATE;
                 setEntered(true);
                 setDark(false);
-                later(play, 1400);
+                autoplayTimer.current = window.setTimeout(play, 1400);
               }}
               onPlay={() => setPlaying(true)}
               onPause={() => setPlaying(false)}
@@ -558,6 +574,12 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                 nextStop.current = rooms.length;
               }}
             />
+          )}
+          {showPlaceholder && placeholder && (
+            <div aria-label="Furniture placeholder, not motion tracked" className="pointer-events-none absolute grid place-items-center rounded-md border border-ice/70 bg-ice/25 text-center text-xs text-white shadow-lg backdrop-blur-sm"
+              style={{ left: `${placeholder[0] * 100}%`, top: `${placeholder[1] * 100}%`, width: `${(placeholder[2] - placeholder[0]) * 100}%`, height: `${(placeholder[3] - placeholder[1]) * 100}%` }}>
+              Furniture placeholder
+            </div>
           )}
           {arrived && (
             <div
@@ -597,12 +619,12 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
 
       <div
         role="img"
-        aria-label={`${payload.title}, ${roomName}. Drag to look around.`}
+        aria-label={`${payload.title}, ${roomName}.`}
         className={`absolute inset-0 touch-none ${moment ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
+        onPointerDown={dragToLookEnabled ? onPointerDown : undefined}
+        onPointerMove={dragToLookEnabled ? onPointerMove : undefined}
+        onPointerUp={dragToLookEnabled ? endDrag : undefined}
+        onPointerCancel={dragToLookEnabled ? endDrag : undefined}
       />
 
       <div
@@ -621,6 +643,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
             <p className="eyebrow mt-1.5 text-ivory/55!" aria-live="polite">
               {caption}
             </p>
+            {inRoom && styleId === "2142" && <p className="eyebrow mt-1.5 max-w-xs normal-case tracking-wide text-ivory/70!">Cyberpunk concept · AI-imagined, not a verified depiction of the property</p>}
             {inRoom && fellBack && styleId && (
               <p className="eyebrow mt-1.5 text-ivory/45!">
                 {chosenLabel} isn't available in this room · showing {styleLabel}
@@ -632,7 +655,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
 
           <div className="absolute right-6 top-6 sm:right-10 sm:top-9">
             <LiveNav
-              listingId={payload.listing_id}
+              listingPath={listingPath}
               title={payload.title}
               rooms={rooms}
               roomIndex={inRoom ? roomIndex : -1}
@@ -656,7 +679,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               <div
                 role="group"
                 aria-label="Style"
-                className={`pointer-events-auto flex flex-col items-center gap-1.5 transition-opacity duration-700 ${phase === "staged" && !dark ? "opacity-100" : "opacity-0"}`}
+                className={`pointer-events-auto flex flex-col items-center gap-1.5 transition-opacity duration-700 ${phase === "staged" && !dark ? "opacity-100 [@media(hover:hover)]:opacity-20 [@media(hover:hover)]:hover:opacity-100 focus-within:opacity-100" : "opacity-0"}`}
               >
                 <div className="flex items-center gap-1 rounded-full bg-night/35 p-1 ring-1 ring-ivory/15 backdrop-blur-xl">
                   {styles.map((s) => {
@@ -702,6 +725,12 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               </div>
             )}
 
+            {walking && !inRoom && (
+              <button type="button" onClick={() => goTo(Math.max(0, rooms.findIndex((r) => r.main)), true)} className="btn-glass pointer-events-auto">
+                Choose furniture
+              </button>
+            )}
+
             {walking ? (
               inRoom ? (
                 <button type="button" onClick={continueWalk} className={glassButton}>
@@ -722,7 +751,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                     </span>
                     Walk again
                   </button>
-                  <Link to={`/p/${payload.listing_id}`} className="btn-glass pointer-events-auto">
+                  <Link to={listingPath} className="btn-glass pointer-events-auto">
                     View listing
                   </Link>
                 </div>
@@ -740,7 +769,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                 </button>
               )
             ) : finishPressed ? (
-              <Link to={`/p/${payload.listing_id}`} className={glassButton}>
+              <Link to={listingPath} className={glassButton}>
                 <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
                   <span className="ice-dot" />
                 </span>
@@ -784,14 +813,14 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                 })}
               </div>
             )}
-            <p className="eyebrow text-ivory/55!">Drag to look around</p>
+            {dragToLookEnabled && <p className="eyebrow text-ivory/55!">Drag to look around</p>}
           </div>
 
           <div
             className={`absolute bottom-10 right-6 transition-opacity duration-1000 sm:right-10 ${finished ? "opacity-100" : "pointer-events-none opacity-0"}`}
             inert={!finished}
           >
-            {finished && <ReserveControl listingId={payload.listing_id} />}
+            {finished && !selectedRoom && <ReserveControl listingId={payload.listing_id} />}
           </div>
         </div>
 

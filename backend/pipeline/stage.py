@@ -36,13 +36,44 @@ STYLE_PRESETS = {
     },
     "coastal": {
         "label": "Coastal",
-        "description": "Restyle this room as a coastal luxury interior: light oak, linen, rattan, "
-                       "soft whites and sand tones, airy sheer curtains.",
+        "description": "Restyle this room as a relaxed coastal luxury interior with a few generous, "
+                       "comfortable pieces: a soft ivory linen sofa, a low light-oak coffee table, "
+                       "a natural woven rug and one sculptural rattan or light-oak accent chair. "
+                       "Use soft whites, sand and weathered wood, with a restrained muted ocean-blue "
+                       "accent. Keep textures natural and tactile, lighting warm and airy, and open "
+                       "floor space generous. Avoid nautical motifs, clutter and small decorative objects.",
     },
     "minimal": {
         "label": "Minimal",
-        "description": "Restyle this room as a warm minimal interior: few sculptural pieces, "
-                       "pale plaster tones, negative space, soft daylight.",
+        "description": "Restyle this room as a warm minimal interior with a few purposeful, "
+                       "sculptural pieces: a low clean-lined sofa in warm ivory, a simple pale stone "
+                       "or light-wood coffee table and a large understated neutral rug. Use a quiet "
+                       "palette of ivory, pale plaster and warm wood, with subtle texture and soft "
+                       "natural light. Preserve generous negative space; avoid busy patterns, clutter "
+                       "and small decorative objects.",
+    },
+    "2142": {
+        "label": "Cyberpunk",
+        "description": "Restyle this room as an elegant cyberpunk penthouse in 2142, keeping the "
+                    "walls, windows and layout identical. Use a luxury high-tech aesthetic "
+                    "in warm off-white tones and glossy materials — polished lacquer, glass, "
+                    "chrome and reflective stone instead of carbon fiber. Add sleek, "
+                    "low-profile furniture only: one low warm-ivory sofa with sharp clean "
+                    "lines and a glossy metal base, one low glossy stone-and-glass coffee "
+                    "table, one large dark neutral rug, and one transparent glass display "
+                    "cabinet. Use geometric linear lighting and a moody neon glow in cyan "
+                    "and violet as sharp architectural accents along edges and recesses — "
+                    "refined and atmospheric, never garish. "
+                    "Doors: keep every door opening in exactly the same place and size, "
+                    "but make the doors retractable translucent panels with no doorknobs — "
+                    "a laser-gate privacy shimmer that frosts on touch, with the door frame "
+                    "still clearly visible so every door still reads as a door. "
+                    "Replace any ceiling fan with a levitating halo climate ring, no blades, "
+                    "in the same ceiling position. "
+                    "Outside the existing windows, show a 2142 skyline of super tall buildings "
+                    "and flying vehicles — the window frames themselves do not move. "
+                    "Keep the space open, luxurious and uncluttered. No carbon fiber, exposed "
+                    "wires, robots, weapons, dystopian grime, or small decorative clutter.",
     },
 }
 
