@@ -215,6 +215,19 @@ def apply_review(listing: dict[str, Any], *, action: str, copy_edit: dict[str, A
     return listing
 
 
+def unpublish(listing: dict[str, Any]) -> dict[str, Any]:
+    """Return a published listing to draft so the broker can edit and republish.
+
+    The published page and Live-In-It prep stay live until the broker publishes
+    again, so there is no downtime and no reprocessing."""
+    normalize(listing)
+    if listing["status"] != "published":
+        raise ReviewError(409, "Only a published listing can be unpublished.")
+    listing["status"] = "draft"
+    listing["review"].update(decision=None, decided_at=None)
+    return listing
+
+
 def publish(listing: dict[str, Any]) -> dict[str, Any]:
     normalize(listing)
     verify.run(listing, meta=False)

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, type Reservation } from "../../api";
 import { playDing, primeAudio } from "./ding";
 
@@ -8,11 +8,20 @@ export default function ReserveControl({ listingId }: { listingId: string }) {
   const [error, setError] = useState("");
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [width, setWidth] = useState<number | null>(null);
+  const [faded, setFaded] = useState(false);
+  const [hover, setHover] = useState(false);
   const pill = useRef<HTMLButtonElement>(null);
 
   useLayoutEffect(() => {
     if (pill.current && width == null) setWidth(pill.current.offsetWidth);
   }, [width]);
+
+  useEffect(() => {
+    if (state !== "done") return;
+    setFaded(false);
+    const timer = window.setTimeout(() => setFaded(true), 5000);
+    return () => window.clearTimeout(timer);
+  }, [state]);
 
   async function reserve() {
     if (state !== "idle") return;
@@ -32,10 +41,16 @@ export default function ReserveControl({ listingId }: { listingId: string }) {
 
   const done = state === "done";
 
+  const showCard = done && reservation && (!faded || hover);
+
   return (
-    <div className="relative flex flex-col items-end gap-3">
-      {done && reservation && (
-        <div role="status" className="glass animate-fade-in w-72 p-5" style={{ animationDelay: "1000ms" }}>
+    <div
+      className="relative flex flex-col items-end gap-3"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      {showCard && (
+        <div role="status" className="glass animate-fade-in absolute bottom-full right-0 mb-3 w-72 p-5" style={{ animationDelay: "1000ms" }}>
           <p className="font-serif text-lg text-ivory">Hold requested</p>
           <p className="mt-2 text-sm leading-relaxed text-ivory/75">
             Simulated — no payment taken. The broker confirms your private showing.

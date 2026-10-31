@@ -372,6 +372,7 @@ export const api = {
   upload,
   review: (id: string, body: ReviewBody) => request<Listing>(`/listings/${id}/review`, json(body)),
   publish: (id: string) => request<Listing>(`/listings/${id}/publish`, { method: "POST" }),
+  unpublish: (id: string) => request<Listing>(`/listings/${id}/unpublish`, { method: "POST" }),
   page: (id: string) => request<PublishedPage>(`/listings/${id}/page`),
   metaStatus: () => request<MetaStatus>("/meta/status"),
   settings: () => request<{ blocking_checks: boolean }>("/settings"),

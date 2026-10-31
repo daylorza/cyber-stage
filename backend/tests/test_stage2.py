@@ -18,7 +18,8 @@ def publish_listing(client) -> str:
 
 
 def request_and_wait(client, lid: str) -> dict:
-    res = client.post(f"/api/listings/{lid}/live", json={"residence": "seed_miami"})
+    # Seeded home-page residences were removed: prepare without a residence link.
+    res = client.post(f"/api/listings/{lid}/live", json={})
     assert res.status_code == 202, res.text
     return wait_for_job(client, res.json()["job_id"])
 
@@ -29,33 +30,19 @@ def test_live_gating(client):
     wait_for_job(client, ids["job_id"])
 
     # Draft listing: request refused, payload absent.
-    res = client.post(f"/api/listings/{lid}/live", json={"residence": "seed_miami"})
+    res = client.post(f"/api/listings/{lid}/live", json={})
     assert res.status_code == 409
     assert client.get(f"/api/listings/{lid}/live").status_code == 404
 
-    # Nothing prepared for the residence yet (the Miami seed is only a draft).
+    # No seeded home-page residences exist anymore: any residence link is 422,
+    # and the residence-scoped endpoint always 404s.
+    published = publish_listing(client)
+    res = client.post(f"/api/listings/{published}/live", json={"residence": "seed_miami"})
+    assert res.status_code == 422
+    assert "no seeded" in res.json()["detail"].lower()
+    assert client.get(f"/api/listings/{published}/live").status_code == 404
     assert client.get("/api/residences/seed_miami/live").status_code == 404
     assert client.get("/api/residences/seed_los_angeles/live").status_code == 404
-
-    # The Miami seed itself is a draft: still refused.
-    res = client.post("/api/listings/seed_miami/live", json={"residence": "seed_miami"})
-    assert res.status_code == 409
-
-    # A published listing, but for a residence that isn't in this round: 422.
-    published = publish_listing(client)
-    res = client.post(f"/api/listings/{published}/live", json={"residence": "seed_los_angeles"})
-    assert res.status_code == 422
-    assert "Ocean Residence" in res.json()["detail"]
-    assert client.get(f"/api/listings/{published}/live").status_code == 404
-
-    # Published, right residence id, but a listing in another city: 422.
-    ids = upload_photos(client, count=1, city="Los Angeles")
-    wait_for_job(client, ids["job_id"])
-    other = ids["listing_id"]
-    assert client.post(f"/api/listings/{other}/review", json={"action": "approve"}).status_code == 200
-    assert client.post(f"/api/listings/{other}/publish").status_code == 200
-    res = client.post(f"/api/listings/{other}/live", json={"residence": "seed_miami"})
-    assert res.status_code == 422 and "isn't in Miami" in res.json()["detail"]
 
 
 def test_live_happy_path(client):
@@ -65,12 +52,12 @@ def test_live_happy_path(client):
     for key in ("updated_at", "live", "job"):
         snapshot.pop(key, None)
 
-    res = client.post(f"/api/listings/{lid}/live", json={"residence": "seed_miami"})
+    res = client.post(f"/api/listings/{lid}/live", json={})
     assert res.status_code == 202, res.text
     live_job_id = res.json()["job_id"]
 
     # While preparing, the payload exists but rooms/moments stay empty.
-    res = client.post(f"/api/listings/{lid}/live", json={"residence": "seed_miami"})
+    res = client.post(f"/api/listings/{lid}/live", json={})
     assert res.status_code == 409
     job = wait_for_job(client, live_job_id)
     assert job["status"] == "done", job
@@ -78,13 +65,14 @@ def test_live_happy_path(client):
 
     body = client.get(f"/api/listings/{lid}/live").json()
     assert body["status"] == "ready" and body["error"] is None
-    assert body["listing_id"] == lid and body["residence"] == "seed_miami"
+    assert body["listing_id"] == lid and body["residence"] is None
     assert body["job_id"] == live_job_id and body["prepared_at"]
     assert body["title"] == page["title"]
     assert body["facts"] == page["facts"]
     assert body["price_display"] == "$4,250,000"
     assert body["approved_at"] and body["published_at"]
-    assert "placeholder" in body["note"].lower()
+    # No seeded placeholder note anymore: upload listings carry no note unless labeled.
+    assert body["note"] is None
     assert [s["id"] for s in body["styles"]] == ["modern-luxury", "coastal", "minimal", "2142"]
     assert body["default_style"] == "modern-luxury"
     assert body["calls"] > 0 and sum(body["calls_by_purpose"].values()) <= body["calls"]
@@ -126,8 +114,8 @@ def test_live_happy_path(client):
     for rel in moments["coffee"]["images"].values():
         assert (config.settings.media_dir / rel).is_file()
 
-    res = client.get("/api/residences/seed_miami/live").json()
-    assert res == {"listing_id": lid, "status": "ready"}
+    # No seeded residences: the residence-scoped endpoint stays empty.
+    assert client.get("/api/residences/seed_miami/live").status_code == 404
 
     # Stage 1 data is untouched: identical except updated_at/live/job.
     after = client.get(f"/api/listings/{lid}").json()
@@ -195,6 +183,26 @@ def test_failed_live_images_degrade_per_style(client):
             assert entry["image"] is None
 
 
+def test_unpublish_returns_published_to_draft_for_title_edits(client):
+    lid = publish_listing(client)
+    res = client.post(f"/api/listings/{lid}/unpublish")
+    assert res.status_code == 200, res.text
+    assert res.json()["status"] == "draft"
+    assert client.post(f"/api/listings/{lid}/unpublish").status_code == 409
+    assert client.post("/api/listings/lst_nope/unpublish").status_code == 404
+
+    # The title-update round trip: edit, approve, publish again.
+    edit = {"title": "Renamed Test Residence", "description": "A short test description.",
+            "highlights": ["Test highlight"]}
+    res = client.post(f"/api/listings/{lid}/review", json={"action": "save", "copy_edit": edit})
+    assert res.status_code == 200, res.text
+    assert res.json()["copy"]["title"] == "Renamed Test Residence"
+    assert client.post(f"/api/listings/{lid}/review", json={"action": "approve"}).status_code == 200
+    res = client.post(f"/api/listings/{lid}/publish")
+    assert res.status_code == 200, res.text
+    assert res.json()["published"]["title"] == "Renamed Test Residence"
+
+
 def test_reserve_reports_no_payment(client):
     lid = publish_listing(client)
     res = client.post(f"/api/listings/{lid}/reserve")
@@ -220,7 +228,15 @@ def test_no_banned_names_in_product_code():
     )
     assert targets, "guard scanned no files"
     banned = ("london", "teleport", "lumina")
+    # "london" is allowed ONLY in the home-menu entries and the home page's
+    # per-city Enter wiring (Day's explicit Oct 31 direction: Miami /
+    # Los Angeles / London are separate spaces); banned elsewhere.
+    london_ok = {
+        root / "frontend" / "src" / "residences.ts",
+        root / "frontend" / "src" / "pages" / "Home.tsx",
+    }
     for path in targets:
         text = path.read_text(errors="ignore").lower()
-        for word in banned:
+        words = [w for w in banned if not (w == "london" and path in london_ok)]
+        for word in words:
             assert word not in text, f"{word!r} found in {path}"

@@ -71,7 +71,7 @@ STYLE_PRESETS = {
                     "Replace any ceiling fan with a levitating halo climate ring, no blades, "
                     "in the same ceiling position. "
                     "Outside the existing windows, show a 2142 skyline of super tall buildings "
-                    "and flying vehicles — the window frames themselves do not move. "
+                    "with exactly one single flying car in the sky — the window frames themselves do not move. "
                     "Keep the space open, luxurious and uncluttered. No carbon fiber, exposed "
                     "wires, robots, weapons, dystopian grime, or small decorative clutter.",
     },

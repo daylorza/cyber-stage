@@ -387,6 +387,18 @@ function Review({
             <Link to={`/p/${listing.id}`} className="btn-primary">
               View published page
             </Link>
+            <button
+              type="button"
+              className="btn-glass"
+              disabled={!!busy}
+              onClick={() => {
+                if (window.confirm("Unpublish for edits? The published page stays live until you publish again.")) {
+                  void run("unpublish", () => api.unpublish(listing.id));
+                }
+              }}
+            >
+              {busy === "unpublish" ? "Unpublishing" : "Unpublish for edits"}
+            </button>
           </>
         ) : (
           <>

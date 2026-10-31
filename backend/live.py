@@ -34,8 +34,9 @@ from verify import checks
 
 log = logging.getLogger("vre.live")
 
-# Seeded residences a published listing can stand in for on the home page.
-LIVE_RESIDENCES = {"seed_miami"}
+# Seeded home-page residences were removed: no seed stands in on the home page,
+# so every Live-In-It job is prepared without a residence link.
+LIVE_RESIDENCES: set[str] = set()
 NO_MAIN_ROOM = "No main living space found in this video, so there is no room to walk into."
 FURNITURE_CONCEPTS = ("sofa", "chair", "table", "bed", "lamp", "rug", "plant")
 PLATE_CONCEPTS = ("sofa", "chair", "table", "bed")
@@ -595,7 +596,7 @@ def request(listing: dict[str, Any], residence: str | None = None) -> str:
     if residence is not None:
         if residence not in LIVE_RESIDENCES:
             raise listings.ReviewError(
-                422, "Only The Ocean Residence (Miami) has a seeded home-page residence to stand in for.")
+                422, "There are no seeded home-page residences; prepare without a residence link.")
         seed_city = ((_seed_entry(residence) or {}).get("facts") or {}).get("city") or ""
         if (listing["facts"].get("city") or "").strip().lower() != seed_city.lower():
             raise listings.ReviewError(422, f"This listing isn't in {seed_city}, so it can't open as that residence.")
@@ -778,8 +779,15 @@ def rerun_style(job: dict[str, Any]) -> None:
             structure = {"status": "not_checked", "reason": "Glass wall not detected in both images; structure not compared."}
     else:
         structure, _ = _structure_check(source_room, frame, candidate, meta, trace, style_id, before, align)
-    if checks.image_drift(align) > checks.FRAMING_MAX_DRIFT:
-        raise ValueError("Framing drift exceeds 5%; existing style retained.")
+    drift = checks.image_drift(align)
+    drift_record = {"status": "pass", "value": drift, "reason": f"Framing drift {drift:.3f} within 5% cap."}
+    if drift > checks.FRAMING_MAX_DRIFT:
+        if not is_concept:
+            raise ValueError("Framing drift exceeds 5%; existing style retained.")
+        # Day's explicit direction: a concept style may exceed the drift cap.
+        # Recorded, not hidden: still not broker-verified as the same room.
+        drift_record = {"status": "concept-pass", "value": drift,
+                        "reason": f"Concept style {style_id} — framing drift {drift:.3f} exceeds 5% cap, not broker-verified as the same room."}
     if concept_geometry["status"] != "pass" or (not is_concept and structure["status"] != "pass"):
         raise ValueError(f"Verification did not pass: {geometry['reason']} {structure['reason']}")
     pieces = _pieces(candidate, meta, trace, room_id, style_id)
@@ -798,7 +806,7 @@ def rerun_style(job: dict[str, Any]) -> None:
         raise ValueError("Listing changed during preparation; result not attached.")
     target["styles"][style_id] = {**target["styles"].get(style_id, {}), "label": stage.STYLE_PRESETS[style_id]["label"], "image": rel, "source": "live", "available": True, "concept": is_concept,
                                   "error": None, "geometry": geometry, "concept_geometry": concept_geometry if is_concept else None, "structure": structure, "pieces": pieces,
-                                  "align": align, "mask": None}
+                                  "align": align, "drift": drift_record, "mask": None}
     current["live"].setdefault("trace", []).extend(trace)
     current["live"]["calls"] = current["live"].get("calls", 0) + meta.calls
     db.save_listing(current)

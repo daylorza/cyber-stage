@@ -213,6 +213,11 @@ def publish_listing(listing_id: str) -> dict[str, Any]:
     return _review_call(listings.publish, _listing_or_404(listing_id))
 
 
+@router.post("/listings/{listing_id}/unpublish")
+def unpublish_listing(listing_id: str) -> dict[str, Any]:
+    return _review_call(listings.unpublish, _listing_or_404(listing_id))
+
+
 @router.post("/listings/{listing_id}/reprocess", status_code=202)
 def reprocess_listing(listing_id: str) -> dict[str, str]:
     """Re-run the full pipeline from the stored uploads. Starts the listing over:

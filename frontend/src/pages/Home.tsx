@@ -143,7 +143,7 @@ export default function Home() {
 
       <div
         role="img"
-        aria-label={`${name}, ${residence.city}. Drag to look around.`}
+        aria-label={`${name}, ${residence.city}.`}
         className="absolute inset-0 cursor-grab touch-none active:cursor-grabbing"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -183,21 +183,21 @@ export default function Home() {
           </button>
           <div className={`flex flex-col items-end transition duration-500 ${reveal}`}>
             <span aria-hidden className="mr-[21.5px] h-8 w-px bg-gradient-to-b from-ivory/45 to-transparent" />
-            <ul id="home-menu" className="mt-1 flex flex-col items-end gap-3 rounded-2xl bg-night/30 py-3 pl-5 pr-3 backdrop-blur-md">
+            <ul id="home-menu" className="mt-1 flex flex-col items-end gap-2 rounded-2xl bg-night/30 py-2 pl-3 pr-2 backdrop-blur-md">
               {RESIDENCES.map((r, i) => (
                 <li key={r.id}>
                   <button
                     type="button"
                     aria-current={i === index ? "true" : undefined}
                     onClick={() => go(i)}
-                    className={`flex items-center gap-2.5 font-serif text-[15px] transition hover:text-ivory ${i === index ? "text-ivory" : "text-ivory/75"}`}
+                    className={`eyebrow flex items-center gap-2 transition hover:text-ivory! ${i === index ? "text-ivory!" : "text-ivory/70!"}`}
                   >
                     {i === index && <span className="ice-dot" />}
                     {r.city}
                   </button>
                 </li>
               ))}
-              <li className="pt-3">
+              <li>
                 <Link to="/inventory" className="eyebrow text-ivory/70! transition hover:text-ivory!">
                   Broker console
                 </Link>
@@ -223,10 +223,19 @@ export default function Home() {
               setInside(true);
               setRevealed(false);
               setConcierge(false);
-              if (residence.id === "seed_miami" || residence.id === "seed_los_angeles") {
-                clearTimeout(enterTimer.current);
-                const path = residence.id === "seed_miami" ? "/p/lst_190d1a7673a8/live" : "/p/lst_190d1a7673a8/live?room=room_2";
-                enterTimer.current = window.setTimeout(() => navigate(path), 900);
+              {
+                const livePath =
+                  residence.id === "seed_miami"
+                    ? "/p/lst_190d1a7673a8/live"
+                    : residence.id === "seed_los_angeles"
+                      ? "/p/lst_7c9646a84f90/live"
+                      : residence.id === "seed_london"
+                        ? "/p/lst_859a884e29f9/live"
+                        : null;
+                if (livePath) {
+                  clearTimeout(enterTimer.current);
+                  enterTimer.current = window.setTimeout(() => navigate(livePath), 900);
+                }
               }
             }}
             className="group pointer-events-auto flex items-center gap-4 rounded-full bg-ivory/[0.08] py-2 pl-2 pr-6 text-[15px] tracking-wide text-ivory ring-1 ring-ivory/25 backdrop-blur-xl transition hover:bg-ivory/[0.14] hover:ring-ivory/40"
@@ -237,7 +246,6 @@ export default function Home() {
             Enter residence
             <span aria-hidden className="transition group-hover:translate-x-1">→</span>
           </button>
-          <p className="eyebrow text-ivory/55!">Drag to look around</p>
         </div>
 
         <div className={`absolute bottom-10 left-6 sm:left-10 ${hud}`}>
@@ -293,7 +301,7 @@ export default function Home() {
           >
             Leave
           </button>
-          <p className="eyebrow absolute inset-x-0 bottom-10 text-center text-ivory/60!">Drag to look around · Esc to leave</p>
+          <p className="eyebrow absolute inset-x-0 bottom-10 text-center text-ivory/60!">Esc to leave</p>
         </div>
       </div>
     </div>

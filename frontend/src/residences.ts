@@ -59,10 +59,10 @@ export const RESIDENCES: Residence[] = [
     },
   },
   {
-    id: "seed_new_york",
-    city: "New York",
+    id: "seed_london",
+    city: "London",
     collection: "Private collection",
-    hero: "/residences/new-york.png",
+    hero: "/residences/london.jpg",
     plan: {
       outline: "M10 14 H190 V126 H10 Z",
       rooms: [

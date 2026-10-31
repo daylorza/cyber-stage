@@ -43,8 +43,10 @@ def test_demo_mode_approves_and_publishes_with_open_flags(client):
 
 
 @pytest.mark.parametrize("client", [{"blocking_checks": False}], indirect=True)
-def test_demo_mode_keeps_seeded_placeholders_blocked(client):
-    assert client.post("/api/listings/seed_miami/review", json={"action": "approve"}).status_code == 409
+def test_removed_seeds_stay_gone(client):
+    # Seeded hero listings were removed: their ids 404 everywhere.
+    assert client.get("/api/listings/seed_miami").status_code == 404
+    assert client.post("/api/listings/seed_miami/review", json={"action": "approve"}).status_code == 404
 
 
 @pytest.mark.parametrize("client", [{"bad_claim": True}], indirect=True)
