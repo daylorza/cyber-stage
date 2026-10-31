@@ -4,6 +4,7 @@ import { clock, media, type LiveMoment, type LivePayload } from "../../api";
 import { RESIDENCES } from "../../residences";
 import Backdrop from "./Backdrop";
 import { cutout } from "./cutout";
+import { playCyberpunk } from "./cyberpunk";
 import { useReducedMotion, useViewport } from "./hooks";
 import LiveNav from "./LiveNav";
 import MomentFx, { NO_FX, type Fx } from "./MomentFx";
@@ -104,6 +105,10 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const [roomIndex, setRoomIndex] = useState(0);
   const [instant, setInstant] = useState(false);
   const [chosen, setChosen] = useState(() => openingStyle(payload));
+  const choose = (id: string) => {
+    if (id === "2142") playCyberpunk();
+    setChosen(id);
+  };
   const [phase, setPhase] = useState<StagePhase>("empty");
   const [entered, setEntered] = useState(false);
   const [dark, setDark] = useState(true);
@@ -662,7 +667,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               onRoom={goTo}
               styles={styles}
               styleId={styleId}
-              onStyle={setChosen}
+              onStyle={choose}
               moments={moments}
               onMoment={requestMoment}
               plan={plan}
@@ -799,7 +804,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                         disabled={!status.ok || phase !== "staged"}
                         title={status.ok ? `Restyle as ${s.label}` : status.reason}
                         aria-pressed={s.id === styleId}
-                        onClick={() => setChosen(s.id)}
+                        onClick={() => choose(s.id)}
                         className={`rounded-full px-3.5 py-1.5 text-[12px] tracking-wide transition disabled:cursor-not-allowed ${s.id === styleId ? "bg-ivory/90 text-night" : status.ok ? "text-ivory/80 hover:text-ivory" : "text-ivory/30 line-through decoration-ivory/30"}`}
                       >
                         {s.label}
