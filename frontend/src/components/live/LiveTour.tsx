@@ -35,8 +35,7 @@ const MOVE_EASE = "cubic-bezier(0.45, 0, 0.25, 1)";
     The main living space holds longest — the vibe is the point. */
 const ARRIVAL_BEAT = 1400;
 const MAIN_BEAT = 2400;
-/** The walk plays at half speed so the space reads. */
-const WALK_RATE = 0.5;
+const WALK_RATE = 1;
 const FIT_TILT = 5;
 
 /** Which plan room lights up for each room type. */
@@ -653,7 +652,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               </p>
             )}
             {inRoom && !styleId && <p className="eyebrow mt-1.5 text-ivory/45!">Staging isn't available for this room</p>}
-            {payload.note && <p className="eyebrow mt-3 max-w-xs text-[0.58rem]! leading-relaxed normal-case tracking-wide text-rose/80!">{payload.note}</p>}
+            {payload.note && !/test upload/i.test(payload.note) && <p className="eyebrow mt-3 max-w-xs text-[0.58rem]! leading-relaxed normal-case tracking-wide text-rose/80!">{payload.note}</p>}
           </div>
 
           <div className="absolute right-6 top-6 sm:right-10 sm:top-9">

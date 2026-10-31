@@ -232,6 +232,7 @@ export type ListingSummary = {
   id: string;
   status: ListingStatus;
   source: "upload" | "seed";
+  prototype_test?: boolean;
   title: string;
   city: string | null;
   facts: Facts;

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, factLine, media, type ListingSummary } from "../api";
 import StatusMark from "../components/StatusMark";
 
-function ListingCard({ item }: { item: ListingSummary }) {
+function ListingCard({ item, broker }: { item: ListingSummary; broker: boolean }) {
   const facts = factLine(item.facts);
   return (
     <li className="inventory-card min-w-0">
-      <Link to={`/listings/${item.id}`} className="group block">
+      <Link to={!broker && item.status === "published" ? `/p/${item.id}` : `/listings/${item.id}`} className="group block">
         <div className="inventory-image relative overflow-hidden rounded-lg">
           {item.cover ? <img src={media(item.cover)} alt="" className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]" /> : <div className="h-full w-full bg-[#e7ddd1]" />}
           <span className="inventory-status absolute left-4 top-4 rounded-full px-4 py-2"><StatusMark status={item.status} /></span>
@@ -19,7 +19,7 @@ function ListingCard({ item }: { item: ListingSummary }) {
             {item.price_display && <span className="font-mono text-xs text-[#816956]">{item.price_display}</span>}
           </div>
           <p className="mt-1 text-sm text-[#91827a]">{item.city || "City not set"}{facts ? ` · ${facts}` : ""}</p>
-          {item.note && <p className="mt-2 text-sm text-[#91827a]">{item.note}</p>}
+          {item.note && !/test upload/i.test(item.note) && <p className="mt-2 text-sm text-[#91827a]">{item.note}</p>}
         </div>
       </Link>
     </li>
@@ -27,13 +27,15 @@ function ListingCard({ item }: { item: ListingSummary }) {
 }
 
 export default function Inventory() {
+  const [params] = useSearchParams();
+  const broker = params.get("view") === "broker";
   const [items, setItems] = useState<ListingSummary[] | null>(null);
   const [error, setError] = useState("");
   const [city, setCity] = useState("");
   const [sort, setSort] = useState("recent");
   const [layout, setLayout] = useState<"grid" | "list">("grid");
   useEffect(() => { api.listings().then(setItems).catch((e: Error) => setError(e.message)); }, []);
-  const walkthroughs = useMemo(() => (items ?? []).filter((item) => item.source === "upload"), [items]);
+  const walkthroughs = useMemo(() => (items ?? []).filter((item) => item.source === "upload" && !item.prototype_test), [items]);
   const cities = [...new Set(walkthroughs.map((item) => item.city).filter((value): value is string => !!value))].sort();
   const visible = walkthroughs.filter((item) => !city || item.city === city).sort((a, b) => sort === "name" ? a.title.localeCompare(b.title) : b.updated_at.localeCompare(a.updated_at));
   return (
@@ -47,7 +49,7 @@ export default function Inventory() {
       </section>
       <section aria-labelledby="inventory-heading">
         <div className="inventory-toolbar">
-          <h2 id="inventory-heading" className="font-serif text-5xl">Inventory</h2>
+          <h2 id="inventory-heading" className="font-serif text-5xl">{broker ? "Broker console" : "Inventory"}</h2>
           <div className="inventory-controls">
             <div className="inventory-layout" aria-label="Layout">
               <button type="button" aria-label="Grid view" aria-pressed={layout === "grid"} onClick={() => setLayout("grid")}>▦</button>
@@ -59,7 +61,7 @@ export default function Inventory() {
         </div>
         {error && <p role="alert" className="py-10 text-rose">{error}</p>}
         {items === null && !error && <p className="inventory-eyebrow py-10">Loading inventory</p>}
-        {items && (visible.length ? <ul className={`grid gap-x-10 gap-y-8 ${layout === "grid" ? "md:grid-cols-2" : "inventory-list"}`}>{visible.map((item) => <ListingCard key={item.id} item={item} />)}</ul> : <div className="py-16"><p className="font-serif text-3xl">{city ? "No residences in this city." : "Your collection starts here."}</p><p className="mt-3 text-[#91827a]">Start with a phone walkthrough to bring a space to life.</p><Link to="/new" className="mt-6 inline-block text-[#805f47]">New walkthrough →</Link></div>)}
+        {items && (visible.length ? <ul className={`grid gap-x-10 gap-y-8 ${layout === "grid" ? "md:grid-cols-2" : "inventory-list"}`}>{visible.map((item) => <ListingCard key={item.id} item={item} broker={broker} />)}</ul> : <div className="py-16"><p className="font-serif text-3xl">{city ? "No residences in this city." : "Your collection starts here."}</p><p className="mt-3 text-[#91827a]">Start with a phone walkthrough to bring a space to life.</p><Link to="/new" className="mt-6 inline-block text-[#805f47]">New walkthrough →</Link></div>)}
       </section>
     </div>
   );

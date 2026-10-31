@@ -115,6 +115,7 @@ def summary(listing: dict[str, Any]) -> dict[str, Any]:
         "id": listing["id"],
         "status": listing["status"],
         "source": listing["source"],
+        "prototype_test": bool(listing.get("prototype_test")),
         "title": listing.get("copy", {}).get("title", ""),
         "city": facts.get("city"),
         "facts": {k: v for k, v in facts.items() if k != "estimate_price"},

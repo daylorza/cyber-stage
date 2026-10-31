@@ -97,6 +97,7 @@ async def create_listing(
     estimate_price: bool = Form(False),
     style: str = Form(listings.DEFAULT_STYLE),
     test_listing: bool = Form(False),
+    prototype_test: bool = Form(False),
 ) -> dict[str, str]:
     kinds = [_kind(f.filename or "") for f in files]
     if currency not in CURRENCIES:
@@ -137,6 +138,8 @@ async def create_listing(
 
     listing = listings.new_listing(listing_id, source="upload", facts=facts, uploads=uploads, job_id=job_id,
                                    style=style)
+    if prototype_test:
+        listing["prototype_test"] = True
     listings.set_test_label(listing, test_listing)
     with db.connect() as conn:
         db.insert_listing(conn, listing)
