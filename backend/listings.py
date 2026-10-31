@@ -120,7 +120,7 @@ def summary(listing: dict[str, Any]) -> dict[str, Any]:
         "city": facts.get("city"),
         "facts": {k: v for k, v in facts.items() if k != "estimate_price"},
         "price_display": copy.format_price(facts.get("price"), facts.get("currency")),
-        "cover": rooms[0]["before"] if rooms else None,
+        "cover": (rooms[0].get("after") or rooms[0]["before"]) if rooms else None,
         "rooms": len(rooms),
         "note": listing.get("note"),
         "updated_at": listing["updated_at"],

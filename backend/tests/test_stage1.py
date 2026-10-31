@@ -69,6 +69,8 @@ def test_happy_path(client, walkthrough_video):
     assert client.post(f"/api/listings/{lid}/review", json={"action": "approve"}).status_code == 200
     assert client.post(f"/api/listings/{lid}/publish").status_code == 200
     page = client.get(f"/api/listings/{lid}/page").json()
+    assert page["rooms"][0]["before"] == listing["rooms"][0]["before"]
+    assert page["rooms"][0]["after"] == listing["rooms"][0]["after"]
     assert page["verification"]["passed"] is True
     assert page["verification"]["checks"] > 0
     assert all(not r["rejected"] for r in page["rooms"])
