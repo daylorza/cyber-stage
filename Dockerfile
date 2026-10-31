@@ -19,6 +19,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY backend/ ./backend/
+COPY seed/ ./seed/
 COPY --from=frontend /app/frontend/dist ./frontend/dist
 WORKDIR /app/backend
 # uv is the project's package manager (see Makefile: uv sync)

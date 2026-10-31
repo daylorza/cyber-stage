@@ -5,7 +5,7 @@
 # Optional: fly secrets set VRE_BLOCKING_CHECKS=0  (default demo mode; 1 = strict blocking)
 
 app = "cyber-stage"
-primary_region = "mia"
+primary_region = "dfw"
 
 [build]
   dockerfile = "Dockerfile"
