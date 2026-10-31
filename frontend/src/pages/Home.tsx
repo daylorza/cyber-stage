@@ -143,7 +143,7 @@ export default function Home() {
 
       <div
         role="img"
-        aria-label={`${name}, ${residence.city}. Drag to look around.`}
+        aria-label={`${name}, ${residence.city}.`}
         className="absolute inset-0 cursor-grab touch-none active:cursor-grabbing"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -246,7 +246,6 @@ export default function Home() {
             Enter residence
             <span aria-hidden className="transition group-hover:translate-x-1">→</span>
           </button>
-          <p className="eyebrow text-ivory/55!">Drag to look around</p>
         </div>
 
         <div className={`absolute bottom-10 left-6 sm:left-10 ${hud}`}>
@@ -302,7 +301,7 @@ export default function Home() {
           >
             Leave
           </button>
-          <p className="eyebrow absolute inset-x-0 bottom-10 text-center text-ivory/60!">Drag to look around · Esc to leave</p>
+          <p className="eyebrow absolute inset-x-0 bottom-10 text-center text-ivory/60!">Esc to leave</p>
         </div>
       </div>
     </div>
