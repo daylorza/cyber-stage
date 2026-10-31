@@ -27,7 +27,6 @@ function Header({ listing, onTestLabel }: { listing: Listing; onTestLabel?: (tes
         <span className="eyebrow">{facts.city || "City not set"}</span>
         {listing.source === "seed" && <span className="eyebrow">Seeded hero listing</span>}
         <StatusMark status={listing.status} />
-        {listing.note && <span className="eyebrow rounded-full bg-rose/10 px-2.5 py-1 text-rose! ring-1 ring-rose/30">{listing.note}</span>}
         {onTestLabel && listing.source === "upload" && (
           <button type="button" onClick={() => onTestLabel(!isTest)} className="eyebrow transition hover:text-ivory!">
             {isTest ? "Remove test label" : "Mark as test upload"}
@@ -171,7 +170,7 @@ function Review({
 
   return (
     <>
-      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+      <div>
         <div className="space-y-10">
           <Header
             listing={listing}
@@ -179,14 +178,12 @@ function Review({
           />
           {listing.source === "upload" ? (
             <>
-              <SourcePanel listing={listing} />
               <AttentionList listing={listing} blocking={gates} onClaim={focusClaim} onRoom={pickRoom} />
             </>
           ) : (
             <p className="max-w-md text-sm text-ash">Seeded placeholder. The pipeline has not run on footage, so publishing stays blocked.</p>
           )}
         </div>
-        <ChecklistPanel listing={listing} meta={meta} blocking={gates} onRerun={reload} />
       </div>
 
       <div className="mt-12 grid gap-12 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
@@ -378,7 +375,13 @@ function Review({
         </aside>
       </div>
 
-      <DecisionPanel listing={listing} />
+      <section aria-labelledby="diagnostics-heading" className="mt-20 space-y-4">
+        <div><p className="eyebrow">Technical details</p><h2 id="diagnostics-heading" className="mt-2 font-serif text-3xl">Diagnostics &amp; source data</h2><p className="mt-3 max-w-2xl text-sm text-ash">Inspect the source, verification checks, and model decisions behind this listing.</p></div>
+        {listing.note && <p className="text-sm text-ash">{listing.note}</p>}
+        {listing.source === "upload" && <details className="glass p-6"><summary className="cursor-pointer text-lg text-ivory">Source walkthrough and data</summary><div className="mt-6"><SourcePanel listing={listing} /></div></details>}
+        <details className="glass p-6"><summary className="cursor-pointer text-lg text-ivory">Verification and Meta diagnostics</summary><div className="mt-6"><ChecklistPanel listing={listing} meta={meta} blocking={gates} onRerun={reload} /></div></details>
+        <details className="glass p-6"><summary className="cursor-pointer text-lg text-ivory">Model decisions and evidence</summary><DecisionPanel listing={listing} /></details>
+      </section>
 
       <div className="glass fixed bottom-6 right-6 z-30 flex flex-wrap items-center gap-1.5 rounded-full! p-1.5">
         {locked ? (
@@ -515,21 +518,6 @@ export default function ListingConsole() {
 
   return (
     <>
-      {listing.source === "upload" && (
-        <button type="button" className="btn-glass mb-8 text-rose!" disabled={deleting || listing.status === "processing"} onClick={async () => {
-          if (!window.confirm("Delete this listing and its job history? A published listing will no longer be available. Uploaded files remain on disk.")) return;
-          setDeleting(true);
-          try {
-            await api.deleteListing(id);
-            navigate("/inventory");
-          } catch (e) {
-            setError((e as Error).message);
-            setDeleting(false);
-          }
-        }}>
-          {deleting ? "Deleting…" : "Delete listing"}
-        </button>
-      )}
       {listing.status !== "processing" && !reviewing && <Header listing={listing} />}
       {error && (
         <p role="alert" className="mt-6 text-sm text-rose">
@@ -547,6 +535,19 @@ export default function ListingConsole() {
         </section>
       )}
       {reviewing && <Review listing={listing} meta={meta} gates={blockingChecks || listing.source !== "upload"} onChange={setListing} reload={() => load().catch((e: Error) => setError(e.message))} />}
+      {listing.source === "upload" && (
+        <div className="mt-16"><button type="button" className="btn-glass text-rose!" disabled={deleting || listing.status === "processing"} onClick={async () => {
+          if (!window.confirm("Delete this listing and its job history? A published listing will no longer be available. Uploaded files remain on disk.")) return;
+          setDeleting(true);
+          try {
+            await api.deleteListing(id);
+            navigate("/inventory");
+          } catch (e) {
+            setError((e as Error).message);
+            setDeleting(false);
+          }
+        }}>{deleting ? "Deleting…" : "Delete listing"}</button></div>
+      )}
     </>
   );
 }

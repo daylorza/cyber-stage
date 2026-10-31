@@ -36,6 +36,7 @@ export default function Home() {
   const [revealed, setRevealed] = useState(false);
   const [inside, setInside] = useState(false);
   const [concierge, setConcierge] = useState(false);
+  const [glitchCycle, setGlitchCycle] = useState(0);
   const drag = useRef({ x: 0, pan: 0 });
   const closeTimer = useRef(0);
   const enterTimer = useRef(0);
@@ -60,6 +61,12 @@ export default function Home() {
   }, []);
 
   useEffect(() => setPan((p) => clamp(p, maxPan(scale))), [scale]);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => setGlitchCycle((cycle) => cycle + 1), 6000);
+    return () => clearInterval(timer);
+  }, []);
 
   const go = (next: number) => {
     clearTimeout(enterTimer.current);
@@ -200,7 +207,7 @@ export default function Home() {
               ))}
               <li>
                 <Link to="/inventory" className="eyebrow text-ivory/70! transition hover:text-ivory!">
-                  Broker console
+                  Inventory
                 </Link>
               </li>
               <li>
@@ -213,7 +220,7 @@ export default function Home() {
         </nav>
 
         <div className={`absolute left-6 top-[31%] max-w-xl sm:left-10 ${hud}`}>
-          <h1 className="text-[clamp(3.75rem,8.5vw,7rem)] leading-[0.92] font-[250] tracking-[-0.025em] text-ivory">Your<br /><span className="presence-glitch pointer-events-auto relative inline-block font-medium" aria-label="Future"><span aria-hidden="true">{"Future".split("").map((letter, i) => <span className={i ? "glitch-letter" : undefined} style={i ? { animationDelay: `${[0, 0.09, 0.24, 0.32, 0.5, 0.58][i]}s`, animationDuration: `${[0, 0.14, 0.21, 0.12, 0.19, 0.15][i]}s` } : undefined} key={i}>{letter}</span>)}</span><span className="glitch-pixels" aria-hidden="true">{[[17,24,0],[29,72,0.31],[42,38,0.12],[57,65,0.54],[72,22,0.22],[84,54,0.7],[96,76,0.43],[35,12,0.82],[65,44,0.61],[90,30,0.95]].map(([x,y,delay], i) => <i className="glitch-pixel" key={i} style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${delay}s`, width: `${[9,5,7,12,6][i % 5]}px` }} />)}</span></span><br />Home</h1>
+          <h1 className="text-[clamp(3.75rem,8.5vw,7rem)] leading-[0.92] font-[250] tracking-[-0.025em] text-ivory">Your<br /><span key={glitchCycle} className="presence-glitch pointer-events-auto relative inline-block font-medium" aria-label="Future"><span aria-hidden="true">{"Future".split("").map((letter, i) => <span className={i ? "glitch-letter" : undefined} style={i ? { animationDelay: `${[0, 0.09, 0.24, 0.32, 0.5, 0.58][i]}s`, animationDuration: `${[0, 0.14, 0.21, 0.12, 0.19, 0.15][i]}s` } : undefined} key={i}>{letter}</span>)}</span><span className="glitch-pixels" aria-hidden="true">{[[17,24,0],[29,72,0.31],[42,38,0.12],[57,65,0.54],[72,22,0.22],[84,54,0.7],[96,76,0.43],[35,12,0.82],[65,44,0.61],[90,30,0.95]].map(([x,y,delay], i) => <i className="glitch-pixel" key={i} style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${delay}s`, width: `${[9,5,7,12,6][i % 5]}px` }} />)}</span></span><br />Home</h1>
           <p className="mt-6 text-lg font-light text-ivory sm:text-xl">Visualize your space.</p>
         </div>
 
@@ -275,7 +282,7 @@ export default function Home() {
         <div
           onMouseEnter={show}
           onMouseLeave={hide}
-          className={`pointer-events-auto absolute bottom-10 right-10 hidden transition duration-500 md:block ${reveal} ${inside ? "invisible! opacity-0!" : ""}`}
+          className={`pointer-events-auto absolute bottom-28 right-6 origin-bottom-right scale-75 transition duration-500 sm:bottom-10 sm:right-10 sm:scale-100 ${inside ? "invisible opacity-0" : "visible opacity-100"}`}
         >
           <FloorPlan plan={residence.plan} heading={heading} label={name} />
           <div className="mt-5">

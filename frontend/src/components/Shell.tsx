@@ -63,8 +63,9 @@ export function Wordmark() {
 }
 
 export default function Shell() {
+  const inventory = useLocation().pathname === "/inventory";
   return (
-    <div className="min-h-dvh">
+    <div className={inventory ? "inventory-shell min-h-dvh" : "min-h-dvh"}>
       <header className="pointer-events-none fixed inset-x-0 top-0 z-40 flex items-start justify-between px-6 py-6 sm:px-10">
         <Wordmark />
         <HoverNav />
