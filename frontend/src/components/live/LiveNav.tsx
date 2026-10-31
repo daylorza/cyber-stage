@@ -54,7 +54,7 @@ export default function LiveNav(p: Props) {
         <span aria-hidden className="mr-[21.5px] h-8 w-px bg-gradient-to-b from-ivory/45 to-transparent" />
         <div
           id="live-menu"
-          className="mt-1 max-h-[78dvh] w-max max-w-[calc(100vw-3rem)] space-y-6 overflow-y-auto rounded-2xl bg-night/45 p-5 backdrop-blur-xl ring-1 ring-ivory/10"
+          className="mt-1 max-h-[78dvh] w-[250px] max-w-[calc(100vw-3rem)] space-y-6 overflow-y-auto rounded-2xl bg-night/45 p-5 backdrop-blur-xl ring-1 ring-ivory/10"
         >
           <section aria-label="Rooms" className="space-y-4">
             <p className="eyebrow">Rooms</p>

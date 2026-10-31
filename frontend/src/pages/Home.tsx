@@ -223,10 +223,19 @@ export default function Home() {
               setInside(true);
               setRevealed(false);
               setConcierge(false);
-              if (residence.id === "seed_miami" || residence.id === "seed_los_angeles") {
-                clearTimeout(enterTimer.current);
-                const path = residence.id === "seed_miami" ? "/p/lst_190d1a7673a8/live" : "/p/lst_190d1a7673a8/live?room=room_2";
-                enterTimer.current = window.setTimeout(() => navigate(path), 900);
+              {
+                const livePath =
+                  residence.id === "seed_miami"
+                    ? "/p/lst_190d1a7673a8/live"
+                    : residence.id === "seed_los_angeles"
+                      ? "/p/lst_7c9646a84f90/live"
+                      : residence.id === "seed_london"
+                        ? "/p/lst_859a884e29f9/live"
+                        : null;
+                if (livePath) {
+                  clearTimeout(enterTimer.current);
+                  enterTimer.current = window.setTimeout(() => navigate(livePath), 900);
+                }
               }
             }}
             className="group pointer-events-auto flex items-center gap-4 rounded-full bg-ivory/[0.08] py-2 pl-2 pr-6 text-[15px] tracking-wide text-ivory ring-1 ring-ivory/25 backdrop-blur-xl transition hover:bg-ivory/[0.14] hover:ring-ivory/40"

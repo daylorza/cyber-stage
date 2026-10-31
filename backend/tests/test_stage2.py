@@ -208,11 +208,15 @@ def test_no_banned_names_in_product_code():
     )
     assert targets, "guard scanned no files"
     banned = ("london", "teleport", "lumina")
-    # "london" is allowed ONLY in the home-menu entries (Day's explicit Oct 31
-    # direction: Miami / Los Angeles / London are separate spaces); banned elsewhere.
-    menu = root / "frontend" / "src" / "residences.ts"
+    # "london" is allowed ONLY in the home-menu entries and the home page's
+    # per-city Enter wiring (Day's explicit Oct 31 direction: Miami /
+    # Los Angeles / London are separate spaces); banned elsewhere.
+    london_ok = {
+        root / "frontend" / "src" / "residences.ts",
+        root / "frontend" / "src" / "pages" / "Home.tsx",
+    }
     for path in targets:
         text = path.read_text(errors="ignore").lower()
-        words = [w for w in banned if not (w == "london" and path == menu)]
+        words = [w for w in banned if not (w == "london" and path in london_ok)]
         for word in words:
             assert word not in text, f"{word!r} found in {path}"
