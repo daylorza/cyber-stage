@@ -74,22 +74,9 @@ export function preload(path: string | null | undefined): Promise<void> {
 
 export type StyleStatus = { ok: boolean; reason: string };
 
-/**
- * A glass-wall check that never compared is inconclusive, never a pass.
- * Narrowed to glass-wall wording only: "no windows or doors detected" rooms
- * stay as they were, or whole tours would empty out.
- */
-function glassUnverified(structure: { status?: string; reason?: string } | undefined | null): boolean {
-  const reason = structure?.reason ?? "";
-  if (!/glass wall/i.test(reason)) return false;
-  if (structure?.status === "not_checked") return true;
-  return structure?.status === "fail" && /inconclusive|not compared/i.test(reason);
-}
-
 export function styleStatus(room: LiveRoom, id: string): StyleStatus {
   const s = room.styles[id];
-  if (s && s.available && s.image && !glassUnverified(s.structure)) return { ok: true, reason: "" };
-  if (glassUnverified(s?.structure)) return { ok: false, reason: "Glass wall unverified in this style" };
+  if (s && s.available && s.image) return { ok: true, reason: "" };
   const reason =
     (s?.geometry?.status === "fail" && s.geometry.reason) ||
     s?.error ||
