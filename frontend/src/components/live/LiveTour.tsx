@@ -141,7 +141,10 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const inRoom = mode === "room";
 
   const aspect = walking && video ? video.width / video.height : roomAspect(room);
-  const stage = useMemo(() => stageSize(viewport.w, viewport.h, aspect), [viewport.w, viewport.h, aspect]);
+  const stage = useMemo(() => {
+    const size = stageSize(viewport.w, viewport.h, aspect);
+    return walking && !inRoom && size.fit ? { ...size, w: viewport.h * 0.84 * aspect, h: viewport.h * 0.84 } : size;
+  }, [viewport.w, viewport.h, aspect, walking, inRoom]);
   const fit = stage.fit;
   const maxPan = maxPanFor(stage, viewport.w, viewport.h);
   // Keep framing anchored to the room, independent of the selected furniture style.
@@ -524,8 +527,6 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const y = cam ? cam.y : clamp(restY + pan.y, maxPan.y);
   const tilt = fit && !cam && maxPan.x > 0 ? (-pan.x / maxPan.x) * FIT_TILT : 0;
   const roomMoments = inRoom ? moments.filter((m) => m.room_id === room.id) : [];
-  const placeholder = stagedStyle?.pieces?.find((p) => p.concept === "sofa")?.box;
-  const showPlaceholder = walking && !inRoom && arrived && !!placeholder && now <= (room.span?.[1] ?? (room.t ?? 0) + 3);
   const chrome = `transition-opacity duration-700 ${moment || !entered ? "opacity-0" : "opacity-100"}`;
   const roomName = inRoom ? room.name : (pathStop?.name ?? "");
   const nextRoom = rooms[nextStop.current];
@@ -582,12 +583,6 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               }}
             />
           )}
-          {showPlaceholder && placeholder && (
-            <div aria-label="Furniture placeholder, not motion tracked" className="pointer-events-none absolute grid place-items-center rounded-md border border-ice/70 bg-ice/25 text-center text-xs text-white shadow-lg backdrop-blur-sm"
-              style={{ left: `${placeholder[0] * 100}%`, top: `${placeholder[1] * 100}%`, width: `${(placeholder[2] - placeholder[0]) * 100}%`, height: `${(placeholder[3] - placeholder[1]) * 100}%` }}>
-              Furniture placeholder
-            </div>
-          )}
           {arrived && (
             <div
               className="absolute inset-0"
@@ -642,7 +637,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
       <div className="legible pointer-events-none absolute inset-0">
         <div className="absolute left-6 top-6 sm:left-10 sm:top-9"><Wordmark /></div>
         <div inert={!!moment} className={chrome}>
-          <div className="absolute left-6 top-20 max-w-[min(26rem,60vw)] sm:left-10 sm:top-24">
+          <div className="absolute left-6 top-20 max-w-[min(26rem,75vw)] rounded-2xl bg-night/45 p-4 shadow-lg backdrop-blur-md sm:left-10 sm:top-24 sm:p-5 lg:top-[22%] lg:max-w-[28%]">
             <p className="font-serif text-xl text-ivory/90">{payload.title}</p>
             <p key={roomName} className="eyebrow mt-1.5 flex animate-fade-in items-center gap-2.5 text-ivory/80!">
               <span className="ice-dot" />

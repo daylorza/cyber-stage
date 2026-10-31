@@ -1,5 +1,7 @@
 # Cyber Stage
 
+![Cyber Stage homepage showing a Miami residence](cyber-stage.png)
+
 **Staging software for real estate and brokers. A phone walkthrough video in, a staged, broker-approved listing out.**
 
 Cyber Stage is an entry for the Meta Global AI Developer Hackathon, Team Bliss, solo, Indie track.
