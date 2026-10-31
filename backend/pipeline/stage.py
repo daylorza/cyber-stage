@@ -24,41 +24,20 @@ from pipeline.classify import is_utility
 STYLE_PRESETS = {
     "modern-luxury": {
         "label": "Modern luxury",
-        "description": (
-            "Stage in a refined modern luxury style with clean-lined, sculptural furnishings. "
-            "Use warm ivory upholstery, rich textured fabrics, honed travertine or veined "
-            "stone, restrained champagne metal and subtle charcoal accents. Favor a calm, "
-            "gallery-like composition with generous open space and a few substantial, "
-            "appropriately scaled pieces. Add a small, curated selection of abstract wall art "
-            "in a slim refined frame and sculptural decor such as a ceramic vessel or tray, "
-            "where suitable surfaces and clear wall space exist."
-        ),
+        "description": "Restyle this room as a gallery-grade modern luxury interior, staged to the standard of a five-star residence, with a few large, architectural pieces only, low and clean-lined: one large sofa in warm-ivory bouclé with a tailored, low profile and plump, sculptural cushions; one low sculptural coffee table in honed travertine or veined stone with a soft, matte finish; one large warm-neutral rug in a plush, tonal weave grounding the entire set; and exactly one accent piece — either a charcoal armchair in a rich, textured wool or a champagne-brass floor lamp with a slender, sculptural stem, never both. Palette: warm ivory upholstery, soft champagne metal, charcoal, and warm stone, with at most one small muted-cyan cushion or artwork as a single quiet accent. Lighting: warm, directional, and layered, with soft shadows that give the furniture weight and the room depth — never flat daylight. No small decor: no vases, books, throws, plants, dried stems, or objects on counters and shelves. Light and space first — generous open floor, long sightlines, and a sense of calm, expensive restraint. Do not fill empty floor.",
     },
     "coastal": {
         "label": "Coastal",
-        "description": (
-            "Stage in a refined coastal style with comfortable, relaxed, tailored furnishings. "
-            "Use soft white and sand tones, linen, natural woven textures, light oak and "
-            "a restrained muted ocean-blue accent. Keep the room airy and uncluttered; "
-            "add understated landscape or abstract wall art in a light wood frame and a few "
-            "natural ceramic or woven accents where space allows. Avoid nautical motifs and "
-            "beach-themed decor."
-        ),
+        "description": "Restyle this room as an elegant coastal luxury interior, the kind found in a refined oceanfront residence, with a few generous, comfortable pieces: one soft ivory linen sofa with a relaxed, tailored silhouette and deep, inviting cushions; one low light-oak coffee table with a clean, hand-finished edge; one large natural woven rug in a soft sand tone with a tactile, organic weave; and one sculptural accent chair in rattan or light oak with a woven, open frame. Palette: soft whites, warm sand, weathered light wood, and a restrained muted ocean-blue accent used sparingly, never as a theme. Textures: natural and tactile — linen, woven fibre, pale wood, and stone. Lighting: warm, airy, and sun-washed, with soft daylight that makes the room feel open and serene. Keep floor space generous and sightlines long. Avoid nautical motifs, beach-themed decor, clutter, and small decorative objects.",
     },
     "minimal": {
         "label": "Minimal",
-        "description": (
-            "Stage in a warm, understated minimal style with simple, sculptural furnishings. "
-            "Use ivory, warm neutral textiles, pale stone and light wood with subtle texture. "
-            "Keep the composition quiet and uncluttered, with generous negative space; "
-            "add one understated abstract artwork and a few simple ceramic or natural-material "
-            "accents where space allows. Avoid busy patterns and visual clutter."
-        ),
+        "description": "Restyle this room as a warm, museum-quiet minimal interior, where every piece earns its place, with a few purposeful, sculptural pieces — and at minimum the room MUST contain a sofa: one low clean-lined sofa in warm ivory with a soft, tailored finish; one simple coffee table in pale honed stone or light wood with a quiet, monolithic form; and one large understated neutral rug in a soft, tonal weave that anchors the room without pattern. Minimal does NOT mean empty: never stage a room with no sofa, and never substitute a bench, chair, or ottoman for the sofa — if only one seating piece fits, it must be the sofa. Palette: ivory, pale plaster, and warm wood, with subtle texture and a single warm material accent at most. Lighting: soft, natural, and diffused, with gentle shadows that reveal form and proportion. Preserve generous negative space, long clean sightlines, and a sense of stillness. Avoid busy patterns, clutter, and small decorative objects.",
     },
     "2142": {
         "label": "Cyberpunk",
         "description": (
-            "Create photorealistic futuristic concept art of this exact room as a luxurious penthouse in 2142, not a listing-accurate staging. "
+            "Virtually stage this exact room as a luxurious futuristic penthouse in 2142. "
             "Preserve the original camera position, perspective, room proportions, walls, "
             "ceiling shape, floor, windows, door openings and architectural layout. "
             "Keep all windows and doors in their existing positions and retain their frames. "
@@ -67,16 +46,14 @@ STYLE_PRESETS = {
             "Create a warm, sophisticated interior with a palette of ivory, cream, champagne, "
             "soft taupe and warm gray. Use polished white marble with subtle gray veining, "
             "reflective stone, smoked or mirrored glass, and polished chrome. "
-            "Choose futuristic furnishings suited to the room's function and available space. "
-            "For a living room, use a curved ivory sofa, a sculptural low chrome or reflective "
-            "stone coffee table and a textured taupe-gray rug, scaled to fit. Include a "
-            "matching rounded chaise or ottoman only if space allows. Keep the arrangement "
-            "open and balanced. "
+            "Add a low, generously proportioned curved ivory sectional sofa with soft rounded "
+            "corners and plush cushions, paired with a matching rounded chaise or ottoman if "
+            "space allows. Place a sculptural, low coffee table in polished chrome or reflective "
+            "stone on a large, textured taupe-gray rug. Keep the arrangement open and balanced. "
             "Enhance an existing feature wall with elegant backlit marble panels, slim mirrored "
             "display shelving and a low floating console, while preserving the wall's shape and "
             "any existing openings. Use only a few carefully placed decorative objects and "
-            "one understated plant or branch arrangement. Add sophisticated futuristic abstract "
-            "wall art or a subtle luminous art panel on clear wall space, if appropriate. "
+            "one understated plant or branch arrangement. "
             "Light the room with a warm golden glow from recessed ceiling coves, concealed "
             "shelf lighting and slim vertical wall lights. Add thin, controlled cyan and violet "
             "light accents along existing ceiling curves, beneath the sofa or console, and "
@@ -88,7 +65,9 @@ STYLE_PRESETS = {
             "door still reads as a door. Replace any ceiling fan with a levitating halo climate "
             "ring, no blades, in the same ceiling position. "
             "Through the existing windows, show a believable futuristic city skyline at blue "
-            "hour or night, with distant illuminated skyscrapers. Preserve the window frames "
+            "hour or night, with distant illuminated skyscrapers, and at most one flying "
+            "vehicle — randomised: sometimes include exactly one flying vehicle, sometimes "
+            "include none, never more than one. Preserve the window frames "
             "and the view's perspective. The finished image should look like a photorealistic "
             "high-end real estate photograph: inviting, polished and subtly futuristic. "
             "Avoid garish neon, dark dystopian interiors, carbon fiber, exposed wires, robots, "
