@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { BRAND } from "../brand";
+import BrandMark from "./BrandMark";
 
 const LINKS = [
   { to: "/", label: "Residences", end: true },
@@ -57,8 +57,7 @@ export function HoverNav() {
 export function Wordmark() {
   return (
     <Link to="/" className="eyebrow pointer-events-auto flex items-center gap-2.5 text-ivory/75! transition hover:text-ivory!">
-      <span className="ice-dot" />
-      {BRAND}
+      <BrandMark />
     </Link>
   );
 }

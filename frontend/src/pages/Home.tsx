@@ -2,11 +2,11 @@ import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, type ListingSummary } from "../api";
 import { BRAND } from "../brand";
+import BrandMark from "../components/BrandMark";
 import FloorPlan from "../components/FloorPlan";
 import { RESIDENCES } from "../residences";
 
 const REST_SCALE = 1.14;
-const INSIDE_SCALE = 1.26;
 const LOOK_DEGREES = 35;
 const maxPan = (scale: number) => ((scale - 1) / 2) * 100 - 0.5;
 const clamp = (v: number, limit: number) => Math.max(-limit, Math.min(limit, v));
@@ -44,7 +44,7 @@ export default function Home() {
   const residence = RESIDENCES[index];
   const summary = listings[residence.id];
   const name = summary?.title || residence.city;
-  const scale = inside ? INSIDE_SCALE : REST_SCALE;
+  const scale = REST_SCALE;
   const heading = residence.plan.facing + (pan / maxPan(scale)) * LOOK_DEGREES;
 
   useEffect(() => {
@@ -128,7 +128,7 @@ export default function Home() {
         ))}
       </div>
 
-      <div className={`pointer-events-none absolute inset-0 transition-opacity duration-1000 ${inside ? "opacity-25" : "opacity-100"}`}>
+      <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgb(13_14_16/0.7)_0%,rgb(13_14_16/0.28)_40%,transparent_62%)]" />
         <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-night/55 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-[45%] bg-gradient-to-t from-night/80 via-night/30 to-transparent" />
@@ -151,13 +151,14 @@ export default function Home() {
         onPointerCancel={endDrag}
       />
 
+
       <div className="legible pointer-events-none absolute inset-0">
         <div className={`absolute left-6 top-6 sm:left-10 sm:top-9 ${hud}`}>
           <Link
             to="/"
             className="pointer-events-auto text-[11px] font-medium uppercase tracking-[0.3em] text-ivory/90 transition hover:text-ivory sm:text-[13px] sm:tracking-[0.42em]"
           >
-            {BRAND}
+            <BrandMark />
           </Link>
           <p key={residence.id} className="eyebrow mt-3 flex animate-fade-in items-center gap-2.5 text-ivory/80!">
             <span className="ice-dot" />
@@ -212,8 +213,8 @@ export default function Home() {
         </nav>
 
         <div className={`absolute left-6 top-[31%] max-w-xl sm:left-10 ${hud}`}>
-          <h1 className="text-[clamp(3.75rem,8.5vw,7rem)] leading-[0.92] font-[250] tracking-[-0.025em] text-ivory">Presence.</h1>
-          <p className="mt-6 text-lg font-light text-ivory sm:text-xl">A different way to come home.</p>
+          <h1 className="text-[clamp(3.75rem,8.5vw,7rem)] leading-[0.92] font-[250] tracking-[-0.025em] text-ivory">Your<br /><span className="presence-glitch pointer-events-auto relative inline-block font-medium" aria-label="Future"><span aria-hidden="true">{"Future".split("").map((letter, i) => <span className={i ? "glitch-letter" : undefined} style={i ? { animationDelay: `${[0, 0.09, 0.24, 0.32, 0.5, 0.58][i]}s`, animationDuration: `${[0, 0.14, 0.21, 0.12, 0.19, 0.15][i]}s` } : undefined} key={i}>{letter}</span>)}</span><span className="glitch-pixels" aria-hidden="true">{[[17,24,0],[29,72,0.31],[42,38,0.12],[57,65,0.54],[72,22,0.22],[84,54,0.7],[96,76,0.43],[35,12,0.82],[65,44,0.61],[90,30,0.95]].map(([x,y,delay], i) => <i className="glitch-pixel" key={i} style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${delay}s`, width: `${[9,5,7,12,6][i % 5]}px` }} />)}</span></span><br />Home</h1>
+          <p className="mt-6 text-lg font-light text-ivory sm:text-xl">Visualize your space.</p>
         </div>
 
         <div className={`absolute inset-x-0 bottom-24 flex flex-col items-center gap-3.5 sm:bottom-9 ${hud}`}>
@@ -234,7 +235,7 @@ export default function Home() {
                         : null;
                 if (livePath) {
                   clearTimeout(enterTimer.current);
-                  enterTimer.current = window.setTimeout(() => navigate(livePath), 900);
+                  navigate(livePath);
                 }
               }
             }}

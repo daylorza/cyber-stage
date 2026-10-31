@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } 
 import { Link, useNavigate } from "react-router-dom";
 import { clock, media, type LiveMoment, type LivePayload } from "../../api";
 import { RESIDENCES } from "../../residences";
+import { Wordmark } from "../Shell";
 import Backdrop from "./Backdrop";
 import { cutout } from "./cutout";
 import { playCyberpunk } from "./cyberpunk";
@@ -93,7 +94,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   }, [payload.rooms, video, singleRoom, selectedRoom]);
   const walking = !!video && rooms.some((r) => r.t != null);
   // TODO: Restore sit and coffee when they do more than zoom.
-  const moments = useMemo(() => payload.moments.filter((m) => !["sit", "coffee"].includes(m.id) && rooms.some((r) => r.id === m.room_id)), [payload.moments, rooms]);
+  const moments = useMemo(() => payload.moments.filter((m) => !["sit", "coffee", "view"].includes(m.id) && rooms.some((r) => r.id === m.room_id)), [payload.moments, rooms]);
   // TODO: Restore drag-to-look when it behaves like a real look-around.
   const dragToLookEnabled = false;
 
@@ -111,7 +112,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   };
   const [phase, setPhase] = useState<StagePhase>("empty");
   const [entered, setEntered] = useState(false);
-  const [dark, setDark] = useState(true);
+  const [dark, setDark] = useState(false);
   const [pan, setPan] = useState<Pan>({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
@@ -560,6 +561,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
             <video
               ref={videoRef}
               src={media(video.path)}
+              poster={rooms[0]?.before ? media(rooms[0].before) : undefined}
               muted
               playsInline
               preload="auto"
@@ -638,8 +640,9 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
       />
 
       <div className="legible pointer-events-none absolute inset-0">
+        <div className="absolute left-6 top-6 sm:left-10 sm:top-9"><Wordmark /></div>
         <div inert={!!moment} className={chrome}>
-          <div className="absolute left-6 top-6 max-w-[min(26rem,60vw)] sm:left-10 sm:top-9">
+          <div className="absolute left-6 top-20 max-w-[min(26rem,60vw)] sm:left-10 sm:top-24">
             <p className="font-serif text-xl text-ivory/90">{payload.title}</p>
             <p key={roomName} className="eyebrow mt-1.5 flex animate-fade-in items-center gap-2.5 text-ivory/80!">
               <span className="ice-dot" />

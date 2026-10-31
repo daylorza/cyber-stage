@@ -32,7 +32,7 @@ Going forward, brokers bring their own videos and their own listings. The primer
 - **Writes listing copy grounded in evidence.** Spark writes copy only from Wonder's visual observations + supplied facts. No invented features, no invented square footage, no invented amenities.
 - **Checks its own work independently.** A separate checker, with its own model calls, re-checks geometry, doors/windows, and furniture presence before publish. Results are recorded, even when they do not block (see Disclaimer).
 - **Puts a broker in control.** A broker reviews, edits, approves, unpublishes, and publishes. Nothing publishes without broker approval. Title and copy edits on a published listing trigger unpublish, so a changed listing is not left live as if it were still approved.
-- **Lets a buyer enter the residence.** First-person staged walk, style picker, moments (make coffee, sit down, look out at the view), and a simulated hold — no payment taken.
+- **Lets a buyer enter the residence.** First-person staged walk, style picker, and a simulated hold — no payment taken.
 - **Shows a separate concept style, Cyberpunk - 2142.** The same room reimagined 120 years in the future: retractable translucent laser-gate doors with no doorknobs (door frames still visible), a levitating halo climate ring instead of a ceiling fan, exactly one flying car in the skyline view, and a 2142 skyline outside the same window frames. Clearly labeled as a concept, not as a broker-verified staged photo.
 - **Blurs what should not be shown.** Faces and personal items are blurred into publishable frames. Raw frames are never served. Published walkthrough audio is removed.
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import BeforeAfter from "../components/BeforeAfter";
-import { HoverNav } from "../components/Shell";
+import { HoverNav, Wordmark } from "../components/Shell";
 import { api, type Room } from "../api";
 import { Link } from "react-router-dom";
 
@@ -9,12 +9,13 @@ export default function LosAngelesListing() {
   useEffect(() => { api.page("lst_190d1a7673a8").then((page) => setRoom(page.rooms.find((item) => item.id === "room_2") ?? null)).catch(() => setRoom(null)); }, []);
   return (
     <main className="relative min-h-screen bg-night text-ivory">
+      <div className="fixed left-6 top-6 z-40 sm:left-10"><Wordmark /></div>
       <div className="fixed right-6 top-6 z-40 sm:right-10"><HoverNav /></div>
       <section className="relative min-h-screen overflow-hidden">
       <img src="/residences/los-angeles.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-t from-night via-night/50 to-night/20" />
       <div className="relative flex min-h-screen flex-col justify-between p-8 sm:p-12">
-        <Link to="/" className="eyebrow w-fit text-ivory/80!">← Residences</Link>
+        <Link to="/" className="eyebrow mt-14 w-fit text-ivory/80!">← Residences</Link>
         <div>
           <p className="eyebrow text-ivory/70!">Los Angeles · Private collection</p>
           <h1 className="mt-3 font-serif text-5xl sm:text-7xl">The Hillside Residence</h1>

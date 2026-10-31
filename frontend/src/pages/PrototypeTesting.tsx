@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { HoverNav } from "../components/Shell";
+import { HoverNav, Wordmark } from "../components/Shell";
 import { CascadeScene } from "../components/prototype/CascadeScene";
 import { ASSET_ROOT, generalRoot, loadManifest, type Manifest } from "../components/prototype/manifest";
 
@@ -245,7 +245,8 @@ export default function PrototypeTesting() {
 
   return (
     <div className="fixed inset-0 flex flex-col bg-night text-ivory">
-      <header className="relative z-40 flex h-16 items-center px-6 pr-20 sm:px-10 sm:pr-24">
+      <header className="relative z-40 flex min-h-28 flex-col items-start justify-center gap-2 px-6 pr-20 sm:px-10 sm:pr-24">
+        <Wordmark />
         <p className="eyebrow flex items-center gap-2.5 text-ivory/80!">
           <span className="ice-dot" />
           {isGeneral ? (manifest?.label ?? HEADER) : HEADER}

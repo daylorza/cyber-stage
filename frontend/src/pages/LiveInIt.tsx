@@ -3,10 +3,13 @@ import { Link, useParams } from "react-router-dom";
 import { api, type LivePayload } from "../api";
 import { BRAND } from "../brand";
 import LiveTour from "../components/live/LiveTour";
+import BrandMark from "../components/BrandMark";
+import { Wordmark } from "../components/Shell";
 
 function Quiet({ eyebrow, children }: { eyebrow: string; children?: React.ReactNode }) {
   return (
     <div className="fixed inset-0 grid place-items-center bg-night px-6">
+      <div className="absolute left-6 top-6 sm:left-10 sm:top-9"><Wordmark /></div>
       <div className="max-w-md text-center" role="status" aria-live="polite">
         <p className="eyebrow inline-flex items-center gap-2.5">
           <span className="ice-dot" />
@@ -26,6 +29,15 @@ export default function LiveInIt() {
   const listingPath = laDemo ? "/p/seed_los_angeles" : `/p/${id}`;
   const [payload, setPayload] = useState<LivePayload | null>(null);
   const [error, setError] = useState("");
+  const [loadingScreen, setLoadingScreen] = useState(true);
+  const [fadeLoader, setFadeLoader] = useState(false);
+
+  useEffect(() => {
+    if (!payload && !error) return;
+    const fade = window.setTimeout(() => setFadeLoader(true), 500);
+    const finish = window.setTimeout(() => setLoadingScreen(false), 1700);
+    return () => { clearTimeout(fade); clearTimeout(finish); };
+  }, [id, payload, error]);
 
   useEffect(() => {
     document.title = BRAND;
@@ -49,6 +61,18 @@ export default function LiveInIt() {
     };
   }, [id]);
 
+  const loader = (
+    <div className={`cyber-loader fixed inset-0 z-[110] grid place-items-center ${fadeLoader ? "cyber-loader-fade" : ""}`} role="status" aria-label="Opening residence">
+      <div className="cyber-loader-content text-center">
+        <div className="text-sm uppercase tracking-[0.35em]"><BrandMark /></div>
+        <div className="cyber-loader-track mt-8"><div className="cyber-loader-progress" /></div>
+        <p className="eyebrow mt-4 text-[#514d45]!">Opening residence</p>
+      </div>
+    </div>
+  );
+
+  if (!payload && !error) return loader;
+
   if (error) {
     const unpublished = /isn't published/i.test(error);
     return (
@@ -63,7 +87,7 @@ export default function LiveInIt() {
     );
   }
 
-  if (!payload) return <Quiet eyebrow="Opening residence" />;
+  if (!payload) return null;
 
   if (payload.status === "preparing")
     return (
@@ -83,5 +107,5 @@ export default function LiveInIt() {
     );
 
   const display = laDemo ? { ...payload, title: "Los Angeles", residence: null, note: "Demo imagery — not a real listing." } : payload;
-  return <LiveTour key={`${payload.listing_id}-${laDemo}`} payload={display} />;
+  return <><LiveTour key={`${payload.listing_id}-${laDemo}`} payload={display} />{fadeLoader && <div className="spatial-scan spatial-scan-fixed" aria-hidden="true"><div className="spatial-scan-grid" /><div className="spatial-scan-line" /></div>}{loadingScreen && loader}</>;
 }

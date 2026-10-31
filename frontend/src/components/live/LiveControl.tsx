@@ -15,6 +15,7 @@ export default function LiveControl({ listing }: { listing: Listing }) {
   const [payload, setPayload] = useState<LivePayload | null>(null);
   const [styleJob, setStyleJob] = useState<string | null>(null);
   const [styleMessage, setStyleMessage] = useState("");
+  const [selectedStyle, setSelectedStyle] = useState<{ room: string; roomName: string; style: string; label: string } | null>(null);
   const [s, setS] = useState<State>({ status: "unknown", error: "", progress: 0, jobId: null });
 
   const fromPayload = (p: LivePayload): State => ({ status: p.status, error: p.error ?? "", progress: 0, jobId: p.job_id });
@@ -90,8 +91,8 @@ export default function LiveControl({ listing }: { listing: Listing }) {
     return () => { stopped = true; clearTimeout(timer); };
   }, [styleJob, listingId]);
 
-  async function rerunStyle(room: string, style: string, label: string) {
-    if (!window.confirm(`Generate ${label} again for this room? This uses Meta credits and replaces the current image only if checks pass.`)) return;
+  async function rerunStyle(room: string, style: string) {
+    setSelectedStyle(null);
     setStyleMessage("Starting style rerun…");
     try { setStyleJob((await api.rerunLiveStyle(listingId, room, style)).job_id); }
     catch (e) { setStyleMessage((e as Error).message); }
@@ -111,7 +112,15 @@ export default function LiveControl({ listing }: { listing: Listing }) {
         <details className="relative">
           <summary className="btn-glass cursor-pointer">Re-run a style</summary>
           <div className="absolute bottom-full right-0 mb-3 w-72 max-h-80 overflow-auto rounded-xl bg-night p-4 shadow-xl ring-1 ring-ivory/20">
-            {payload?.rooms.filter((room) => ["living", "bedroom", "dining"].includes(room.type)).map((room) => <div key={room.id} className="mb-3"><p className="eyebrow mb-2">{room.name}</p>{payload.styles.map((style) => <button key={style.id} type="button" disabled={!!styleJob} onClick={() => void rerunStyle(room.id, style.id, style.label)} className="block w-full py-1 text-left text-sm text-ivory/80 hover:text-ivory disabled:opacity-40">{room.styles[style.id] ? "Re-run" : "Generate"} {style.label}</button>)}</div>)}
+            {payload?.rooms.filter((room) => ["living", "bedroom", "dining"].includes(room.type)).map((room) => <div key={room.id} className="mb-3"><p className="eyebrow mb-2">{room.name}</p>{payload.styles.map((style) => <button key={style.id} type="button" disabled={!!styleJob} onClick={() => setSelectedStyle({ room: room.id, roomName: room.name, style: style.id, label: style.label })} className="block w-full py-1 text-left text-sm text-ivory/80 hover:text-ivory disabled:opacity-40">{room.styles[style.id] ? "Re-run" : "Generate"} {style.label}</button>)}</div>)}
+            {selectedStyle && <div className="my-3 rounded-lg bg-ivory/[0.05] p-3 ring-1 ring-ice/30">
+              <p className="text-sm text-ivory">Generate {selectedStyle.label} for {selectedStyle.roomName}?</p>
+              <p className="mt-2 text-xs leading-relaxed text-ivory/70">This uses Meta credits. The current image is replaced only if checks pass.</p>
+              <div className="mt-3 flex gap-2">
+                <button type="button" className="btn-glass" onClick={() => void rerunStyle(selectedStyle.room, selectedStyle.style)}>Confirm</button>
+                <button type="button" className="btn-glass" onClick={() => setSelectedStyle(null)}>Cancel</button>
+              </div>
+            </div>}
             <p role="status" className="text-xs text-ivory/70">{styleJob ? "Preparing style…" : styleMessage}</p>
           </div>
         </details>
