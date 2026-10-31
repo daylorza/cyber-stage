@@ -82,7 +82,6 @@ export default function Inventory() {
             items={items.filter((i) => i.source === "upload")}
             empty="No walkthroughs yet. Start with a steady phone video of an empty unit."
           />
-
         </>
       )}
     </>
