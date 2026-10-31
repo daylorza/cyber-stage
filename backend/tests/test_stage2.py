@@ -208,7 +208,11 @@ def test_no_banned_names_in_product_code():
     )
     assert targets, "guard scanned no files"
     banned = ("london", "teleport", "lumina")
+    # "london" is allowed ONLY in the home-menu entries (Day's explicit Oct 31
+    # direction: Miami / Los Angeles / London are separate spaces); banned elsewhere.
+    menu = root / "frontend" / "src" / "residences.ts"
     for path in targets:
         text = path.read_text(errors="ignore").lower()
-        for word in banned:
+        words = [w for w in banned if not (w == "london" and path == menu)]
+        for word in words:
             assert word not in text, f"{word!r} found in {path}"

@@ -183,14 +183,14 @@ export default function Home() {
           </button>
           <div className={`flex flex-col items-end transition duration-500 ${reveal}`}>
             <span aria-hidden className="mr-[21.5px] h-8 w-px bg-gradient-to-b from-ivory/45 to-transparent" />
-            <ul id="home-menu" className="mt-1 flex flex-col items-end gap-3 rounded-2xl bg-night/30 py-3 pl-5 pr-3 backdrop-blur-md">
+            <ul id="home-menu" className="mt-1 flex flex-col items-end gap-2 rounded-2xl bg-night/30 py-2 pl-3 pr-2 backdrop-blur-md">
               {RESIDENCES.map((r, i) => (
                 <li key={r.id}>
                   <button
                     type="button"
                     aria-current={i === index ? "true" : undefined}
                     onClick={() => go(i)}
-                    className={`flex items-center gap-2.5 font-serif text-[15px] transition hover:text-ivory ${i === index ? "text-ivory" : "text-ivory/75"}`}
+                    className={`flex items-center gap-2 font-serif text-xs transition hover:text-ivory ${i === index ? "text-ivory" : "text-ivory/75"}`}
                   >
                     {i === index && <span className="ice-dot" />}
                     {r.city}
