@@ -34,8 +34,9 @@ from verify import checks
 
 log = logging.getLogger("vre.live")
 
-# Seeded residences a published listing can stand in for on the home page.
-LIVE_RESIDENCES = {"seed_miami"}
+# Seeded home-page residences were removed: no seed stands in on the home page,
+# so every Live-In-It job is prepared without a residence link.
+LIVE_RESIDENCES: set[str] = set()
 NO_MAIN_ROOM = "No main living space found in this video, so there is no room to walk into."
 FURNITURE_CONCEPTS = ("sofa", "chair", "table", "bed", "lamp", "rug", "plant")
 PLATE_CONCEPTS = ("sofa", "chair", "table", "bed")
@@ -595,7 +596,7 @@ def request(listing: dict[str, Any], residence: str | None = None) -> str:
     if residence is not None:
         if residence not in LIVE_RESIDENCES:
             raise listings.ReviewError(
-                422, "Only The Ocean Residence (Miami) has a seeded home-page residence to stand in for.")
+                422, "There are no seeded home-page residences; prepare without a residence link.")
         seed_city = ((_seed_entry(residence) or {}).get("facts") or {}).get("city") or ""
         if (listing["facts"].get("city") or "").strip().lower() != seed_city.lower():
             raise listings.ReviewError(422, f"This listing isn't in {seed_city}, so it can't open as that residence.")

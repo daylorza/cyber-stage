@@ -378,7 +378,7 @@ export const api = {
   reprocess: (id: string) => request<{ listing_id: string; job_id: string }>(`/listings/${id}/reprocess`, { method: "POST" }),
   live: (id: string) => request<LivePayload>(`/listings/${id}/live`),
   rerunLiveStyle: (id: string, room: string, style: string) => request<{ job_id: string }>(`/listings/${id}/live/rooms/${encodeURIComponent(room)}/styles/${encodeURIComponent(style)}/rerun`, { method: "POST" }),
-  /** `residence` only links a Miami listing to the seeded home-page residence; any listing can be prepared. */
+  /** `residence` is always null now that seeded home-page residences are removed. */
   prepareLive: (id: string, residence: string | null = null) =>
     request<{ listing_id: string; job_id: string }>(`/listings/${id}/live`, json({ residence })),
   residenceLive: (residenceId: string) =>

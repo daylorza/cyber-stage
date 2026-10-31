@@ -10,7 +10,6 @@ export const NO_MAIN_ROOM = "No main living space found in this video, so there 
 /** Console control for any published listing with a main living space: prepare Live-In-It, then enter it. */
 export default function LiveControl({ listing }: { listing: Listing }) {
   const listingId = listing.id;
-  const isMiami = listing.facts.city.trim().toLowerCase() === "miami";
   const rooms = (listing.published?.rooms ?? listing.rooms).filter((r) => !r.rejected);
   const eligible = rooms.some((r) => r.main || MAIN_TYPES.includes(r.type));
   const [payload, setPayload] = useState<LivePayload | null>(null);
@@ -62,8 +61,7 @@ export default function LiveControl({ listing }: { listing: Listing }) {
   async function prepare() {
     setS({ status: "preparing", error: "", progress: 0, jobId: null });
     try {
-      // A Miami listing also stands in for the seeded home-page residence.
-      const { job_id } = await api.prepareLive(listingId, isMiami ? "seed_miami" : null);
+      const { job_id } = await api.prepareLive(listingId, null);
       setS({ status: "preparing", error: "", progress: 0, jobId: job_id });
     } catch (e) {
       setS({ status: "failed", error: (e as Error).message, progress: 0, jobId: null });

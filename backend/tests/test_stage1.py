@@ -275,9 +275,10 @@ def test_reprocess_after_meta_becomes_available(client_no_meta):
     assert client_no_meta.post(f"/api/listings/{lid}/review", json={"action": "approve"}).status_code == 200
 
 
-def test_reprocess_rejected_for_seeds_and_processing(client):
-    assert client.post("/api/listings/seed_new_york/reprocess").status_code == 409
-    assert client.post("/api/listings/seed_new_york/verify").status_code == 409
+def test_reprocess_rejected_for_unknown_and_processing(client):
+    # Seeded hero listings were removed: unknown ids 404.
+    assert client.post("/api/listings/seed_new_york/reprocess").status_code == 404
+    assert client.post("/api/listings/seed_new_york/verify").status_code == 404
 
 
 def test_verify_job_preserves_content_and_checklist(client, walkthrough_video):

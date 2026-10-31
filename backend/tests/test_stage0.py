@@ -128,17 +128,13 @@ def test_video_over_length_limit_fails_job(client, walkthrough_video, monkeypatc
 
 
 def test_seeded_inventory(client):
+    # Seeded hero listings were removed: the seed file is empty and no seed
+    # listings exist in inventory.
     seeds = [item for item in client.get("/api/listings").json() if item["source"] == "seed"]
-    assert sorted(item["city"] for item in seeds) == ["Los Angeles", "Miami", "New York"]
-    assert sorted(item["title"] for item in seeds) == ["The Greenwich Penthouse", "The Hillside Residence", "The Ocean Residence"]
-    new_york = client.get("/api/listings/seed_new_york").json()
-    assert new_york["copy"]["evidence"]["title"] == [{"kind": "fact", "ref": "name", "value": "The Greenwich Penthouse"}]
-    assert new_york["comps"]["source"] == "demo"
-    assert new_york["comps"]["suggested_range"]["currency"] == "USD"
-    # Seeds are placeholders with no footage: checklist stays open, approval refused.
-    frames_item = next(i for i in new_york["checklist"]["items"] if i["id"] == "frames")
-    assert frames_item["status"] == "open" and frames_item["detail"] == "No walkthrough footage yet"
-    assert client.post("/api/listings/seed_new_york/review", json={"action": "approve"}).status_code == 409
+    assert seeds == []
+    assert client.get("/api/listings/seed_miami").status_code == 404
+    assert client.get("/api/listings/seed_los_angeles").status_code == 404
+    assert client.get("/api/listings/seed_new_york").status_code == 404
 
 
 def test_seeds_dropped_from_seed_file_are_removed(client):
@@ -150,4 +146,4 @@ def test_seeds_dropped_from_seed_file_are_removed(client):
         db.insert_listing(conn, stale)
     listings.seed_inventory()
     assert db.get_listing("seed_retired") is None
-    assert db.get_listing("seed_new_york") is not None
+    assert db.get_listing("seed_new_york") is None

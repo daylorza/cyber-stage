@@ -166,14 +166,9 @@ def test_export_published_listing(client):
     assert "Status: published" in text
 
 
-def test_export_seed_and_unknown(client):
-    res = _export(client, "seed_miami")
-    assert res.status_code == 200
-    text = res.text
-    for heading in HEADINGS:
-        assert heading in text
-    assert "Published snapshot: not published" in text
-    assert text.rstrip().endswith("-- end of export · seed_miami --")
+def test_export_removed_seed_and_unknown(client):
+    # Seeded hero listings were removed: seed_miami exports 404 like any unknown id.
+    assert _export(client, "seed_miami").status_code == 404
     assert _export(client, "lst_does_not_exist").status_code == 404
 
 
