@@ -64,11 +64,11 @@ export default function ReserveControl({ listingId }: { listingId: string }) {
         disabled={state !== "idle"}
         onClick={reserve}
         aria-label={done ? "Hold requested" : "Reserve this showing"}
-        className={`pointer-events-auto flex h-14 items-center gap-4 overflow-hidden whitespace-nowrap rounded-full bg-ivory/[0.07] pl-2 pr-6 text-left text-ivory ring-1 ring-champagne/45 backdrop-blur-xl transition hover:bg-ivory/[0.12] hover:ring-champagne/70 disabled:cursor-default ${done && faded && !hover ? "opacity-0" : "opacity-100"}`}
+        className="pointer-events-auto flex h-14 items-center gap-4 overflow-hidden whitespace-nowrap rounded-full bg-ivory/[0.07] pl-2 pr-6 text-left text-ivory ring-1 ring-champagne/45 backdrop-blur-xl transition-colors hover:bg-ivory/[0.12] hover:ring-champagne/70 disabled:cursor-default"
         style={{
           width: done ? 56 : (width ?? undefined),
           paddingRight: done ? 0 : undefined,
-          transition: "width 700ms cubic-bezier(0.6, 0, 0.2, 1), padding 700ms, background-color 300ms, box-shadow 300ms, opacity 700ms",
+          transition: "width 700ms cubic-bezier(0.6, 0, 0.2, 1), padding 700ms, background-color 300ms, box-shadow 300ms",
         }}
       >
         <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${done ? "" : "ring-1 ring-champagne/40"}`}>
