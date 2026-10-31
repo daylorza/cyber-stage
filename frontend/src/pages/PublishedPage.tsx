@@ -65,8 +65,8 @@ function Walkthrough({ page, rooms }: { page: Page; rooms: Room[] }) {
         controls
         preload="auto"
         onLoadedData={(e) => {
-          e.currentTarget.defaultPlaybackRate = 0.5;
-          e.currentTarget.playbackRate = 0.5;
+          e.currentTarget.defaultPlaybackRate = 1;
+          e.currentTarget.playbackRate = 1;
         }}
         onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)}
         aria-label={`${page.title}: full walkthrough video, ${clock(video.duration)}`}
@@ -148,7 +148,7 @@ export default function PublishedPage() {
   const details = (
     <>
       <p className="eyebrow text-ivory/70!">{page.facts.city}</p>
-      {page.note && (
+      {page.note && !/test upload/i.test(page.note) && (
         <p className="eyebrow mt-3 inline-flex items-center gap-2.5 rounded-full bg-rose/10 px-3 py-1.5 text-rose! ring-1 ring-rose/30">
           {page.note}
         </p>

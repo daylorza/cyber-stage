@@ -37,7 +37,7 @@ export function HoverNav() {
       >
         <span aria-hidden className="mr-[21.5px] h-8 w-px bg-gradient-to-b from-ivory/45 to-transparent" />
         <ul id="main-menu" className="mt-1 flex flex-col items-end gap-3 rounded-2xl bg-night/30 py-3 pl-5 pr-3 backdrop-blur-md">
-          {LINKS.map((l) => (
+          {LINKS.filter((l) => pathname !== "/inventory" || l.to !== "/new").map((l) => (
             <li key={l.to}>
               <NavLink
                 to={l.to}

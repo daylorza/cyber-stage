@@ -377,7 +377,7 @@ function Review({
 
       <section aria-labelledby="diagnostics-heading" className="mt-20 space-y-4">
         <div><p className="eyebrow">Technical details</p><h2 id="diagnostics-heading" className="mt-2 font-serif text-3xl">Diagnostics &amp; source data</h2><p className="mt-3 max-w-2xl text-sm text-ash">Inspect the source, verification checks, and model decisions behind this listing.</p></div>
-        {listing.note && <p className="text-sm text-ash">{listing.note}</p>}
+        {listing.note && !/test upload/i.test(listing.note) && <p className="text-sm text-ash">{listing.note}</p>}
         {listing.source === "upload" && <details className="glass p-6"><summary className="cursor-pointer text-lg text-ivory">Source walkthrough and data</summary><div className="mt-6"><SourcePanel listing={listing} /></div></details>}
         <details className="glass p-6"><summary className="cursor-pointer text-lg text-ivory">Verification and Meta diagnostics</summary><div className="mt-6"><ChecklistPanel listing={listing} meta={meta} blocking={gates} onRerun={reload} /></div></details>
         <details className="glass p-6"><summary className="cursor-pointer text-lg text-ivory">Model decisions and evidence</summary><DecisionPanel listing={listing} /></details>
