@@ -624,7 +624,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
       <div className="legible pointer-events-none absolute inset-0">
         <div className="absolute left-6 top-6 sm:left-10 sm:top-9"><Wordmark /></div>
         <div inert={!!moment} className={chrome}>
-          <div className="pointer-events-auto absolute left-1/2 z-20 -translate-x-1/2" style={{ top: "calc(0.5rem + env(safe-area-inset-top))" }}>
+          <div className="pointer-events-auto absolute left-1/2 z-20 -translate-x-1/2" style={{ top: "calc(1.5rem + env(safe-area-inset-top))" }}>
             <ReserveControl listingId={payload.listing_id} />
           </div>
           <div className="pointer-events-auto absolute max-w-[min(26rem,75vw)] touch-none" style={{ left: Math.min(titlePos.x, Math.max(0, viewport.w - 48)), top: Math.min(titlePos.y, Math.max(0, viewport.h - 48)) }} onPointerDown={e => { if ((e.target as HTMLElement).closest("button")) return; const rect = e.currentTarget.getBoundingClientRect(); titleDrag.current = { x: e.clientX, y: e.clientY, left: rect.left, top: rect.top }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => { const start = titleDrag.current; if (!start) return; const rect = e.currentTarget.getBoundingClientRect(); setTitlePos({ x: Math.max(0, Math.min(viewport.w - rect.width, start.left + e.clientX - start.x)), y: Math.max(0, Math.min(viewport.h - rect.height, start.top + e.clientY - start.y)) }); }} onPointerUp={() => { titleDrag.current = null; }} onPointerCancel={() => { titleDrag.current = null; }}>
