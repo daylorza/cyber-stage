@@ -11,11 +11,11 @@ const LOOK_DEGREES = 35;
 const maxPan = (scale: number) => ((scale - 1) / 2) * 100 - 0.5;
 const clamp = (v: number, limit: number) => Math.max(-limit, Math.min(limit, v));
 
-function BellIcon() {
+function InfoIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.2} aria-hidden>
-      <path d="M6 16.5h12l-1.4-2.1V10a4.6 4.6 0 0 0-9.2 0v4.4L6 16.5Z" strokeLinejoin="round" />
-      <path d="M10.2 18.6a1.9 1.9 0 0 0 3.6 0" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" aria-hidden>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 11v5.5M12 7.8v.2" />
     </svg>
   );
 }
@@ -36,7 +36,6 @@ export default function Home() {
   const [revealed, setRevealed] = useState(false);
   const [inside, setInside] = useState(false);
   const [entryError, setEntryError] = useState("");
-  const [concierge, setConcierge] = useState(false);
   const [glitchCycle, setGlitchCycle] = useState(0);
   const drag = useRef({ x: 0, pan: 0 });
   const closeTimer = useRef(0);
@@ -85,7 +84,6 @@ export default function Home() {
       if (e.key === "Escape") {
         clearTimeout(enterTimer.current);
         setInside(false);
-        setConcierge(false);
         setRevealed(false);
       }
     };
@@ -105,7 +103,6 @@ export default function Home() {
     e.currentTarget.setPointerCapture(e.pointerId);
     drag.current = { x: e.clientX, pan };
     setDragging(true);
-    setConcierge(false);
   }
   function onPointerMove(e: PointerEvent<HTMLDivElement>) {
     if (!dragging) return;
@@ -218,18 +215,17 @@ export default function Home() {
                   Broker console
                 </Link>
               </li>
-              {import.meta.env.DEV && <li>
-                <Link to="/prototype-testing" className="eyebrow flex items-center text-ivory/75! transition hover:text-ivory!">
-                  Prototype Testing
-                </Link>
-              </li>}
             </ul>
           </div>
         </nav>
 
-        <div className={`hud-left absolute top-[24%] max-w-xl sm:top-[31%] ${hud}`}>
-          <h1 className="text-[clamp(3.75rem,8.5vw,7rem)] leading-[0.92] font-[250] tracking-[-0.025em] text-ivory">Your<br /><span key={glitchCycle} className="presence-glitch pointer-events-auto relative inline-block font-medium" aria-label="Future"><span aria-hidden="true">{"Future".split("").map((letter, i) => <span className={i ? "glitch-letter" : undefined} style={i ? { animationDelay: `${[0, 0.09, 0.24, 0.32, 0.5, 0.58][i]}s`, animationDuration: `${[0, 0.14, 0.21, 0.12, 0.19, 0.15][i]}s` } : undefined} key={i}>{letter}</span>)}</span><span className="glitch-pixels" aria-hidden="true">{[[17,24,0],[29,72,0.31],[42,38,0.12],[57,65,0.54],[72,22,0.22],[84,54,0.7],[96,76,0.43],[35,12,0.82],[65,44,0.61],[90,30,0.95]].map(([x,y,delay], i) => <i className="glitch-pixel" key={i} style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${delay}s`, width: `${[9,5,7,12,6][i % 5]}px` }} />)}</span></span><br />Home</h1>
-          <p className="mt-6 text-lg font-light text-ivory sm:text-xl">Visualize your space.</p>
+        <div className={`hud-left isolate absolute top-[21%] max-w-2xl sm:top-[24%] lg:top-[26%] ${hud}`}>
+          <span aria-hidden className="pointer-events-none absolute -inset-x-16 -bottom-16 -top-10 -z-10 bg-[radial-gradient(closest-side,rgb(13_14_16/0.38),rgb(13_14_16/0.18)_60%,transparent)] sm:-inset-x-28" />
+          <h1 className="text-[clamp(4.25rem,9.5vw,8rem)] leading-[0.9] font-[250] tracking-[-0.03em] text-ivory">Your<br /><span key={glitchCycle} className="presence-glitch pointer-events-auto relative inline-block font-medium" aria-label="Future"><span aria-hidden="true">{"Future".split("").map((letter, i) => <span className={i ? "glitch-letter" : undefined} style={i ? { animationDelay: `${[0, 0.09, 0.24, 0.32, 0.5, 0.58][i]}s`, animationDuration: `${[0, 0.14, 0.21, 0.12, 0.19, 0.15][i]}s` } : undefined} key={i}>{letter}</span>)}</span><span className="glitch-pixels" aria-hidden="true">{[[17,24,0],[29,72,0.31],[42,38,0.12],[57,65,0.54],[72,22,0.22],[84,54,0.7],[96,76,0.43],[35,12,0.82],[65,44,0.61],[90,30,0.95]].map(([x,y,delay], i) => <i className="glitch-pixel" key={i} style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${delay}s`, width: `${[9,5,7,12,6][i % 5]}px` }} />)}</span></span><br />Home</h1>
+          <p className="mt-8 max-w-md text-[1.625rem] font-light leading-[1.2] tracking-[-0.01em] text-ivory sm:mt-10 sm:text-[2.125rem]">
+            <span className="block">Visualize your space.</span>
+            <span className="mt-1 block font-serif italic text-ivory/90 sm:mt-1.5">and set the stage.</span>
+          </p>
         </div>
 
         <div className={`absolute inset-x-0 bottom-[calc(6rem+env(safe-area-inset-bottom))] flex flex-col items-center gap-3.5 lg:bottom-9 ${hud}`}>
@@ -260,42 +256,31 @@ export default function Home() {
         </div>
 
         <div className={`hud-left absolute bottom-[calc(2.5rem+env(safe-area-inset-bottom))] ${hud}`}>
-          {concierge && (
-            <div role="dialog" aria-label="Concierge" className="glass pointer-events-auto absolute bottom-14 left-0 w-72 p-5">
-              <p className="eyebrow">Concierge</p>
-              <p className="mt-3 font-serif text-lg">{name}</p>
-              <p className="mt-2 text-sm leading-relaxed text-ivory/75">
-                Private viewings are by appointment, arranged by the listing broker.
-              </p>
-            </div>
-          )}
-          <button
-            type="button"
-            aria-expanded={concierge}
-            onClick={() => setConcierge((c) => !c)}
-            className="pointer-events-auto flex min-h-11 items-center gap-3 text-sm tracking-wide text-ivory/85 transition hover:text-ivory"
+          <Link
+            to="/about"
+            className="group pointer-events-auto flex min-h-11 items-center gap-3 text-sm tracking-wide text-ivory/85 transition hover:text-ivory"
           >
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-night/20 ring-1 ring-ivory/25 backdrop-blur-md">
-              <BellIcon />
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-night/20 ring-1 ring-ivory/25 backdrop-blur-md transition group-hover:ring-ice/60">
+              <InfoIcon />
             </span>
-            Concierge
-          </button>
+            About Cyber Stage
+          </Link>
         </div>
 
         <div
           onMouseEnter={show}
           onMouseLeave={hide}
-          className={`hud-right pointer-events-auto absolute bottom-[calc(10rem+env(safe-area-inset-bottom))] origin-bottom-right scale-75 transition duration-500 sm:scale-100 lg:bottom-10 ${inside ? "invisible opacity-0" : "visible opacity-100"}`}
+          className={`hud-right pointer-events-auto absolute bottom-[calc(9.5rem+env(safe-area-inset-bottom))] transition duration-500 max-sm:left-6 lg:bottom-10 ${inside ? "invisible opacity-0" : "visible opacity-100"}`}
         >
-          <div className="max-sm:[@media(max-height:739px)]:hidden">
+          <div className="max-sm:hidden">
             <FloorPlan plan={residence.plan} heading={heading} label={name} />
           </div>
-          <div className="mt-5 max-sm:[@media(max-height:739px)]:mt-0">
-            <p className="font-serif text-xl tracking-wide text-ivory">{name}</p>
-            <p className="eyebrow mt-1.5">
+          <div key={residence.id} className="animate-fade-in sm:mt-5 max-sm:rounded-2xl max-sm:bg-night/50 max-sm:p-4 max-sm:shadow-lg max-sm:ring-1 max-sm:ring-ivory/10 max-sm:backdrop-blur-md">
+            <p className="text-balance font-serif text-2xl leading-tight tracking-wide text-ivory sm:text-xl">{name}</p>
+            <p className="eyebrow mt-2 text-ivory/80! sm:mt-1.5 sm:text-ash!">
               {residence.city} / {residence.collection}
             </p>
-            {factLine(summary) && <p className="mt-2.5 font-mono text-caption text-ivory/75">{factLine(summary)}</p>}
+            {factLine(summary) && <p className="mt-2.5 font-mono text-data text-ivory/90 sm:text-caption sm:text-ivory/75">{factLine(summary)}</p>}
           </div>
         </div>
 

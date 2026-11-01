@@ -176,6 +176,19 @@ export type Job = {
   stage: string | null;
   progress: number;
   error: string | null;
+  /** Live-In jobs: the Meta calls made so far, newest last. */
+  log?: JobLogEntry[];
+};
+
+export type JobLogEntry = {
+  at: string;
+  model: string;
+  purpose: string;
+  ms: number;
+  ok: boolean;
+  cached: boolean;
+  error: string | null;
+  target: Record<string, unknown>;
 };
 
 export type ListingStatus = "processing" | "draft" | "approved" | "rejected" | "published" | "failed";

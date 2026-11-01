@@ -1,3 +1,4 @@
+import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, clock, factLine, media, money, type Job, type Listing, type MetaStatus } from "../api";
@@ -11,7 +12,8 @@ import PipelineIndicator from "../components/PipelineIndicator";
 import LiveControl from "../components/live/LiveControl";
 import SourcePanel from "../components/SourcePanel";
 import StatusMark from "../components/StatusMark";
-import { ClaimTrust, EvidenceBlock, ITEM_SHORT, ResultLine, roomIssues } from "../components/trust";
+import { ClaimTrust, claimResult, EvidenceBlock, ITEM_SHORT, ResultLine, roomIssues } from "../components/trust";
+import TechnicalDetails from "../components/TechnicalDetails";
 
 const clean = (lines: string[]) => lines.map((l) => l.trim()).filter(Boolean);
 
@@ -63,13 +65,11 @@ function Processing({ listing, job }: { listing: Listing; job: Job | null }) {
 
 function Review({
   listing,
-  meta,
   gates,
   onChange,
   reload,
 }: {
   listing: Listing;
-  meta: MetaStatus | null;
   gates: boolean;
   onChange: (l: Listing) => void;
   reload: () => void;
@@ -108,6 +108,7 @@ function Review({
   const open = openItems(listing);
   const blocked = open.length > 0 && gates;
   const descriptionClean = description.trim() === copy.description;
+  const verifiedSentences = copy.sentences.filter((c) => claimResult(checks, c.id, c.evidence).tone === "pass").length;
   const blockedHint = `Resolve first: ${open.map((i) => i.label).join(", ")}${dirty ? ". Save your edits to re-run the checks." : ""}`;
   const publishHint =
     listing.status !== "approved"
@@ -299,7 +300,7 @@ function Review({
               <span className="eyebrow mb-2 block">Title</span>
               <input data-claim="title" className="field font-serif text-lg" value={title} disabled={locked} onChange={(e) => setTitle(e.target.value)} />
               {title.trim() === copy.title ? (
-                <EvidenceBlock id="title" evidence={copy.evidence.title ?? []} listing={listing} className="mt-2 pl-1" />
+                <EvidenceBlock id="title" evidence={copy.evidence.title ?? []} listing={listing} className="mt-2 pl-1" compact />
               ) : (
                 <ClaimTrust claim={undefined} listing={listing} className="mt-2 pl-1" />
               )}
@@ -317,14 +318,20 @@ function Review({
                 />
               </label>
               {descriptionClean && copy.sentences.length > 0 ? (
-                <ul className="mt-3 space-y-3 pl-1">
-                  {copy.sentences.map((c) => (
-                    <li key={c.id ?? c.text}>
-                      <p className="line-clamp-1 text-xs text-ivory/60">{c.text}</p>
-                      <EvidenceBlock id={c.id} evidence={c.evidence} listing={listing} className="mt-0.5" />
-                    </li>
-                  ))}
-                </ul>
+                <details className="group mt-2 pl-1">
+                  <summary className="flex w-fit cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+                    <ResultLine tone={verifiedSentences === copy.sentences.length ? "pass" : "fail"} label={`Verified · ${verifiedSentences} of ${copy.sentences.length} claims`} />
+                    <span className="data-label text-ash transition group-hover:text-ivory group-open:text-ivory">Evidence <span aria-hidden className="inline-block transition group-open:rotate-90">›</span></span>
+                  </summary>
+                  <ul className="mt-3 space-y-3">
+                    {copy.sentences.map((c) => (
+                      <li key={c.id ?? c.text}>
+                        <p className="line-clamp-1 text-xs text-ivory/60">{c.text}</p>
+                        <EvidenceBlock id={c.id} evidence={c.evidence} listing={listing} className="mt-0.5" />
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               ) : (
                 description.trim() !== "" && <ClaimTrust claim={undefined} listing={listing} className="mt-2 pl-1" />
               )}
@@ -356,7 +363,7 @@ function Review({
                           </button>
                         )}
                       </div>
-                      <ClaimTrust claim={claim} listing={listing} className="mt-2 pl-1" />
+                      <ClaimTrust claim={claim} listing={listing} className="mt-2 pl-1" compact />
                     </li>
                   );
                 })}
@@ -376,13 +383,6 @@ function Review({
         </aside>
       </div>
 
-      <section aria-labelledby="diagnostics-heading" className="mt-16 space-y-4 sm:mt-20">
-        <div><p className="eyebrow">Technical details</p><h2 id="diagnostics-heading" className="mt-2 font-serif text-3xl">Diagnostics &amp; source data</h2><p className="mt-3 max-w-2xl text-sm text-ash">Inspect the source, verification checks, and model decisions behind this listing.</p></div>
-        {listing.note && !/test upload/i.test(listing.note) && <p className="text-sm text-ash">{listing.note}</p>}
-        {listing.source === "upload" && <details className="glass px-5 py-3 sm:px-6"><summary className="disclosure text-lg text-ivory">Source walkthrough and data</summary><div className="mb-3 mt-4"><SourcePanel listing={listing} /></div></details>}
-        <details className="glass px-5 py-3 sm:px-6"><summary className="disclosure text-lg text-ivory">Verification and Meta diagnostics</summary><div className="mb-3 mt-4"><ChecklistPanel listing={listing} meta={meta} blocking={gates} onRerun={reload} /></div></details>
-        <details className="glass px-5 py-3 sm:px-6"><summary className="disclosure text-lg text-ivory">Model decisions and evidence</summary><div className="mb-3"><DecisionPanel listing={listing} /></div></details>
-      </section>
 
       <div className="glass fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 flex flex-wrap items-center justify-center gap-1.5 rounded-3xl! p-1.5 max-sm:[&_:is(.btn,.btn-glass,.btn-primary)]:px-4 sm:inset-x-auto sm:bottom-6 sm:right-[max(1.5rem,calc((100vw-80rem)/2+2.5rem))] sm:rounded-full!">
         {locked ? (
@@ -436,6 +436,26 @@ function Review({
         {publishHint ?? (blocked ? blockedHint : "")}
       </p>
     </>
+  );
+}
+
+/** Top of every console: the jump to the judges' technical section, and About. */
+function JudgesBar() {
+  const jump = (e: React.MouseEvent) => {
+    const el = document.getElementById("technical");
+    if (!el) return;
+    e.preventDefault();
+    el.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    history.replaceState(null, "", "#technical");
+    document.getElementById("technical-heading")?.focus({ preventScroll: true });
+  };
+  return (
+    <div className="mb-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+      <a href="#technical" onClick={jump} className="btn-glass group text-base [@media(hover:hover)]:hover:shadow-[0_0_24px_-6px_rgb(155_230_239/0.45)]">
+        Technical details — for judges <span aria-hidden className="transition group-hover:translate-y-0.5">↓</span>
+      </a>
+      <Link to="/about" className="btn-ghost text-base text-ivory/80">About Cyber Stage</Link>
+    </div>
   );
 }
 
@@ -514,8 +534,12 @@ export default function ListingConsole() {
 
   const reviewing = !!listing.copy && !["processing", "failed"].includes(listing.status);
 
+  const gates = blockingChecks || listing.source !== "upload";
+  const reload = () => load().catch((e: Error) => setError(e.message));
+
   return (
     <>
+      <JudgesBar />
       {listing.status !== "processing" && !reviewing && <Header listing={listing} />}
       {error && (
         <p role="alert" className="mt-6 text-sm text-rose">
@@ -532,7 +556,7 @@ export default function ListingConsole() {
           </Link>
         </section>
       )}
-      {reviewing && <Review listing={listing} meta={meta} gates={blockingChecks || listing.source !== "upload"} onChange={setListing} reload={() => load().catch((e: Error) => setError(e.message))} />}
+      {reviewing && <Review listing={listing} gates={gates} onChange={setListing} reload={reload} />}
       {listing.source === "upload" && (
         <div className="mt-16 sm:mt-20"><button type="button" className="btn-glass text-rose!" disabled={deleting || listing.status === "processing"} onClick={() => setConfirmDelete(true)}>{deleting ? "Deleting…" : "Delete listing"}</button>
         {confirmDelete && <ConfirmDialog message="Delete this listing and its job history? A published listing will no longer be available. Uploaded files remain on disk." onCancel={() => setConfirmDelete(false)} onConfirm={async () => {
@@ -547,6 +571,16 @@ export default function ListingConsole() {
           }
         }} />}</div>
       )}
+      <TechnicalDetails listing={listing}>
+        {listing.status !== "processing" && (
+          <>
+            {listing.note && !/test upload/i.test(listing.note) && <p className="text-sm text-ash">{listing.note}</p>}
+            {listing.source === "upload" && <details className="glass px-5 py-3 sm:px-6"><summary className="disclosure text-lg text-ivory">Source walkthrough and data</summary><div className="mb-3 mt-4"><SourcePanel listing={listing} /></div></details>}
+            <details className="glass px-5 py-3 sm:px-6"><summary className="disclosure text-lg text-ivory">Verification and Meta diagnostics</summary><div className="mb-3 mt-4"><ChecklistPanel listing={listing} meta={meta} blocking={gates} onRerun={reload} /></div></details>
+            <details className="glass px-5 py-3 sm:px-6"><summary className="disclosure text-lg text-ivory">Model decisions and evidence</summary><div className="mb-3"><DecisionPanel listing={listing} /></div></details>
+          </>
+        )}
+      </TechnicalDetails>
     </>
   );
 }

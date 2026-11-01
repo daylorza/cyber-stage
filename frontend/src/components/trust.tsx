@@ -60,13 +60,25 @@ export function ResultLine({ tone, label, reason }: { tone: Tone; label: string;
   );
 }
 
-export function ClaimTrust({ claim, listing, className = "" }: { claim: Claim | undefined; listing: Listing; className?: string }) {
+export function ClaimTrust({ claim, listing, className = "", compact = false }: { claim: Claim | undefined; listing: Listing; className?: string; compact?: boolean }) {
   if (!claim) return <p className={`eyebrow text-micro! ${className}`}>Unsaved edit · checks run on save</p>;
-  return <EvidenceBlock id={claim.id} evidence={claim.evidence} listing={listing} className={className} />;
+  return <EvidenceBlock id={claim.id} evidence={claim.evidence} listing={listing} className={className} compact={compact} />;
 }
 
-export function EvidenceBlock({ id, evidence, listing, className = "" }: { id: string | undefined; evidence: Evidence[]; listing: Listing; className?: string }) {
+export function EvidenceBlock({ id, evidence, listing, className = "", compact = false }: { id: string | undefined; evidence: Evidence[]; listing: Listing; className?: string; compact?: boolean }) {
   const result = claimResult(listing.verification?.checks ?? [], id, evidence);
+  if (compact)
+    return (
+      <details className={`group ${className}`}>
+        <summary className="flex w-fit cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+          <ResultLine {...result} />
+          <span className="data-label text-ash transition group-hover:text-ivory group-open:text-ivory">{evidence.length ? `${evidence.length} source${evidence.length === 1 ? "" : "s"}` : "No evidence"} <span aria-hidden className="inline-block transition group-open:rotate-90">›</span></span>
+        </summary>
+        <p className="data-label mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-ice/80">
+          {evidence.length ? evidence.map((e, i) => <span key={i}>{evidenceLine(e, listing.rooms)}</span>) : <span className="text-rose">No evidence</span>}
+        </p>
+      </details>
+    );
   return (
     <div className={`space-y-1 ${className}`}>
       <p className="data-label flex flex-wrap gap-x-4 gap-y-0.5 text-ice/80">
