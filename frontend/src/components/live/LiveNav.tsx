@@ -81,7 +81,7 @@ export default function LiveNav(p: Props) {
             <p className="eyebrow">Style</p>
             <ul className="space-y-2.5">
               {p.styles.map((s) => {
-                const status = room ? styleStatus(room, s.id) : { ok: false, reason: "" };
+                const status = room ? (s.id === "original" ? { ok: !!room.before, reason: "Original unavailable" } : styleStatus(room, s.id)) : { ok: false, reason: "" };
                 return (
                   <li key={s.id}>
                     <button

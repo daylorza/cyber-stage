@@ -6,6 +6,7 @@ export type StagePhase = "empty" | "staged";
 export type Overlay = { src: string | null; on: boolean };
 type Props = {
   room: LiveRoom;
+  original?: boolean;
   styleId: string | null;
   instant: boolean;
   reduced: boolean;
@@ -16,13 +17,13 @@ type Props = {
   children?: ReactNode;
 };
 
-export default function RoomStage({ room, styleId, reduced, onReady, onPhase, overlay, children }: Props) {
+export default function RoomStage({ room, original, styleId, reduced, onReady, onPhase, overlay, children }: Props) {
   const [shown, setShown] = useState<string | null>(null);
   const [incoming, setIncoming] = useState<string | null>(null);
   const shownRef = useRef<string | null>(null);
   const callbacks = useRef({ onReady, onPhase });
   callbacks.current = { onReady, onPhase };
-  const base = room.plate ?? room.before;
+  const base = original ? room.before : (room.plate ?? room.before);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,11 +45,11 @@ export default function RoomStage({ room, styleId, reduced, onReady, onPhase, ov
       } else finish();
     });
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [styleId, room.id, reduced]);
+  }, [styleId, room.id, reduced, base]);
 
   const style = shown ? room.styles[shown] : undefined;
   const next = incoming ? room.styles[incoming] : undefined;
-  const baseAlign = room.plate_source === "generated" ? room.plate_align : IDENTITY;
+  const baseAlign = !original && room.plate_source === "generated" ? room.plate_align : IDENTITY;
   return (
     <div role="img" aria-label={room.name} className="relative h-full w-full overflow-hidden bg-smoke">
       <style>{`@keyframes room-style-fade { from { opacity: 0 } to { opacity: 1 } }`}</style>

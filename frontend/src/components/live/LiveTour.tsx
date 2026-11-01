@@ -4,9 +4,9 @@ import { clock, media, type LiveMoment, type LivePayload } from "../../api";
 import { Wordmark } from "../Shell";
 import Backdrop from "./Backdrop";
 import { cutout } from "./cutout";
-import { playCyberpunk } from "./cyberpunk";
 import { useReducedMotion, useViewport } from "./hooks";
 import LiveNav from "./LiveNav";
+import GuidePanel from "./GuidePanel";
 import MomentFx, { NO_FX, type Fx } from "./MomentFx";
 import ReserveControl from "./ReserveControl";
 import RoomStage, { type Overlay, type StagePhase } from "./RoomStage";
@@ -43,19 +43,6 @@ type Move = { cam: Cam | null; ms: number; ease: string };
 type Token = { abort: boolean; wake: (() => void) | null };
 type Mode = "walk" | "room";
 
-/**
- * The style the walk opens in: the listing's own style when it furnishes the main living room (a few
- * pieces to fall), otherwise the available style with the most pieces there. The buyer can switch any time.
- */
-function openingStyle(payload: LivePayload): string {
-  const main = payload.rooms.find((r) => r.main) ?? payload.rooms[0];
-  if (!main) return payload.default_style;
-  const pieces = (id: string) => (main.styles[id]?.available ? (main.styles[id]?.pieces.length ?? 0) : -1);
-  if (pieces(payload.default_style) >= 4) return payload.default_style;
-  const best = payload.styles.map((s) => s.id).sort((a, b) => pieces(b) - pieces(a))[0];
-  return best && pieces(best) > pieces(payload.default_style) ? best : payload.default_style;
-}
-
 const glassButton =
   "group pointer-events-auto flex items-center gap-4 rounded-full bg-ivory/[0.08] py-2 pl-2 pr-6 text-[15px] tracking-wide text-ivory ring-1 ring-ivory/25 backdrop-blur-xl transition hover:bg-ivory/[0.14] hover:ring-ivory/40";
 
@@ -67,7 +54,7 @@ const glassButton =
  */
 export default function LiveTour({ payload }: { payload: LivePayload }) {
   const navigate = useNavigate();
-  const { styles } = payload;
+  const styles = [{ id: "original", label: "Original" }, ...[["modern-luxury", "Modern luxury"], ["coastal", "Coastal"], ["minimal", "Minimal"], ["2142", "Cyberpunk"]].map(([id, label]) => ({ id, label }))];
   const listingPath = `/p/${payload.listing_id}`;
   const video = payload.video;
   const viewport = useViewport();
@@ -92,10 +79,11 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const [ended, setEnded] = useState(false);
   const [roomIndex, setRoomIndex] = useState(0);
   const [instant, setInstant] = useState(false);
-  const [chosen, setChosen] = useState(() => openingStyle(payload));
+  const [chosen, setChosen] = useState("modern-luxury");
+  const [intro, setIntro] = useState(true);
   const choose = (id: string) => {
-    if (id === "2142") playCyberpunk();
     setChosen(id);
+    setIntro(false);
   };
   const [phase, setPhase] = useState<StagePhase>("empty");
   const [entered, setEntered] = useState(false);
@@ -112,6 +100,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const [overlay, setOverlay] = useState<Overlay>({ src: null, on: false });
   const [pending, setPending] = useState<LiveMoment | null>(null);
 
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
   const drag = useRef({ x: 0, y: 0, pan: { x: 0, y: 0 } });
   const closeTimer = useRef(0);
   const switching = useRef(false);
@@ -122,7 +111,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const nextStop = useRef(0);
 
   const room = rooms[roomIndex];
-  const { id: styleId, fellBack } = useMemo(() => resolveStyle(room, chosen, payload.default_style), [room, chosen, payload.default_style]);
+  const { id: styleId, fellBack } = useMemo(() => chosen === "original" ? { id: null, fellBack: false } : resolveStyle(room, chosen, "modern-luxury"), [room, chosen]);
   const styleLabel = styles.find((s) => s.id === styleId)?.label ?? room.styles[styleId ?? ""]?.label ?? "";
   const chosenLabel = styles.find((s) => s.id === chosen)?.label ?? chosen;
   const inRoom = mode === "room";
@@ -154,7 +143,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   }, [walking, rooms, room, now]);
 
   const backdropPath = inRoom
-    ? phase === "staged" && styleId
+    ? chosen === "original" ? room.before : phase === "staged" && styleId
       ? (room.styles[styleId]?.image ?? null)
       : (room.plate ?? room.before)
     : (nearestRoom?.before ?? null);
@@ -168,6 +157,12 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const later = (fn: () => void, ms: number) => {
     timers.current.push(window.setTimeout(fn, ms));
   };
+
+  useEffect(() => {
+    if (!entered || !inRoom || !intro) return;
+    const timer = window.setTimeout(() => setIntro(false), 5000);
+    return () => clearTimeout(timer);
+  }, [entered, inRoom, intro]);
 
   useEffect(() => {
     document.title = payload.title;
@@ -489,6 +484,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
     ? ended
       ? "End of the walkthrough"
       : "Walking the residence · as filmed"
+    : chosen === "original" ? "Original / Unstaged"
     : phase === "staged" && styleId
       ? `AI-staged · ${styleLabel}`
       : room.plate_source === "generated"
@@ -566,6 +562,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               <RoomStage
                 key={room.id}
                 room={room}
+                original={chosen === "original"}
                 styleId={styleId}
                 instant={instant}
                 reduced={reduced}
@@ -598,6 +595,8 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
         role="img"
         aria-label={`${payload.title}, ${roomName}.`}
         className={`absolute inset-0 touch-none ${moment ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`}
+        onTouchStart={(e) => { const t = e.touches[0]; touchStart.current = { x: t.clientX, y: t.clientY }; }}
+        onTouchEnd={(e) => { const start = touchStart.current; const end = e.changedTouches[0]; touchStart.current = null; if (!start || Math.abs(end.clientX - start.x) < 60 || Math.abs(end.clientX - start.x) < Math.abs(end.clientY - start.y)) return; if (end.clientX < start.x) { if (walking && inRoom) continueWalk(); else if (!walking) goTo(roomIndex + 1); } else goTo(roomIndex - 1); }}
         onPointerDown={dragToLookEnabled ? onPointerDown : undefined}
         onPointerMove={dragToLookEnabled ? onPointerMove : undefined}
         onPointerUp={dragToLookEnabled ? endDrag : undefined}
@@ -609,6 +608,8 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
         style={{ opacity: dark ? 1 : 0, transition: `opacity ${dark ? 380 : entered ? 800 : 1600}ms ease-in-out` }}
       />
 
+      {entered && inRoom && !moment && <GuidePanel listingId={payload.listing_id} room={room} rooms={rooms} styleId={chosen} onStyle={choose} onRoom={(i) => goTo(i, true)} />}
+      {entered && inRoom && intro && <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-night/85 px-5 py-4 text-center text-ivory">Please choose your staging type below.</div>}
       <div className="legible pointer-events-none absolute inset-0">
         <div className="absolute left-6 top-6 sm:left-10 sm:top-9"><Wordmark /></div>
         <div inert={!!moment} className={chrome}>
@@ -627,7 +628,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                 {chosenLabel} isn't available in this room · showing {styleLabel}
               </p>
             )}
-            {inRoom && !styleId && <p className="eyebrow mt-1.5 text-ivory/45!">Staging isn't available for this room</p>}
+            {inRoom && !styleId && chosen !== "original" && <p className="eyebrow mt-1.5 text-ivory/45!">Staging isn't available for this room</p>}
             {payload.note && !/test upload/i.test(payload.note) && <p className="eyebrow mt-3 max-w-xs text-[0.58rem]! leading-relaxed normal-case tracking-wide text-rose/80!">{payload.note}</p>}
           </div>
 
@@ -638,7 +639,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               roomIndex={inRoom ? roomIndex : -1}
               onRoom={goTo}
               styles={styles}
-              styleId={styleId}
+              styleId={chosen === "original" ? "original" : styleId}
               onStyle={choose}
               moments={moments}
               onMoment={requestMoment}
@@ -698,7 +699,12 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
             )}
           </div>
 
-          <div className="absolute inset-x-0 bottom-10 flex items-center px-6 sm:px-10">
+          {!inRoom && walking && <button type="button" onClick={() => goTo(Math.max(0, rooms.findIndex(r => r.main)), true)} className="pointer-events-auto absolute bottom-4 left-3 z-10 min-h-11 rounded-full bg-night/90 px-5 text-sm text-ivory sm:hidden">Choose furniture</button>}
+          {inRoom && <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-10 space-y-1 bg-night/85 px-3 pt-2 sm:hidden" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
+            <div role="group" aria-label="Style" className="flex gap-1 overflow-x-auto">{styles.map(s => { const status = s.id === "original" ? { ok: !!room.before, reason: "Original unavailable" } : styleStatus(room, s.id); return <button key={s.id} type="button" disabled={!status.ok} title={status.reason} aria-pressed={s.id === (chosen === "original" ? "original" : styleId)} onClick={() => choose(s.id)} className={`min-h-11 shrink-0 rounded-full px-3 text-xs ${s.id === (chosen === "original" ? "original" : styleId) ? "bg-ivory text-night" : "text-ivory disabled:opacity-35"}`}>{s.label}</button>; })}</div>
+            <div className="flex items-center justify-between gap-2"><button type="button" className="min-h-11 rounded-full bg-ivory/10 px-4 text-sm" onClick={() => walking ? continueWalk() : last ? setFinishPressed(true) : goTo(roomIndex + 1)}>{walking ? "Continue walking" : last ? "Finish" : "Next room"}</button><ReserveControl listingId={payload.listing_id} /></div>
+          </div>}
+          <div className="absolute inset-x-0 bottom-10 hidden items-center px-6 sm:flex sm:px-10">
             <div className="pointer-events-auto">
               {walking ? (
                 inRoom ? (
@@ -762,20 +768,20 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               <div
                 role="group"
                 aria-label="Style"
-                className={`pointer-events-auto absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5 transition-opacity duration-700 ${phase === "staged" && !dark ? "opacity-100 [@media(hover:hover)]:opacity-20 [@media(hover:hover)]:hover:opacity-100 focus-within:opacity-100" : "opacity-0"}`}
+                className={`pointer-events-auto absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5 transition-opacity duration-700 ${!dark ? "opacity-100" : "opacity-0"}`}
               >
                 <div className="flex items-center gap-1 rounded-full bg-night/35 p-1 ring-1 ring-ivory/15 backdrop-blur-xl">
                   {styles.map((s) => {
-                    const status = styleStatus(room, s.id);
+                    const status = s.id === "original" ? { ok: !!room.before, reason: "Original unavailable" } : styleStatus(room, s.id);
                     return (
                       <button
                         key={s.id}
                         type="button"
-                        disabled={!status.ok || phase !== "staged"}
+                        disabled={!status.ok}
                         title={status.ok ? `Restyle as ${s.label}` : status.reason}
-                        aria-pressed={s.id === styleId}
+                        aria-pressed={s.id === (chosen === "original" ? "original" : styleId)}
                         onClick={() => choose(s.id)}
-                        className={`rounded-full px-3.5 py-1.5 text-[12px] tracking-wide transition disabled:cursor-not-allowed ${s.id === styleId ? "bg-ivory/90 text-night" : status.ok ? "text-ivory/80 hover:text-ivory" : "text-ivory/30 line-through decoration-ivory/30"}`}
+                        className={`rounded-full px-3.5 py-1.5 text-[12px] tracking-wide transition disabled:cursor-not-allowed ${s.id === (chosen === "original" ? "original" : styleId) ? "bg-ivory/90 text-night" : status.ok ? "text-ivory/80 hover:text-ivory" : "text-ivory/30 line-through decoration-ivory/30"}`}
                       >
                         {s.label}
                       </button>
@@ -783,7 +789,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                   })}
                 </div>
                 {styles
-                  .filter((s) => !styleStatus(room, s.id).ok)
+                  .filter((s) => s.id !== "original" && !styleStatus(room, s.id).ok)
                   .map((s) => (
                     <p key={s.id} className="max-w-md text-center text-[11px] leading-snug text-ivory/45">
                       {s.label} unavailable here · {styleStatus(room, s.id).reason.split(" Not compared")[0].split(" Framing")[0]}

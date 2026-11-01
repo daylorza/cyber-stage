@@ -37,6 +37,8 @@ means Modern luxury. Call switch_style with the requested name or ID."""
 class ChatRequest(BaseModel):
     thread_id: str = Field(min_length=1, max_length=128)
     message: str = Field(min_length=1, max_length=4000)
+    room_id: str | None = None
+    style_id: str | None = None
 
     @field_validator("thread_id", "message")
     @classmethod
@@ -131,6 +133,7 @@ def _tools(listing: dict, session: dict, result: dict):
             return record("next_room", {"error": "Already in the last room"})
         room = rooms[index + 1]
         session["room_id"] = room["id"]
+        result["room_id"] = room["id"]
         entry = room.get("styles", {}).get(session.get("style", "modern-luxury")) or {}
         if entry.get("available") and entry.get("image"):
             result["staged_image_url"] = "/api/media/" + entry["image"].lstrip("/")
@@ -152,11 +155,16 @@ def chat(listing_id: str, body: ChatRequest) -> dict:
         raise HTTPException(404, "Listing not found.")
     if listing.get("status") != "published" or (listing.get("live") or {}).get("status") != "ready":
         raise HTTPException(409, "A published, prepared residence is required.")
-    result = {"text": "", "emotion": "warm", "actions_taken": [], "evidence": [], "staged_image_url": None, "deposit": None}
+    result = {"text": "", "emotion": "warm", "actions_taken": [], "evidence": [], "staged_image_url": None, "deposit": None, "room_id": None}
     # ponytail: a process-wide lock serializes demo sessions; use per-session locks if traffic grows.
     with _lock:
         key = (listing_id, body.thread_id)
         session = _sessions.setdefault(key, {"turns": 0})
+        rooms = (listing.get("live") or {}).get("rooms") or []
+        if body.room_id and any(room.get("id") == body.room_id for room in rooms):
+            session["room_id"] = body.room_id
+        if body.style_id in (*STYLE_LABELS, "original"):
+            session["style"] = body.style_id
         if session["turns"] >= 12:
             result["text"] = "This demo session has reached its 12-turn limit. Please start a new session."
             return result
