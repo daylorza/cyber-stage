@@ -1,18 +1,18 @@
 .guide-avatar {
   position: relative;
-  width: 3rem;
-  height: 3rem;
+  width: 3.5rem;
+  height: 3.5rem;
   flex: none;
   pointer-events: none;
   border-radius: 50%;
   overflow: hidden;
-  border: 1px solid rgba(244, 241, 232, .35);
+  border: 1px solid rgba(250, 244, 230, .8);
   background: rgba(226, 215, 195, .3);
   backdrop-filter: blur(12px);
   filter: drop-shadow(0 3px 6px rgba(45, 39, 31, .5)) drop-shadow(0 0 9px rgba(246, 237, 218, .5));
   animation: guide-float 5s ease-in-out infinite;
 }
-.guide-avatar--large { width: clamp(2rem, calc(23dvh - 106px), 8rem); height: clamp(2rem, calc(23dvh - 106px), 8rem); }
+.guide-avatar--large { width: clamp(3rem, calc(23dvh - 90px), 9rem); height: clamp(3rem, calc(23dvh - 90px), 9rem); }
 .guide-avatar::before {
   content: "";
   position: absolute;
@@ -74,6 +74,6 @@
   .guide-intro { transition: opacity 150ms ease; }
 }
 
-.guide-avatar--shader { border-color: transparent; background: transparent; backdrop-filter: none; }
+.guide-avatar--shader { background: transparent; backdrop-filter: none; }
 .guide-avatar--shader::before, .guide-avatar--shader::after, .guide-avatar--shader .guide-avatar__cloud { display: none; }
 .guide-avatar canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
