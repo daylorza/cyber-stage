@@ -22,10 +22,10 @@ test('avatar animation prioritizes a pending reply and a style-change nod', asyn
 
 test('mobile quick actions keep Reserve visible and expose extra room actions', async () => {
   const { mobileActions } = await import('../src/components/live/guideLogic.ts');
-  assert.deepEqual(mobileActions('modern-luxury', 1, false), ['Show me Coastal', 'Show me Cyberpunk', 'Reserve it']);
-  assert.deepEqual(mobileActions('modern-luxury', 2, false), ['Show me Coastal', 'More', 'Reserve it']);
-  assert.deepEqual(mobileActions('modern-luxury', 2, true), ['Show me Cyberpunk', 'Next room', 'Reserve it']);
-  assert.deepEqual(mobileActions('coastal', 2, false), ['Show me Cyberpunk', 'Next room', 'Reserve it']);
+  assert.deepEqual(mobileActions('modern-luxury', 1, false), ['Price', 'Amenities', 'Reserve it']);
+  assert.deepEqual(mobileActions('modern-luxury', 2, false), ['Price', 'More', 'Reserve it']);
+  assert.deepEqual(mobileActions('modern-luxury', 2, true), ['Amenities', 'Next room', 'Reserve it']);
+  assert.deepEqual(mobileActions('coastal', 2, false), ['Price', 'More', 'Reserve it']);
 });
 
 test('guide text hides citations, URLs and markdown and deduplicates the concept disclaimer', async () => {

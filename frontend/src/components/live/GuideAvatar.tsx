@@ -11,16 +11,15 @@ const outlines = [
 ];
 
 export default function GuideAvatar({ state = "idle", excited = false, large = false }: Props) {
-  const label = state === "thinking" ? "THINKING" : state === "speaking" ? "RESPONDING" : "GUIDE";
+  const label = state === "thinking" ? "THINKING" : state === "speaking" ? "RESPONDING" : "STAGING";
   return (
     <div role="img" aria-label="Guide visualizer" className={`guide-avatar guide-avatar--${state}${excited ? " guide-avatar--excited" : ""}${large ? " guide-avatar--large" : ""}`}>
       <svg aria-hidden="true" viewBox="200 0 400 400" className="guide-avatar__svg">
-        <circle cx="400" cy="200" r="88" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-        <circle cx="400" cy="200" r="140" fill="none" stroke="rgba(255,255,255,0.02)" strokeWidth="1" />
-        {rings.map((radius, i) => <circle key={radius} cx="400" cy="200" r={radius} fill="none" stroke="rgba(244,241,234,0.04)" strokeWidth="1" strokeDasharray={i % 2 ? "2 4" : "1 5"} />)}
-        {Array.from({ length: 24 }, (_, i) => { const angle = i * Math.PI / 12; return <line key={i} x1={400 + 17.6 * Math.cos(angle)} y1={200 + 17.6 * Math.sin(angle)} x2={400 + 308 * Math.cos(angle)} y2={200 + 308 * Math.sin(angle)} stroke="rgba(244,241,234,0.03)" strokeWidth="1" />; })}
-        <g className="guide-avatar__outlines" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1">
-          {outlines.map((path, i) => <path key={path} d={path} stroke={`rgba(244,241,234,${[.18, .14, .12, .08, .06][i]})`} />)}
+        <circle cx="400" cy="200" r="88" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+        <circle cx="400" cy="200" r="140" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+        {rings.map((radius, i) => <circle key={radius} cx="400" cy="200" r={radius} fill="none" stroke="rgba(244,241,234,0.16)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeDasharray={i % 2 ? "2 4" : "1 5"} />)}
+        <g className="guide-avatar__outlines" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
+          {outlines.map((path, i) => <path key={path} d={path} vectorEffect="non-scaling-stroke" stroke={`rgba(244,241,234,${[.5, .4, .34, .26, .2][i]})`} />)}
         </g>
         {large && <text x="400" y="205" textAnchor="middle" fill="#ffffff" fontSize="14" fontWeight="500" letterSpacing="1">{label}</text>}
       </svg>
