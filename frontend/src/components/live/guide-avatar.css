@@ -4,13 +4,22 @@
   height: 3rem;
   flex: none;
   pointer-events: none;
-  border-radius: 46% 54% 53% 47% / 53% 46% 54% 47%;
+  border-radius: 35% 39% 37% 34% / 37% 34% 39% 35%;
+  overflow: hidden;
   border: 1px solid rgba(220, 193, 255, .8);
   background: radial-gradient(ellipse at 48% 46%, rgba(255, 250, 255, .85) 0%, rgba(209, 168, 255, .62) 34%, rgba(135, 78, 210, .38) 65%, rgba(99, 54, 160, .18) 100%);
   filter: drop-shadow(0 3px 6px rgba(25, 10, 47, .65)) drop-shadow(0 0 9px rgba(180, 130, 255, .45));
   animation: guide-float 5s ease-in-out infinite;
 }
 .guide-avatar--large { width: clamp(2rem, calc(23dvh - 106px), 8rem); height: clamp(2rem, calc(23dvh - 106px), 8rem); }
+.guide-avatar::before {
+  content: "";
+  position: absolute;
+  inset: -15%;
+  background: radial-gradient(ellipse at 35% 60%, rgba(135, 71, 219, .8), rgba(181, 114, 244, .38) 35%, transparent 68%);
+  filter: blur(7px);
+  animation: guide-cloud 6s ease-in-out infinite alternate;
+}
 .guide-avatar__cloud {
   position: absolute;
   inset: 12%;
@@ -24,7 +33,9 @@
 .guide-avatar__cloud--three { inset: 10% 24% 23% 12%; opacity: .6; animation-duration: 6s; animation-delay: -2s; }
 .guide-avatar--speaking { animation: guide-talk .45s ease-in-out infinite alternate; }
 .guide-avatar--speaking .guide-avatar__cloud { animation-duration: 1.6s; }
+.guide-avatar--speaking::before { animation-duration: 1.6s; }
 .guide-avatar--thinking .guide-avatar__cloud { animation-duration: 3s; }
+.guide-avatar--thinking::before { animation-duration: 3s; }
 .guide-avatar--thinking, .guide-avatar--nod, .guide-avatar--excited { filter: drop-shadow(0 3px 6px rgba(25, 10, 47, .65)) drop-shadow(0 0 14px rgba(207, 170, 255, .75)) brightness(1.16); }
 .guide-intro {
   left: 50%;
@@ -39,12 +50,13 @@
   transform: translate(-50%, -50%) scale(.2);
   opacity: 0;
 }
-@keyframes guide-float { 50% { transform: translateY(-4px) scale(1.035); border-radius: 54% 46% 48% 52% / 46% 53% 47% 54%; } }
-@keyframes guide-talk { to { transform: scale(1.08, .94); border-radius: 52% 48% 44% 56% / 45% 55% 45% 55%; } }
+@keyframes guide-float { 50% { transform: translateY(-4px) scale(1.035); border-radius: 39% 34% 36% 38% / 35% 39% 34% 37%; } }
+@keyframes guide-talk { to { transform: scale(1.08, .94); border-radius: 38% 35% 33% 39% / 34% 38% 35% 39%; } }
 @keyframes guide-cloud { to { transform: translate(14%, -10%) rotate(32deg) scale(.8, 1.2); border-radius: 60% 40% 45% 55% / 40% 60% 40% 60%; } }
 @keyframes guide-glow { 50% { opacity: .8; } }
 @media (prefers-reduced-motion: reduce) {
   .guide-avatar, .guide-avatar--speaking { animation: guide-glow 8s ease-in-out infinite; }
   .guide-avatar .guide-avatar__cloud { animation: none; }
+  .guide-avatar::before { animation: none; }
   .guide-intro { transition: opacity 150ms ease; }
 }

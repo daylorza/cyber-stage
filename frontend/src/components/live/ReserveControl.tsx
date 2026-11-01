@@ -50,7 +50,7 @@ export default function ReserveControl({ listingId }: { listingId: string }) {
       onMouseLeave={() => setHover(false)}
     >
       {showCard && (
-        <div role="status" className="glass animate-fade-in absolute bottom-full right-0 mb-3 w-72 p-5" style={{ animationDelay: "1000ms" }}>
+        <div role="status" className="glass animate-fade-in absolute left-1/2 top-full mt-3 w-72 max-w-[calc(100vw-2rem)] -translate-x-1/2 p-5" style={{ animationDelay: "1000ms" }}>
           <p className="font-serif text-lg text-ivory">Hold requested</p>
           <p className="mt-2 text-sm leading-relaxed text-ivory/75">
             Simulated deposit — no payment taken. The broker confirms your private showing.
