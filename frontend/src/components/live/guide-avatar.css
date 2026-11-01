@@ -1,79 +1,14 @@
-.guide-avatar {
-  position: relative;
-  width: 3.5rem;
-  height: 3.5rem;
-  flex: none;
-  pointer-events: none;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 1px solid rgba(250, 244, 230, .8);
-  background: rgba(226, 215, 195, .3);
-  backdrop-filter: blur(12px);
-  filter: drop-shadow(0 3px 6px rgba(45, 39, 31, .5)) drop-shadow(0 0 9px rgba(246, 237, 218, .5));
-  animation: guide-float 5s ease-in-out infinite;
-}
+.guide-avatar { position: relative; width: 3.5rem; height: 3.5rem; flex: none; overflow: hidden; pointer-events: none; filter: drop-shadow(0 3px 6px rgba(25, 20, 15, .5)); }
 .guide-avatar--large { width: clamp(3rem, calc(23dvh - 90px), 9rem); height: clamp(3rem, calc(23dvh - 90px), 9rem); }
-.guide-avatar::before {
-  content: "";
-  position: absolute;
-  inset: -15%;
-  background: radial-gradient(ellipse at 35% 60%, rgba(246, 237, 218, .85), rgba(232, 220, 199, .45) 35%, transparent 68%);
-  filter: blur(7px);
-  animation: guide-cloud 6s ease-in-out infinite alternate;
-}
-.guide-avatar::after {
-  content: "";
-  position: absolute;
-  z-index: 1;
-  width: 14%;
-  height: 14%;
-  left: 43%;
-  top: 43%;
-  border-radius: 50%;
-  background: #fffaf0;
-  box-shadow: 0 0 8px 3px rgba(250, 240, 220, .8);
-}
-.guide-avatar__cloud {
-  position: absolute;
-  inset: 12%;
-  border-radius: 46% 54% 57% 43% / 51% 44% 56% 49%;
-  background: radial-gradient(ellipse at 45% 50%, rgba(255, 252, 245, .8), rgba(244, 235, 216, .4) 36%, transparent 68%);
-  filter: blur(3px);
-  mix-blend-mode: screen;
-  animation: guide-cloud 7s ease-in-out infinite alternate;
-}
-.guide-avatar__cloud--two { inset: 20% 8% 14% 25%; opacity: .7; animation-duration: 9s; animation-direction: alternate-reverse; }
-.guide-avatar__cloud--three { inset: 10% 24% 23% 12%; opacity: .6; animation-duration: 6s; animation-delay: -2s; }
-.guide-avatar--speaking { animation: guide-talk .45s ease-in-out infinite alternate; }
-.guide-avatar--speaking .guide-avatar__cloud { animation-duration: 1.6s; }
-.guide-avatar--speaking::before { animation-duration: 1.6s; }
-.guide-avatar--thinking .guide-avatar__cloud { animation-duration: 3s; }
-.guide-avatar--thinking::before { animation-duration: 3s; }
-.guide-avatar--thinking, .guide-avatar--nod, .guide-avatar--excited { filter: drop-shadow(0 3px 6px rgba(45, 39, 31, .5)) drop-shadow(0 0 14px rgba(255, 246, 227, .75)) brightness(1.16); }
-.guide-intro {
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%) scale(1);
-  opacity: 1;
-  transition: left 650ms cubic-bezier(.22, 1, .36, 1), top 650ms cubic-bezier(.22, 1, .36, 1), transform 650ms cubic-bezier(.22, 1, .36, 1), opacity 550ms ease;
-}
-.guide-intro--leaving {
-  left: calc(100% - min(24rem, 100vw - 1.5rem) + 1.75rem);
-  top: calc(100% - 11rem - env(safe-area-inset-bottom));
-  transform: translate(-50%, -50%) scale(.2);
-  opacity: 0;
-}
-@keyframes guide-float { 50% { transform: translateY(-4px) scale(1.035); } }
-@keyframes guide-talk { to { transform: scale(1.08); } }
-@keyframes guide-cloud { from { transform: scale(.45) rotate(-15deg); opacity: .5; } to { transform: translate(14%, -10%) rotate(32deg) scale(1.05, 1.2); opacity: .85; border-radius: 60% 40% 45% 55% / 40% 60% 40% 60%; } }
-@keyframes guide-glow { 50% { opacity: .8; } }
+.guide-avatar__svg { display: block; width: 100%; height: 100%; }
+.guide-avatar__outlines { transform-box: fill-box; transform-origin: center; animation: guide-drift 6s ease-in-out infinite alternate; }
+.guide-avatar--speaking .guide-avatar__outlines { animation-duration: .7s; }
+.guide-avatar--thinking .guide-avatar__outlines { animation-duration: 2s; }
+.guide-avatar--thinking, .guide-avatar--nod, .guide-avatar--excited { filter: drop-shadow(0 0 8px rgba(255, 246, 227, .7)); }
+.guide-intro { left: 50%; top: 50%; transform: translate(-50%, -50%) scale(1); opacity: 1; transition: left 650ms cubic-bezier(.22, 1, .36, 1), top 650ms cubic-bezier(.22, 1, .36, 1), transform 650ms cubic-bezier(.22, 1, .36, 1), opacity 550ms ease; }
+.guide-intro--leaving { left: calc(100% - min(24rem, 100vw - 1.5rem) + 1.75rem); top: calc(100% - 11rem - env(safe-area-inset-bottom)); transform: translate(-50%, -50%) scale(.2); opacity: 0; }
+@keyframes guide-drift { to { transform: rotate(7deg) scale(1.06); } }
 @media (prefers-reduced-motion: reduce) {
-  .guide-avatar, .guide-avatar--speaking { animation: guide-glow 8s ease-in-out infinite; }
-  .guide-avatar .guide-avatar__cloud { animation: none; }
-  .guide-avatar::before { animation: none; }
+  .guide-avatar__outlines { animation: none !important; }
   .guide-intro { transition: opacity 150ms ease; }
 }
-
-.guide-avatar--shader { background: transparent; backdrop-filter: none; }
-.guide-avatar--shader::before, .guide-avatar--shader::after, .guide-avatar--shader .guide-avatar__cloud { display: none; }
-.guide-avatar canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
