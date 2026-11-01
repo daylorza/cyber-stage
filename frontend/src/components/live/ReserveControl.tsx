@@ -50,7 +50,7 @@ export default function ReserveControl({ listingId }: { listingId: string }) {
       onMouseLeave={() => setHover(false)}
     >
       {showCard && (
-        <div role="status" className="glass animate-fade-in absolute left-1/2 top-full mt-3 w-72 max-w-[calc(100vw-2rem)] -translate-x-1/2 p-5" style={{ animationDelay: "1000ms" }}>
+        <div role="status" className="glass animate-fade-in absolute bottom-full left-0 mb-3 w-72 max-w-[calc(100vw-2rem)] p-5" style={{ animationDelay: "1000ms" }}>
           <p className="font-serif text-lg text-ivory">Hold requested</p>
           <p className="mt-2 text-sm leading-relaxed text-ivory/75">
             Simulated deposit — no payment taken. The broker confirms your private showing.
@@ -58,8 +58,8 @@ export default function ReserveControl({ listingId }: { listingId: string }) {
           <p className="eyebrow mt-3">Ref {reservation.id.slice(-8)}</p>
         </div>
       )}
-      <button type="button" disabled={state !== "idle"} onClick={reserve} aria-label={done ? "Hold requested" : "Reserve"} className="pointer-events-auto flex min-h-11 items-center text-ivory disabled:cursor-default sm:hidden">
-        <span className="flex h-[34px] items-center gap-2 rounded-full bg-ivory/[0.07] px-3 text-xs tracking-wide ring-1 ring-ivory/25 backdrop-blur-xl">Reserve<span aria-hidden className="h-3 w-3 rounded-full border border-ivory/70" /></span>
+      <button type="button" disabled={state !== "idle"} onClick={reserve} aria-label={done ? "Hold requested" : "Reserve"} className="pointer-events-auto flex min-h-11 w-28 items-center text-ivory disabled:cursor-default sm:hidden">
+        <span className="flex h-[34px] w-full items-center justify-center gap-2 rounded-full bg-ivory/[0.07] px-3 text-xs tracking-wide ring-1 ring-ivory/25 backdrop-blur-xl">Reserve<span aria-hidden className="h-3 w-3 rounded-full border border-ivory/70" /></span>
       </button>
       <button
         ref={pill}
