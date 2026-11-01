@@ -67,16 +67,16 @@ export default function ReserveControl({ listingId }: { listingId: string }) {
         disabled={state !== "idle"}
         onClick={reserve}
         aria-label={done ? "Hold requested" : "Reserve this showing"}
-        className="pointer-events-auto hidden h-14 items-center sm:flex gap-4 overflow-hidden whitespace-nowrap rounded-full bg-ivory/[0.07] pl-2 pr-6 text-left text-ivory ring-1 ring-champagne/45 backdrop-blur-xl transition-colors hover:bg-ivory/[0.12] hover:ring-champagne/70 disabled:cursor-default"
+        className="pointer-events-auto hidden h-14 items-center sm:flex gap-4 overflow-hidden whitespace-nowrap rounded-full bg-ivory/[0.07] pl-2 pr-6 text-left text-ivory ring-1 ring-ivory/30 backdrop-blur-xl transition-colors hover:bg-ivory/[0.12] hover:ring-ivory/60 disabled:cursor-default"
         style={{
           width: done ? 56 : (width ?? undefined),
           paddingRight: done ? 0 : undefined,
           transition: "width 700ms cubic-bezier(0.6, 0, 0.2, 1), padding 700ms, background-color 300ms, box-shadow 300ms",
         }}
       >
-        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${done ? "" : "ring-1 ring-champagne/40"}`}>
+        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${done ? "" : "ring-1 ring-ivory/30"}`}>
           {done ? (
-            <svg viewBox="0 0 40 40" className="h-10 w-10" fill="none" stroke="#c9b38a" strokeWidth={1.5} aria-hidden>
+            <svg viewBox="0 0 40 40" className="h-10 w-10" fill="none" stroke="#f4f1e8" strokeWidth={1.5} aria-hidden>
               <circle cx={20} cy={20} r={19} pathLength={1} transform="rotate(-90 20 20)" className="live-draw" />
               <path
                 d="M12.5 20.5 L18 26 L28 14.5"
@@ -88,12 +88,12 @@ export default function ReserveControl({ listingId }: { listingId: string }) {
               />
             </svg>
           ) : (
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-champagne" style={{ boxShadow: "0 0 10px rgb(201 179 138 / 0.7)" }} />
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-ivory/70" style={{ boxShadow: "0 0 10px rgb(244 241 232 / 0.5)" }} />
           )}
         </span>
         <span className="flex flex-col gap-0.5 transition-opacity duration-300" style={{ opacity: done ? 0 : 1 }}>
           <span className="text-[15px] tracking-wide">{state === "busy" ? "Requesting" : "Reserve this showing"}</span>
-          <span className="font-mono text-[10px] tracking-wide text-champagne/80">Refundable hold · broker confirms</span>
+          <span className="font-mono text-[10px] tracking-wide text-ivory/65">Refundable hold · broker confirms</span>
         </span>
       </button>
       {error && (

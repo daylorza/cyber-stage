@@ -17,3 +17,16 @@ export function mobileActions(styleId: string, roomCount: number, more: boolean)
   if (choices.length <= 2) return [...choices, 'Reserve it'];
   return more ? [...choices.slice(1), 'Reserve it'] : [choices[0], 'More', 'Reserve it'];
 }
+
+export function cleanGuideText(text: string): string {
+  const disclaimer = 'Cyberpunk concept · AI-imagined, not a verified depiction of the property.';
+  let found = false;
+  return text.replace(/(?:want|would you like|shall i|i recommend|you should|what i can do)[^.!?\n]*(?:coastal|cyberpunk|minimal|modern luxury)[^.!?\n]*[?.!]?/gi, '\nWould you like to see the next style?').replace(/https?:\/\/\S+/gi, '').replace(/\[(?:fact:[\w-]+|o_[\w-]+)\]/gi, '').replace(/\*+/g, '').split('\n').map(line => {
+    if (/cyberpunk concept\s*·\s*ai-imagined/i.test(line)) {
+      if (found) return '';
+      found = true;
+      return disclaimer;
+    }
+    return line.replace(/\s+/g, ' ').trim();
+  }).filter(Boolean).join('\n');
+}

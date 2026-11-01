@@ -1,13 +1,3 @@
-.guide-avatar { width: 2.75rem; aspect-ratio: 1; flex: none; border-radius: 50%; overflow: hidden; box-shadow: 0 0 14px #48d7ff99; animation: guide-idle 4s ease-in-out infinite; }
-.guide-avatar--large { width: min(32vw, 9rem); }
-.guide-avatar img { width: 100%; height: 100%; object-fit: cover; transition: opacity 80ms, transform 80ms; }
-.guide-avatar img.guide-avatar__blink { opacity: .6; transform: scaleY(.96); }
-.guide-avatar--thinking { animation: guide-thinking 2s ease-in-out infinite; }
-.guide-avatar--speaking { animation: guide-speaking .4s ease-in-out infinite alternate; }
-.guide-avatar--nod { animation: guide-nod .65s ease-in-out 2; }
-.guide-avatar--excited { box-shadow: 0 0 24px #5deaff; }
-@keyframes guide-idle { 50% { transform: translateY(-3px) scale(1.025); } }
-@keyframes guide-thinking { 50% { transform: rotate(-6deg) scale(1.04); } }
-@keyframes guide-speaking { to { transform: translateY(-2px) scale(1.035); } }
-@keyframes guide-nod { 50% { transform: translateY(4px) scaleY(.96); } }
-@media (prefers-reduced-motion: reduce) { .guide-avatar { animation: none; } }
+.guide-avatar { width: 3rem; height: 3rem; flex: none; pointer-events: none; }
+.guide-avatar--large { width: min(45vw, 12rem); height: min(55vw, 15rem); }
+.guide-avatar canvas { display: block; width: 100%; height: 100%; }

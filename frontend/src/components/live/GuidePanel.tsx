@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { LiveRoom } from "../../api";
 import { playDing, primeAudio } from "./ding";
-import { avatarState, isOriginalRequest, matchImageStyle, mobileActions } from "./guideLogic";
+import { avatarState, cleanGuideText, isOriginalRequest, matchImageStyle, mobileActions } from "./guideLogic";
 import GuideAvatar from "./GuideAvatar";
 
-type Reply = { text: string; emotion: string; actions_taken: string[]; staged_image_url: string | null; room_id: string | null; deposit: { mock_tx: string; simulated: boolean; payment_taken: boolean } | null };
+type Reply = { text: string; emotion: string; actions_taken: string[]; staged_image_url: string | null; room_id: string | null; evidence: string[]; deposit: { mock_tx: string; simulated: boolean; payment_taken: boolean } | null };
 type Props = { listingId: string; room: LiveRoom; rooms: LiveRoom[]; styleId: string; onStyle: (id: string) => void; onRoom: (index: number) => void; avatarOn: boolean; setAvatarOn: (on: boolean) => void; intro: boolean; styleChange: number };
 
 export default function GuidePanel({ listingId, room, rooms, styleId, onStyle, onRoom, avatarOn, setAvatarOn, intro, styleChange }: Props) {
@@ -15,6 +15,11 @@ export default function GuidePanel({ listingId, room, rooms, styleId, onStyle, o
   const [busy, setBusy] = useState(false);
   const [deposit, setDeposit] = useState<Reply["deposit"]>(null);
   const thread = useRef(crypto.randomUUID());
+  const historyRef = useRef<HTMLDivElement>(null);
+  const touchY = useRef(0);
+  const [evidence, setEvidence] = useState<string[]>([]);
+  const [brief, setBrief] = useState("");
+  useEffect(() => { const el = historyRef.current; if (el) el.scrollTop = el.scrollHeight; }, [history, busy, open]);
   const [emotion, setEmotion] = useState("warm");
   const [speaking, setSpeaking] = useState(false);
   const [nodding, setNodding] = useState(false);
@@ -37,12 +42,13 @@ export default function GuidePanel({ listingId, room, rooms, styleId, onStyle, o
     text = text.trim();
     if (!text || busy) return;
     setMessage("");
-    setOpen(true);
     setHistory(h => [...h, { role: "You", text }]);
     if (isOriginalRequest(text)) {
       onStyle("original");
       setHistory(h => [...h, { role: "Guide", text: "Showing the original, unstaged room." }]);
       animateReply("Showing the original, unstaged room.");
+      setBrief("Original / Unstaged");
+      setOpen(false);
       return;
     }
     primeAudio();
@@ -60,8 +66,18 @@ export default function GuidePanel({ listingId, room, rooms, styleId, onStyle, o
       if (selected) onStyle(selected);
       if (destination >= 0) onRoom(destination);
       if (reply.deposit?.simulated && reply.deposit.payment_taken === false) { setDeposit(reply.deposit); playDing(); }
-      setHistory(h => [...h, { role: "Guide", text: reply.text }]);
-      animateReply(reply.text, reply.emotion);
+      let responseText = cleanGuideText(reply.text);
+      if (selected && reply.actions_taken.includes("switch_style")) {
+        const label = ({ "modern-luxury": "Modern luxury", coastal: "Coastal", minimal: "Minimal", "2142": "Cyberpunk" } as Record<string, string>)[selected] ?? selected;
+        responseText = `Now showing ${label} in the ${target.name.toLowerCase()}.` + (selected === "2142" ? "\nCyberpunk concept · AI-imagined, not a verified depiction of the property." : "");
+      }
+      setEvidence(reply.evidence ?? []);
+      setHistory(h => [...h, { role: "Guide", text: responseText }]);
+      animateReply(responseText, reply.emotion);
+      if (selected || destination >= 0 || reply.deposit) {
+        setBrief(reply.deposit ? "Simulated deposit — no payment taken. Broker confirms." : destination >= 0 ? `Now showing ${target.name}.` : responseText.split("\n")[0]);
+        setOpen(false);
+      }
     } catch (error) {
       setHistory(h => [...h, { role: "Guide", text: (error as Error).message }]);
     } finally { setBusy(false); }
@@ -69,18 +85,19 @@ export default function GuidePanel({ listingId, room, rooms, styleId, onStyle, o
 
   function submit(e: FormEvent) { e.preventDefault(); void send(message); }
   return (
-    <section aria-label="Live-In Guide" className="pointer-events-auto absolute bottom-[calc(9rem+env(safe-area-inset-bottom))] right-3 z-20 w-[min(24rem,calc(100vw-1.5rem))] rounded-2xl bg-night/95 text-ivory shadow-xl ring-1 ring-ice/30 backdrop-blur-xl sm:bottom-28 sm:right-6">
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-11 w-full items-center gap-3 px-4 py-1 text-left">{avatarOn && !intro && <GuideAvatar state={avatarState(busy, nodding, speaking)} excited={emotion === "excited"} />}<span className="flex-1">Live-In Guide</span><span aria-hidden>{open ? "−" : "+"}</span></button>
-      {open && <div className="space-y-3 px-4 pb-4">
-        <button type="button" onClick={() => setAvatarOn(!avatarOn)} className="min-h-11 rounded-lg px-2 text-xs text-ivory/80" aria-pressed={avatarOn}>Avatar: {avatarOn ? "2D" : "off"}</button>
-        <div className="max-h-[min(30dvh,15rem)] space-y-2 overflow-y-auto text-sm" aria-live="polite">
+    <section aria-label="Live-In Guide" className="pointer-events-auto absolute bottom-[calc(9rem+env(safe-area-inset-bottom))] right-3 z-20 w-[min(24rem,calc(100vw-1.5rem))] flex max-h-[40dvh] flex-col overflow-hidden rounded-2xl bg-night/40 text-ivory shadow-xl ring-1 ring-ice/20 backdrop-blur-xl sm:max-h-[70dvh] sm:bottom-28 sm:right-6">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-11 w-full items-center gap-3 px-4 py-1 text-left">{avatarOn && !intro && <GuideAvatar state={avatarState(busy, nodding, speaking)} excited={emotion === "excited"} />}<span className="min-w-0 flex-1">Live-In Guide{!open && brief && <span className="block break-words text-xs text-ivory/75">{brief}</span>}</span><span aria-hidden>{open ? "−" : "+"}</span></button>
+      {open && <div className="flex min-h-0 flex-1 flex-col gap-1 px-4 pb-2" onTouchStart={e => { touchY.current = e.touches[0].clientY; }} onTouchEnd={e => { if (e.changedTouches[0].clientY - touchY.current > 70 && (historyRef.current?.scrollTop ?? 0) === 0) setOpen(false); }}>
+        <button type="button" onClick={() => setAvatarOn(!avatarOn)} className="min-h-11 rounded-lg px-2 text-xs text-ivory/80" aria-pressed={avatarOn}>Avatar: {avatarOn ? "mesh" : "off"}</button>
+        <div ref={historyRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain text-sm" aria-live="polite" style={{ WebkitOverflowScrolling: "touch" }}>
           {history.length === 0 && <p>Ask about the residence or choose an action.</p>}
           {history.map((item, index) => <p key={index} className="whitespace-pre-wrap break-words"><strong>{item.role}:</strong> {item.text}</p>)}
           {busy && <p>Guide is thinking…</p>}
           {deposit && <p role="status">Simulated deposit — no payment taken. A broker confirms the showing.<br />{deposit.mock_tx} · simulated: true · payment_taken: false</p>}
         </div>
-        <div className="flex flex-nowrap gap-1 overflow-x-auto sm:hidden">{mobileActions(styleId, rooms.length, moreActions).map(action => <button key={action} type="button" disabled={busy} onClick={() => { if (action === "More") setMoreActions(true); else { setMoreActions(false); void send(action); } }} className="min-h-11 min-w-11 shrink-0 text-xs text-ivory disabled:opacity-50">{action === "Reserve it" ? <span className="flex h-[34px] items-center gap-2 rounded-full bg-ivory/[0.07] px-3 tracking-wide ring-1 ring-ivory/25 backdrop-blur-xl">Reserve<span aria-hidden className="h-3 w-3 rounded-full border border-ivory/70" /></span> : <span className="px-2">{action}</span>}</button>)}</div>
-        <div className="hidden flex-wrap gap-1 sm:flex">{["Show me Coastal", "Show me Cyberpunk", "Next room", "Reserve it"].map(action => <button key={action} type="button" disabled={busy} onClick={() => void send(action)} className="min-h-11 rounded-full bg-ivory/10 px-3 text-xs disabled:opacity-50">{action}</button>)}</div>
+        {evidence.length > 0 && <details className="shrink-0 text-xs"><summary>What the guide used</summary><span>{evidence.join(", ")}</span></details>}
+        <div className="flex shrink-0 flex-nowrap gap-1 overflow-x-auto sm:hidden">{mobileActions(styleId, rooms.length, moreActions).map(action => <button key={action} type="button" disabled={busy} onClick={() => { if (action === "More") setMoreActions(true); else { setMoreActions(false); void send(action); } }} className="min-h-11 min-w-11 shrink-0 text-xs text-ivory disabled:opacity-50">{action === "Reserve it" ? <span className="flex h-[34px] items-center gap-2 rounded-full bg-ivory/[0.07] px-3 tracking-wide ring-1 ring-ivory/25 backdrop-blur-xl">Reserve<span aria-hidden className="h-3 w-3 rounded-full border border-ivory/70" /></span> : <span className="px-2">{action}</span>}</button>)}</div>
+        <div className="hidden flex-wrap gap-1 sm:flex">{["Show me Coastal", "Show me Cyberpunk", ...(rooms.length > 1 ? ["Next room"] : []), "Reserve it"].map(action => <button key={action} type="button" disabled={busy} onClick={() => void send(action)} className="min-h-11 rounded-full bg-ivory/10 px-3 text-xs disabled:opacity-50">{action}</button>)}</div>
         <form onSubmit={submit} className="flex gap-2"><input aria-label="Message the guide" value={message} onChange={e => setMessage(e.target.value)} className="min-h-11 min-w-0 flex-1 rounded-lg bg-ivory/10 px-3 text-sm" placeholder="Ask the guide" /><button disabled={busy || !message.trim()} className="min-h-11 rounded-lg bg-ice/20 px-4 disabled:opacity-50">Send</button></form>
       </div>}
     </section>

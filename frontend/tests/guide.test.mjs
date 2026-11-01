@@ -27,3 +27,15 @@ test('mobile quick actions keep Reserve visible and expose extra room actions', 
   assert.deepEqual(mobileActions('modern-luxury', 2, true), ['Show me Cyberpunk', 'Next room', 'Reserve it']);
   assert.deepEqual(mobileActions('coastal', 2, false), ['Show me Cyberpunk', 'Next room', 'Reserve it']);
 });
+
+test('guide text hides citations, URLs and markdown and deduplicates the concept disclaimer', async () => {
+  const { cleanGuideText } = await import('../src/components/live/guideLogic.ts');
+  const text = cleanGuideText('**Cyberpunk** [fact:title] [o_f01_1] https://example.com/a\nNote: Cyberpunk concept · AI-imagined, not a verified depiction of the property.\nCyberpunk concept · AI-imagined, not a verified depiction of the property.');
+  assert.equal(text, 'Cyberpunk\nCyberpunk concept · AI-imagined, not a verified depiction of the property.');
+});
+
+test('guide text makes a style recommendation generic without hiding a chosen style', async () => {
+  const { cleanGuideText } = await import('../src/components/live/guideLogic.ts');
+  assert.equal(cleanGuideText('I cannot help with shopping. Want me to switch this room to Coastal?'), 'I cannot help with shopping.\nWould you like to see the next style?');
+  assert.equal(cleanGuideText('Now showing Coastal in the living room.'), 'Now showing Coastal in the living room.');
+});

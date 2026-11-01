@@ -117,3 +117,21 @@ def test_chat_syncs_viewed_room_and_style(client, monkeypatch):
     monkeypatch.setattr(guide, "create_agent", create)
     response = client.post('/api/listings/sync_test/guide/chat', json={"thread_id": "sync", "message": "Hello", "room_id": "r2", "style_id": "coastal"})
     assert response.status_code == 200
+
+
+def test_single_room_next_room_is_explicit():
+    import json
+    import guide
+    listing = {"live": {"rooms": [{"id": "r1", "name": "Living room", "styles": {}}]}}
+    result = {"actions_taken": [], "evidence": [], "staged_image_url": None, "deposit": None}
+    tool = next(t for t in guide._tools(listing, {}, result) if t.name == "next_room")
+    assert "only one room" in json.loads(tool.invoke({}))["error"]
+
+
+def test_broker_note_for_price_and_deposit_but_not_pure_style():
+    import guide
+    note = 'A broker decides on any home decision.'
+    assert guide._broker_note('How much is this?', 'It is $1,000,000.', [], None).endswith(note)
+    assert guide._broker_note('Reserve it', 'Simulated deposit.', [], {'simulated': True}).endswith(note)
+    assert guide._broker_note('Show me Coastal', 'Now showing Coastal.', ['switch_style'], None) == 'Now showing Coastal.'
+    assert guide._broker_note('Price?', 'I cannot provide that information.', [], None) == 'I cannot provide that information.'
