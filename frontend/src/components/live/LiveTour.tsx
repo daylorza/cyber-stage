@@ -618,7 +618,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
       />
 
       {entered && inRoom && !moment && <GuidePanel listingId={payload.listing_id} room={room} rooms={rooms} styleId={chosen} onStyle={choose} onRoom={(i) => goTo(i, true)} avatarOn={avatarOn} setAvatarOn={setAvatarOn} intro={intro} styleChange={styleChange} />}
-      {entered && inRoom && intro && <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3 px-5 py-4 text-center text-ivory">{avatarOn && <GuideAvatar large />}<span>Please choose your staging type below.</span></div>}
+      {entered && inRoom && intro && <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3 px-5 py-4 text-center text-ivory">{avatarOn && <GuideAvatar large />}<span className="rounded-2xl bg-night/60 px-4 py-2 text-base leading-relaxed shadow-lg backdrop-blur-md">Please choose your staging type below.</span></div>}
       <div className="legible pointer-events-none absolute inset-0">
         <div className="absolute left-6 top-6 sm:left-10 sm:top-9"><Wordmark /></div>
         <div inert={!!moment} className={chrome}>
