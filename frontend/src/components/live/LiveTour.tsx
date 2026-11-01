@@ -82,6 +82,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const [instant, setInstant] = useState(false);
   const [chosen, setChosen] = useState("modern-luxury");
   const [intro, setIntro] = useState(true);
+  const [introVisible, setIntroVisible] = useState(true);
   const [titleOpen, setTitleOpen] = useState(true);
   const [titlePos, setTitlePos] = useState({ x: 24, y: 80 });
   const titleDrag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
@@ -172,6 +173,12 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
     const timer = window.setTimeout(() => setIntro(false), 5000);
     return () => clearTimeout(timer);
   }, [entered, inRoom, intro]);
+
+  useEffect(() => {
+    if (intro) return;
+    const timer = window.setTimeout(() => setIntroVisible(false), 650);
+    return () => clearTimeout(timer);
+  }, [intro]);
 
   useEffect(() => {
     document.title = payload.title;
@@ -617,8 +624,8 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
         style={{ opacity: dark ? 1 : 0, transition: `opacity ${dark ? 380 : entered ? 800 : 1600}ms ease-in-out` }}
       />
 
-      {entered && inRoom && !moment && <GuidePanel listingId={payload.listing_id} room={room} rooms={rooms} styleId={chosen} onStyle={choose} onRoom={(i) => goTo(i, true)} avatarOn={avatarOn} setAvatarOn={setAvatarOn} intro={intro} styleChange={styleChange} />}
-      {entered && inRoom && intro && <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3 px-5 py-4 text-center text-ivory">{avatarOn && <GuideAvatar large />}<span className="rounded-2xl bg-night/60 px-4 py-2 text-base leading-relaxed shadow-lg backdrop-blur-md">Please choose your staging type below.</span></div>}
+      {entered && inRoom && !moment && <GuidePanel listingId={payload.listing_id} room={room} rooms={rooms} styleId={chosen} onStyle={choose} onRoom={(i) => goTo(i, true)} avatarOn={avatarOn} setAvatarOn={setAvatarOn} intro={introVisible} styleChange={styleChange} />}
+      {entered && inRoom && introVisible && <div className={`guide-intro pointer-events-none absolute z-10 flex flex-col items-center gap-3 rounded-3xl bg-night/55 px-5 py-4 text-center text-ivory shadow-xl ring-1 ring-ivory/15 backdrop-blur-md ${intro ? "" : "guide-intro--leaving"}`}>{avatarOn && <GuideAvatar large />}<span className="text-base leading-relaxed">Please choose your staging type below.</span></div>}
       <div className="legible pointer-events-none absolute inset-0">
         <div className="absolute left-6 top-6 sm:left-10 sm:top-9"><Wordmark /></div>
         <div inert={!!moment} className={chrome}>
