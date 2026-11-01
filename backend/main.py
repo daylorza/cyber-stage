@@ -15,6 +15,7 @@ from pydantic import BaseModel
 import config
 import db
 import export_logs
+import guide
 import listings
 import live
 import meta_client
@@ -437,6 +438,7 @@ def create_app(**overrides: Any) -> FastAPI:
     app = FastAPI(title="Walkthrough to Listing", lifespan=lifespan)
     app.mount("/api/media", StaticFiles(directory=settings.media_dir), name="media")
     app.include_router(router)
+    app.include_router(guide.router)
     if (settings.frontend_dist / "index.html").is_file():
         _mount_frontend(app, settings.frontend_dist)
     return app
