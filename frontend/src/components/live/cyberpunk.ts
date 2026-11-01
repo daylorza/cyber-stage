@@ -6,6 +6,7 @@ function element(): HTMLAudioElement | null {
   try {
     el = new Audio("/sounds/cyberpunk.mp3");
     el.preload = "auto";
+    el.volume = 0.7;
   } catch {
     return null;
   }

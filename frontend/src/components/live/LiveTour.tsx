@@ -4,6 +4,7 @@ import { clock, media, type LiveMoment, type LivePayload } from "../../api";
 import { Wordmark } from "../Shell";
 import Backdrop from "./Backdrop";
 import { cutout } from "./cutout";
+import { playCyberpunk } from "./cyberpunk";
 import { useReducedMotion, useViewport } from "./hooks";
 import LiveNav from "./LiveNav";
 import GuidePanel from "./GuidePanel";
@@ -89,6 +90,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const [avatarOn, setAvatarOn] = useState(true);
   const [styleChange, setStyleChange] = useState(0);
   const choose = (id: string) => {
+    if (id === "2142") playCyberpunk();
     setChosen(id);
     setStyleChange(n => n + 1);
     setIntro(false);
@@ -627,7 +629,8 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
           <div className="pointer-events-auto absolute bottom-28 left-10 z-20 hidden sm:block">
             <ReserveControl listingId={payload.listing_id} />
           </div>
-          <div className="pointer-events-auto absolute max-w-[min(26rem,75vw)] touch-none" style={{ left: Math.min(titlePos.x, Math.max(0, viewport.w - 48)), top: Math.min(titlePos.y, Math.max(0, viewport.h - 48)) }} onPointerDown={e => { if ((e.target as HTMLElement).closest("button")) return; const rect = e.currentTarget.getBoundingClientRect(); titleDrag.current = { x: e.clientX, y: e.clientY, left: rect.left, top: rect.top }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => { const start = titleDrag.current; if (!start) return; const rect = e.currentTarget.getBoundingClientRect(); setTitlePos({ x: Math.max(0, Math.min(viewport.w - rect.width, start.left + e.clientX - start.x)), y: Math.max(0, Math.min(viewport.h - rect.height, start.top + e.clientY - start.y)) }); }} onPointerUp={() => { titleDrag.current = null; }} onPointerCancel={() => { titleDrag.current = null; }}>
+          <div className="pointer-events-auto absolute left-6 top-16 z-20 sm:hidden"><ReserveControl listingId={payload.listing_id} /></div>
+          <div className="pointer-events-auto absolute max-w-[min(26rem,75vw)] touch-none" style={{ left: Math.min(titlePos.x, Math.max(0, viewport.w - 48)), top: Math.min(titlePos.y + (phone ? 50 : 0), Math.max(0, viewport.h - 48)) }} onPointerDown={e => { if ((e.target as HTMLElement).closest("button")) return; const rect = e.currentTarget.getBoundingClientRect(); titleDrag.current = { x: e.clientX, y: e.clientY, left: rect.left, top: rect.top - (phone ? 50 : 0) }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => { const start = titleDrag.current; if (!start) return; const rect = e.currentTarget.getBoundingClientRect(); setTitlePos({ x: Math.max(0, Math.min(viewport.w - rect.width, start.left + e.clientX - start.x)), y: Math.max(0, Math.min(viewport.h - rect.height - (phone ? 50 : 0), start.top + e.clientY - start.y)) }); }} onPointerUp={() => { titleDrag.current = null; }} onPointerCancel={() => { titleDrag.current = null; }}>
             <button type="button" aria-label={titleOpen ? "Collapse title" : "Expand title"} onClick={() => setTitleOpen(!titleOpen)} className="absolute right-0 top-0 z-10 grid h-11 w-11 place-items-center"><span className="grid h-8 w-8 place-items-center rounded-full bg-ivory/10 text-ivory ring-1 ring-ivory/30">{titleOpen ? "−" : "+"}</span></button>
             {titleOpen && <div className="rounded-2xl bg-night/45 p-4 pr-12 shadow-lg backdrop-blur-md sm:p-5 sm:pr-12">
             <p className="font-serif text-xl text-ivory/90">{payload.title}</p>
@@ -717,9 +720,9 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
           </div>
 
           {!inRoom && walking && <button type="button" onClick={() => goTo(Math.max(0, rooms.findIndex(r => r.main)), true)} className="pointer-events-auto absolute bottom-4 left-3 z-10 min-h-11 rounded-full bg-night/90 px-5 text-sm text-ivory sm:hidden">Choose furniture</button>}
-          {inRoom && <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-10 rounded-t-xl bg-night/35 px-2 ring-1 ring-ivory/15 backdrop-blur-xl sm:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          {inRoom && <div className="pointer-events-auto absolute inset-x-0 z-10 rounded-xl bg-night/35 px-2 ring-1 ring-ivory/15 backdrop-blur-xl sm:hidden" style={{ bottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
             <div role="group" aria-label="Style" className="flex justify-between gap-0.5">{styles.map(s => { const status = s.id === "original" ? { ok: !!room.before, reason: "Original unavailable" } : styleStatus(room, s.id); return <button key={s.id} type="button" disabled={!status.ok} title={status.reason} aria-pressed={s.id === (chosen === "original" ? "original" : styleId)} onClick={() => choose(s.id)} className={`min-h-11 min-w-0 border-b px-1 text-[11px] tracking-wide text-ivory disabled:opacity-35 ${s.id === (chosen === "original" ? "original" : styleId) ? "border-ice" : "border-transparent"}`}>{s.label}</button>; })}</div>
-            <div className="flex items-center justify-between gap-2"><ReserveControl listingId={payload.listing_id} /><button type="button" className="flex min-h-11 w-28 items-center text-xs text-ivory/85" onClick={() => walking ? continueWalk() : last ? setFinishPressed(true) : goTo(roomIndex + 1)}><span className="flex h-[34px] w-full items-center justify-center rounded-full bg-ivory/[0.07] px-2 ring-1 ring-ivory/25">{walking ? "Continue walking" : last ? "Finish" : "Next room"}</span></button></div>
+            <div className="flex items-center justify-end gap-2"><button type="button" className="flex min-h-11 w-28 items-center text-xs text-ivory/85" onClick={() => walking ? continueWalk() : last ? setFinishPressed(true) : goTo(roomIndex + 1)}><span className="flex h-[34px] w-full items-center justify-center rounded-full bg-ivory/[0.07] px-2 ring-1 ring-ivory/25">{walking ? "Continue walking" : last ? "Finish" : "Next room"}</span></button></div>
           </div>}
           <div className="absolute inset-x-0 bottom-10 hidden items-center px-6 sm:flex sm:px-10">
             <div className="pointer-events-auto">
