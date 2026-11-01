@@ -626,10 +626,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
       <div className="legible pointer-events-none absolute inset-0">
         <div className="absolute left-6 top-6 sm:left-10 sm:top-9"><Wordmark /></div>
         <div inert={!!moment} className={chrome}>
-          <div className="pointer-events-auto absolute bottom-28 left-10 z-20 hidden sm:block">
-            <ReserveControl listingId={payload.listing_id} />
-          </div>
-          <div className="pointer-events-auto absolute max-w-[min(26rem,75vw)] touch-none" style={{ left: Math.min(titlePos.x, Math.max(0, viewport.w - 48)), top: Math.min(titlePos.y + (phone ? 50 : 0), Math.max(0, viewport.h - 48)) }} onPointerDown={e => { if ((e.target as HTMLElement).closest("button")) return; const rect = e.currentTarget.getBoundingClientRect(); titleDrag.current = { x: e.clientX, y: e.clientY, left: rect.left, top: rect.top - (phone ? 50 : 0) }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => { const start = titleDrag.current; if (!start) return; const rect = e.currentTarget.getBoundingClientRect(); setTitlePos({ x: Math.max(0, Math.min(viewport.w - rect.width, start.left + e.clientX - start.x)), y: Math.max(0, Math.min(viewport.h - rect.height - (phone ? 50 : 0), start.top + e.clientY - start.y)) }); }} onPointerUp={() => { titleDrag.current = null; }} onPointerCancel={() => { titleDrag.current = null; }}>
+          <div className="pointer-events-auto absolute max-w-[min(26rem,75vw)] touch-none" style={{ left: Math.min(titlePos.x, Math.max(0, viewport.w - 48)), top: Math.min(titlePos.y + 50, Math.max(0, viewport.h - 48)) }} onPointerDown={e => { if ((e.target as HTMLElement).closest("button")) return; const rect = e.currentTarget.getBoundingClientRect(); titleDrag.current = { x: e.clientX, y: e.clientY, left: rect.left, top: rect.top - 50 }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => { const start = titleDrag.current; if (!start) return; const rect = e.currentTarget.getBoundingClientRect(); setTitlePos({ x: Math.max(0, Math.min(viewport.w - rect.width, start.left + e.clientX - start.x)), y: Math.max(0, Math.min(viewport.h - rect.height - 50, start.top + e.clientY - start.y)) }); }} onPointerUp={() => { titleDrag.current = null; }} onPointerCancel={() => { titleDrag.current = null; }}>
             <button type="button" aria-label={titleOpen ? "Collapse title" : "Expand title"} onClick={() => setTitleOpen(!titleOpen)} className="absolute right-0 top-0 z-10 grid h-11 w-11 place-items-center"><span className="grid h-8 w-8 place-items-center rounded-full bg-ivory/10 text-ivory ring-1 ring-ivory/30">{titleOpen ? "−" : "+"}</span></button>
             <div hidden={!titleOpen} className="rounded-2xl bg-night/45 p-4 pr-12 shadow-lg backdrop-blur-md sm:p-5 sm:pr-12">
             <p className="font-serif text-xl text-ivory/90">{payload.title}</p>
@@ -648,7 +645,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
             )}
             {inRoom && !styleId && chosen !== "original" && <p className="eyebrow mt-1.5 text-ivory/45!">Staging isn't available for this room</p>}
             {payload.note && !/test upload/i.test(payload.note) && <p className="eyebrow mt-3 max-w-xs text-[0.58rem]! leading-relaxed normal-case tracking-wide text-rose/80!">{payload.note}</p>}
-            <div className="mt-1 sm:hidden"><ReserveControl listingId={payload.listing_id} /></div>
+            <div className="mt-1 sm:mt-9"><ReserveControl listingId={payload.listing_id} /></div>
             </div>
           </div>
 
