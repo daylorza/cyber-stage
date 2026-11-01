@@ -7,6 +7,7 @@ import { cutout } from "./cutout";
 import { useReducedMotion, useViewport } from "./hooks";
 import LiveNav from "./LiveNav";
 import GuidePanel from "./GuidePanel";
+import GuideAvatar from "./GuideAvatar";
 import MomentFx, { NO_FX, type Fx } from "./MomentFx";
 import ReserveControl from "./ReserveControl";
 import RoomStage, { type Overlay, type StagePhase } from "./RoomStage";
@@ -81,8 +82,11 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const [instant, setInstant] = useState(false);
   const [chosen, setChosen] = useState("modern-luxury");
   const [intro, setIntro] = useState(true);
+  const [avatarOn, setAvatarOn] = useState(true);
+  const [styleChange, setStyleChange] = useState(0);
   const choose = (id: string) => {
     setChosen(id);
+    setStyleChange(n => n + 1);
     setIntro(false);
   };
   const [phase, setPhase] = useState<StagePhase>("empty");
@@ -608,8 +612,8 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
         style={{ opacity: dark ? 1 : 0, transition: `opacity ${dark ? 380 : entered ? 800 : 1600}ms ease-in-out` }}
       />
 
-      {entered && inRoom && !moment && <GuidePanel listingId={payload.listing_id} room={room} rooms={rooms} styleId={chosen} onStyle={choose} onRoom={(i) => goTo(i, true)} />}
-      {entered && inRoom && intro && <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-night/85 px-5 py-4 text-center text-ivory">Please choose your staging type below.</div>}
+      {entered && inRoom && !moment && <GuidePanel listingId={payload.listing_id} room={room} rooms={rooms} styleId={chosen} onStyle={choose} onRoom={(i) => goTo(i, true)} avatarOn={avatarOn} setAvatarOn={setAvatarOn} intro={intro} styleChange={styleChange} />}
+      {entered && inRoom && intro && <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3 rounded-2xl bg-night/85 px-5 py-4 text-center text-ivory">{avatarOn && <GuideAvatar large />}<span>Please choose your staging type below.</span></div>}
       <div className="legible pointer-events-none absolute inset-0">
         <div className="absolute left-6 top-6 sm:left-10 sm:top-9"><Wordmark /></div>
         <div inert={!!moment} className={chrome}>
