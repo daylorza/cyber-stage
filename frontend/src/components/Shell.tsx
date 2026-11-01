@@ -62,10 +62,17 @@ export function Wordmark() {
   );
 }
 
-/** Wordmark left, menu right, on the shared gutter. */
+/** Wordmark left, menu right, on the shared gutter. Once the page scrolls, both get a dark backing. */
 export function SiteHeader() {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   return (
-    <header className="hud-pt pointer-events-none fixed inset-x-0 top-0 z-40">
+    <header data-scrolled={scrolled} className="site-header hud-pt pointer-events-none fixed inset-x-0 top-0 z-40">
       <div className="page-x mx-auto flex max-w-7xl items-start justify-between">
         <Wordmark />
         <HoverNav />
