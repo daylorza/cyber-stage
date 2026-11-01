@@ -19,13 +19,19 @@ router = APIRouter(prefix="/api")
 _memory = InMemorySaver()
 _sessions: dict[tuple[str, str], dict[str, Any]] = {}
 _lock = threading.Lock()
+STYLE_LABELS = {"modern-luxury": "Modern luxury", "coastal": "Coastal", "minimal": "Minimal", "2142": "Cyberpunk"}
+STYLE_ALIASES = {"modern": "modern-luxury", "modern luxury": "modern-luxury", "coastal": "coastal",
+                 "minimal": "minimal", "cyberpunk": "2142", "cyberpunk 2142": "2142", "2142": "2142"}
 SYSTEM = """You are the Live-In Guide for this residence only. Use tools for facts and actions.
 Answer only from listing facts and stored observations; cite fact or observation ids for claims.
 Demo comps are demo data, not a live MLS feed. Cyberpunk is a concept, AI-imagined,
 not a verified depiction. A deposit is simulated and no payment is taken. Do not provide
 investment advice or a best-home verdict; offer facts and staged options and say a broker decides.
 Do not claim an action succeeded unless its tool says so. Do not claim styles are
-available unless get_room confirms them in available_styles."""
+available unless get_room confirms them in available_styles. Before a style switch or
+listing style options, call get_room. Use display labels when speaking: Cyberpunk,
+Modern luxury, Coastal, Minimal. Cyberpunk corresponds to style ID 2142; Modern
+means Modern luxury. Call switch_style with the requested name or ID."""
 
 
 class ChatRequest(BaseModel):
@@ -65,6 +71,11 @@ def _tools(listing: dict, session: dict, result: dict):
         result["actions_taken"].append(name)
         return json.dumps(data)
 
+    def available_styles(room):
+        styles = (room or {}).get("styles", {})
+        return [label for key, label in STYLE_LABELS.items()
+                if (styles.get(key) or {}).get("available") and styles[key].get("image")]
+
     @tool
     def get_listing_facts() -> str:
         """Get the residence's supplied facts with evidence identifiers."""
@@ -87,8 +98,7 @@ def _tools(listing: dict, session: dict, result: dict):
         observations = [o for f in listing.get("frames", []) if f.get("id") in frame_ids for o in (f.get("wonder") or {}).get("observations", [])]
         result["evidence"].extend(o["id"] for o in observations if o.get("id"))
         style = session.get("style", "modern-luxury")
-        available = [key for key, value in room.get("styles", {}).items() if value.get("available") and value.get("image")]
-        return record("get_room", {"id": room["id"], "type": room.get("type"), "observations": observations, "style": style, "available_styles": available, "staged_image": (room.get("styles", {}).get(style) or {}).get("image")})
+        return record("get_room", {"id": room["id"], "type": room.get("type"), "observations": observations, "style": STYLE_LABELS.get(style, style), "available_styles": available_styles(room), "staged_image": (room.get("styles", {}).get(style) or {}).get("image")})
 
     @tool
     def explain_comps() -> str:
@@ -98,14 +108,14 @@ def _tools(listing: dict, session: dict, result: dict):
     @tool
     def switch_style(style_id: str) -> str:
         """Switch the current room to modern-luxury, coastal, minimal, or cyberpunk-2142."""
-        style = "2142" if style_id == "cyberpunk-2142" else style_id
+        style = STYLE_ALIASES.get(re.sub(r"[\s-]+", " ", style_id.strip().lower()))
         room = current()
         entry = (room.get("styles", {}).get(style) or {}) if room else {}
-        if style not in {"modern-luxury", "coastal", "minimal", "2142"} or not entry.get("available") or not entry.get("image"):
-            return record("switch_style", {"error": entry.get("error") or "Style unavailable for this room"})
+        if not style or not entry.get("available") or not entry.get("image"):
+            return record("switch_style", {"error": entry.get("error") or "Style unavailable for this room", "available_styles": available_styles(room)})
         session["style"] = style
         result["staged_image_url"] = "/api/media/" + entry["image"].lstrip("/")
-        data = {"room_id": room["id"], "style": style, "staged_image_url": result["staged_image_url"]}
+        data = {"room_id": room["id"], "style": STYLE_LABELS[style], "style_id": style, "staged_image_url": result["staged_image_url"]}
         if style == "2142":
             data["disclaimer"] = "Cyberpunk concept · AI-imagined, not a verified depiction of the property"
         return record("switch_style", data)
