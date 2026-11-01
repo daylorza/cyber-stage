@@ -9,7 +9,7 @@ import { Wordmark } from "../components/Shell";
 function Quiet({ eyebrow, children }: { eyebrow: string; children?: React.ReactNode }) {
   return (
     <div className="fixed inset-0 grid place-items-center bg-night px-6">
-      <div className="absolute left-6 top-6 sm:left-10 sm:top-9"><Wordmark /></div>
+      <div className="hud-top hud-left absolute"><Wordmark /></div>
       <div className="max-w-md text-center" role="status" aria-live="polite">
         <p className="eyebrow inline-flex items-center gap-2.5">
           <span className="ice-dot" />
@@ -21,7 +21,7 @@ function Quiet({ eyebrow, children }: { eyebrow: string; children?: React.ReactN
   );
 }
 
-const linkClass = "eyebrow mt-8 inline-block text-ivory/70! transition hover:text-ivory!";
+const linkClass = "eyebrow mt-6 inline-flex min-h-11 items-center text-ivory/75! transition hover:text-ivory!";
 
 export default function LiveInIt() {
   const { id = "" } = useParams();
@@ -65,7 +65,7 @@ export default function LiveInIt() {
       <div className="cyber-loader-content text-center">
         <div className="text-sm uppercase tracking-[0.35em]"><BrandMark /></div>
         <div className="cyber-loader-track mt-8"><div className="cyber-loader-progress" /></div>
-        <p className="eyebrow mt-4 text-[#514d45]!">Opening residence</p>
+        <p className="eyebrow cyber-loader-label mt-4">Opening residence</p>
       </div>
     </div>
   );

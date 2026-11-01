@@ -54,14 +54,14 @@ export function ResultLine({ tone, label, reason }: { tone: Tone; label: string;
       <span className={`mt-[5px] h-1 w-1 shrink-0 rounded-full ${TONE_DOT[tone]}`} />
       <span>
         {label}
-        {reason && tone !== "pass" && <span className="text-ivory/60"> · {reason}</span>}
+        {reason && tone !== "pass" && <span className="text-ivory/70"> · {reason}</span>}
       </span>
     </p>
   );
 }
 
 export function ClaimTrust({ claim, listing, className = "" }: { claim: Claim | undefined; listing: Listing; className?: string }) {
-  if (!claim) return <p className={`eyebrow text-[0.6rem]! ${className}`}>Unsaved edit · checks run on save</p>;
+  if (!claim) return <p className={`eyebrow text-micro! ${className}`}>Unsaved edit · checks run on save</p>;
   return <EvidenceBlock id={claim.id} evidence={claim.evidence} listing={listing} className={className} />;
 }
 
@@ -69,7 +69,7 @@ export function EvidenceBlock({ id, evidence, listing, className = "" }: { id: s
   const result = claimResult(listing.verification?.checks ?? [], id, evidence);
   return (
     <div className={`space-y-1 ${className}`}>
-      <p className="flex flex-wrap gap-x-4 gap-y-0.5 font-mono text-[10px] tracking-wider text-ice/70 uppercase">
+      <p className="data-label flex flex-wrap gap-x-4 gap-y-0.5 text-ice/80">
         {evidence.length ? evidence.map((e, i) => <span key={i}>{evidenceLine(e, listing.rooms)}</span>) : <span className="text-rose">No evidence</span>}
       </p>
       <ResultLine {...result} />
@@ -89,7 +89,7 @@ export const STATUS_TEXT: Record<ChecklistStatus, string> = {
   done: "text-ivory/85",
   flagged: "text-rose",
   failed: "text-rose",
-  generated: "text-ivory/55",
+  generated: "text-ivory/60",
   open: "text-ash",
 };
 

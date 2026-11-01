@@ -28,21 +28,21 @@ export function HoverNav() {
         aria-expanded={open}
         aria-controls="main-menu"
         onClick={() => setOpen((o) => !o)}
-        className="grid h-11 w-11 place-items-center rounded-full bg-night/20 ring-1 ring-ivory/25 backdrop-blur-md transition hover:ring-ice/60"
+        className="nav-orb"
       >
         <span className="ice-dot" />
       </button>
       <div
         className={`flex flex-col items-end transition duration-500 ${open ? "visible translate-y-0 opacity-100" : "invisible -translate-y-1 opacity-0"}`}
       >
-        <span aria-hidden className="mr-[21.5px] h-8 w-px bg-gradient-to-b from-ivory/45 to-transparent" />
-        <ul id="main-menu" className="mt-1 flex flex-col items-end gap-3 rounded-2xl bg-night/30 py-3 pl-5 pr-3 backdrop-blur-md">
+        <span aria-hidden className="nav-tick" />
+        <ul id="main-menu" className="mt-1 flex flex-col items-end gap-3 rounded-2xl bg-night/30 py-3 pl-5 pr-3 backdrop-blur-md pointer-coarse:gap-0 pointer-coarse:py-1">
           {LINKS.filter((l) => pathname !== "/inventory" || l.to !== "/new").map((l) => (
             <li key={l.to}>
               <NavLink
                 to={l.to}
                 end={l.end}
-                className={({ isActive }) => `font-serif text-[15px] transition hover:text-ivory ${isActive ? "text-ivory" : "text-ivory/75"}`}
+                className={({ isActive }) => `font-serif text-ui transition hover:text-ivory pointer-coarse:flex pointer-coarse:min-h-11 pointer-coarse:items-center ${isActive ? "text-ivory" : "text-ivory/75"}`}
               >
                 {l.label}
               </NavLink>
@@ -56,9 +56,21 @@ export function HoverNav() {
 
 export function Wordmark() {
   return (
-    <Link to="/" className="eyebrow pointer-events-auto flex items-center gap-2.5 text-ivory/75! transition hover:text-ivory!">
+    <Link to="/" className="eyebrow pointer-events-auto flex min-h-11 items-center gap-2.5 text-ivory/75! transition hover:text-ivory!">
       <BrandMark />
     </Link>
+  );
+}
+
+/** Wordmark left, menu right, on the shared gutter. */
+export function SiteHeader() {
+  return (
+    <header className="hud-pt pointer-events-none fixed inset-x-0 top-0 z-40">
+      <div className="page-x mx-auto flex max-w-7xl items-start justify-between">
+        <Wordmark />
+        <HoverNav />
+      </div>
+    </header>
   );
 }
 
@@ -66,11 +78,8 @@ export default function Shell() {
   const inventory = useLocation().pathname === "/inventory";
   return (
     <div className={inventory ? "inventory-shell min-h-dvh" : "min-h-dvh"}>
-      <header className="pointer-events-none fixed inset-x-0 top-0 z-40 flex items-start justify-between px-6 py-6 sm:px-10">
-        <Wordmark />
-        <HoverNav />
-      </header>
-      <main className="mx-auto max-w-7xl px-6 pb-40 pt-28 sm:px-10">
+      <SiteHeader />
+      <main className="page-x mx-auto max-w-7xl pb-[calc(10rem+env(safe-area-inset-bottom))] pt-28 sm:pt-32">
         <Outlet />
       </main>
     </div>

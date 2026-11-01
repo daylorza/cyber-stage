@@ -163,14 +163,14 @@ export default function Home() {
 
 
       <div className="legible pointer-events-none absolute inset-0">
-        <div className={`absolute left-6 top-6 sm:left-10 sm:top-9 ${hud}`}>
+        <div className={`hud-top hud-left absolute ${hud}`}>
           <Link
             to="/"
-            className="pointer-events-auto text-[11px] font-medium uppercase tracking-[0.3em] text-ivory/90 transition hover:text-ivory sm:text-[13px] sm:tracking-[0.42em]"
+            className="pointer-events-auto flex min-h-11 items-center text-caption font-medium uppercase tracking-[0.3em] text-ivory/90 transition hover:text-ivory sm:text-data sm:tracking-[0.42em]"
           >
             <BrandMark />
           </Link>
-          <p key={residence.id} className="eyebrow mt-3 flex animate-fade-in items-center gap-2.5 text-ivory/80!">
+          <p key={residence.id} className="eyebrow mt-1 flex animate-fade-in items-center gap-2.5 text-ivory/80!">
             <span className="ice-dot" />
             {residence.city}
           </p>
@@ -180,7 +180,7 @@ export default function Home() {
           aria-label="Main"
           onMouseEnter={show}
           onMouseLeave={hide}
-          className={`pointer-events-auto absolute right-6 top-6 flex flex-col items-end sm:right-10 sm:top-9 ${hud}`}
+          className={`hud-top hud-right pointer-events-auto absolute flex flex-col items-end ${hud}`}
         >
           <button
             type="button"
@@ -188,20 +188,20 @@ export default function Home() {
             aria-expanded={revealed}
             aria-controls="home-menu"
             onClick={() => (revealed ? setRevealed(false) : show())}
-            className="grid h-11 w-11 place-items-center rounded-full bg-night/20 ring-1 ring-ivory/25 backdrop-blur-md transition hover:ring-ice/60"
+            className="nav-orb"
           >
             <span className="ice-dot" />
           </button>
           <div className={`flex flex-col items-end transition duration-500 ${reveal}`}>
-            <span aria-hidden className="mr-[21.5px] h-8 w-px bg-gradient-to-b from-ivory/45 to-transparent" />
-            <ul id="home-menu" className="mt-1 flex flex-col items-end gap-2 rounded-2xl bg-night/30 py-2 pl-3 pr-2 backdrop-blur-md">
+            <span aria-hidden className="nav-tick" />
+            <ul id="home-menu" className="mt-1 flex flex-col items-end gap-2 rounded-2xl bg-night/30 py-2 pl-3 pr-2 backdrop-blur-md pointer-coarse:gap-0 pointer-coarse:py-1 [&_:is(a,button)]:pointer-coarse:min-h-11">
               {RESIDENCES.map((r, i) => (
                 <li key={r.id}>
                   <button
                     type="button"
                     aria-current={i === index ? "true" : undefined}
                     onClick={() => go(i)}
-                    className={`eyebrow flex items-center gap-2 transition hover:text-ivory! ${i === index ? "text-ivory!" : "text-ivory/70!"}`}
+                    className={`eyebrow flex items-center gap-2 transition hover:text-ivory! ${i === index ? "text-ivory!" : "text-ivory/75!"}`}
                   >
                     {i === index && <span className="ice-dot" />}
                     {r.city}
@@ -209,17 +209,17 @@ export default function Home() {
                 </li>
               ))}
               <li>
-                <Link to="/inventory" className="eyebrow text-ivory/70! transition hover:text-ivory!">
+                <Link to="/inventory" className="eyebrow flex items-center text-ivory/75! transition hover:text-ivory!">
                   Inventory
                 </Link>
               </li>
               <li>
-                <Link to="/inventory?view=broker" className="eyebrow text-ivory/70! transition hover:text-ivory!">
+                <Link to="/inventory?view=broker" className="eyebrow flex items-center text-ivory/75! transition hover:text-ivory!">
                   Broker console
                 </Link>
               </li>
               {import.meta.env.DEV && <li>
-                <Link to="/prototype-testing" className="eyebrow text-ivory/70! transition hover:text-ivory!">
+                <Link to="/prototype-testing" className="eyebrow flex items-center text-ivory/75! transition hover:text-ivory!">
                   Prototype Testing
                 </Link>
               </li>}
@@ -227,12 +227,12 @@ export default function Home() {
           </div>
         </nav>
 
-        <div className={`absolute left-6 top-[31%] max-w-xl sm:left-10 ${hud}`}>
+        <div className={`hud-left absolute top-[24%] max-w-xl sm:top-[31%] ${hud}`}>
           <h1 className="text-[clamp(3.75rem,8.5vw,7rem)] leading-[0.92] font-[250] tracking-[-0.025em] text-ivory">Your<br /><span key={glitchCycle} className="presence-glitch pointer-events-auto relative inline-block font-medium" aria-label="Future"><span aria-hidden="true">{"Future".split("").map((letter, i) => <span className={i ? "glitch-letter" : undefined} style={i ? { animationDelay: `${[0, 0.09, 0.24, 0.32, 0.5, 0.58][i]}s`, animationDuration: `${[0, 0.14, 0.21, 0.12, 0.19, 0.15][i]}s` } : undefined} key={i}>{letter}</span>)}</span><span className="glitch-pixels" aria-hidden="true">{[[17,24,0],[29,72,0.31],[42,38,0.12],[57,65,0.54],[72,22,0.22],[84,54,0.7],[96,76,0.43],[35,12,0.82],[65,44,0.61],[90,30,0.95]].map(([x,y,delay], i) => <i className="glitch-pixel" key={i} style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${delay}s`, width: `${[9,5,7,12,6][i % 5]}px` }} />)}</span></span><br />Home</h1>
           <p className="mt-6 text-lg font-light text-ivory sm:text-xl">Visualize your space.</p>
         </div>
 
-        <div className={`absolute inset-x-0 bottom-24 flex flex-col items-center gap-3.5 sm:bottom-9 ${hud}`}>
+        <div className={`absolute inset-x-0 bottom-[calc(6rem+env(safe-area-inset-bottom))] flex flex-col items-center gap-3.5 lg:bottom-9 ${hud}`}>
           <button
             type="button"
             onClick={async () => {
@@ -248,9 +248,9 @@ export default function Home() {
               const live = await api.live(summary.id).catch(() => null);
               navigate(live?.status === "ready" ? `/p/${summary.id}/live` : `/p/${summary.id}`);
             }}
-            className="group pointer-events-auto flex items-center gap-4 rounded-full bg-ivory/[0.08] py-2 pl-2 pr-6 text-[15px] tracking-wide text-ivory ring-1 ring-ivory/25 backdrop-blur-xl transition hover:bg-ivory/[0.14] hover:ring-ivory/40"
+            className="btn-enter group pointer-events-auto"
           >
-            <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+            <span className="btn-enter-dot">
               <span className="ice-dot" />
             </span>
             Enter residence
@@ -259,7 +259,7 @@ export default function Home() {
           {entryError && <p role="status" className="pointer-events-auto text-sm text-ivory">{entryError}</p>}
         </div>
 
-        <div className={`absolute bottom-10 left-6 sm:left-10 ${hud}`}>
+        <div className={`hud-left absolute bottom-[calc(2.5rem+env(safe-area-inset-bottom))] ${hud}`}>
           {concierge && (
             <div role="dialog" aria-label="Concierge" className="glass pointer-events-auto absolute bottom-14 left-0 w-72 p-5">
               <p className="eyebrow">Concierge</p>
@@ -273,7 +273,7 @@ export default function Home() {
             type="button"
             aria-expanded={concierge}
             onClick={() => setConcierge((c) => !c)}
-            className="pointer-events-auto flex items-center gap-3 text-sm tracking-wide text-ivory/85 transition hover:text-ivory"
+            className="pointer-events-auto flex min-h-11 items-center gap-3 text-sm tracking-wide text-ivory/85 transition hover:text-ivory"
           >
             <span className="grid h-9 w-9 place-items-center rounded-full bg-night/20 ring-1 ring-ivory/25 backdrop-blur-md">
               <BellIcon />
@@ -285,20 +285,22 @@ export default function Home() {
         <div
           onMouseEnter={show}
           onMouseLeave={hide}
-          className={`pointer-events-auto absolute bottom-28 right-6 origin-bottom-right scale-75 transition duration-500 sm:bottom-10 sm:right-10 sm:scale-100 ${inside ? "invisible opacity-0" : "visible opacity-100"}`}
+          className={`hud-right pointer-events-auto absolute bottom-[calc(10rem+env(safe-area-inset-bottom))] origin-bottom-right scale-75 transition duration-500 sm:scale-100 lg:bottom-10 ${inside ? "invisible opacity-0" : "visible opacity-100"}`}
         >
-          <FloorPlan plan={residence.plan} heading={heading} label={name} />
-          <div className="mt-5">
+          <div className="max-sm:[@media(max-height:739px)]:hidden">
+            <FloorPlan plan={residence.plan} heading={heading} label={name} />
+          </div>
+          <div className="mt-5 max-sm:[@media(max-height:739px)]:mt-0">
             <p className="font-serif text-xl tracking-wide text-ivory">{name}</p>
             <p className="eyebrow mt-1.5">
               {residence.city} / {residence.collection}
             </p>
-            {factLine(summary) && <p className="mt-2.5 font-mono text-[11px] text-ivory/70">{factLine(summary)}</p>}
+            {factLine(summary) && <p className="mt-2.5 font-mono text-caption text-ivory/75">{factLine(summary)}</p>}
           </div>
         </div>
 
         <div className={`transition duration-700 ${inside ? "visible opacity-100" : "invisible opacity-0"}`}>
-          <div className="absolute left-6 top-6 sm:left-10 sm:top-9">
+          <div className="hud-top hud-left absolute">
             <p className="font-serif text-xl text-ivory/90">{name}</p>
             <p className="eyebrow mt-1.5">{residence.city}</p>
           </div>
@@ -308,11 +310,11 @@ export default function Home() {
               clearTimeout(enterTimer.current);
               setInside(false);
             }}
-            className="btn-glass pointer-events-auto absolute right-6 top-6 sm:right-10 sm:top-9"
+            className="btn-glass hud-top hud-right pointer-events-auto absolute"
           >
             Leave
           </button>
-          <p className="eyebrow absolute inset-x-0 bottom-10 text-center text-ivory/60!">Esc to leave</p>
+          <p className="eyebrow absolute inset-x-0 bottom-[calc(2.5rem+env(safe-area-inset-bottom))] text-center text-ivory/60!">Esc to leave</p>
         </div>
       </div>
     </div>

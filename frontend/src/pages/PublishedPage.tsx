@@ -3,18 +3,15 @@ import { Link, useParams } from "react-router-dom";
 import { api, clock, factLine, media, money, shortDate, type PublishedPage as Page, type Room } from "../api";
 import BeforeAfter from "../components/BeforeAfter";
 import CompsTable from "../components/CompsTable";
-import { HoverNav, Wordmark } from "../components/Shell";
-
-const enterClass =
-  "group flex w-fit items-center gap-4 rounded-full bg-ivory/[0.08] py-2 pl-2 pr-6 text-[15px] tracking-wide text-ivory ring-1 ring-ivory/25 backdrop-blur-xl transition hover:bg-ivory/[0.14] hover:ring-ivory/40";
+import { SiteHeader } from "../components/Shell";
 
 /** Enter residence, or why it can't open yet. */
 function EnterResidence({ id, page }: { id: string; page: Page }) {
   const live = page.live;
   if (live?.status === "ready")
     return (
-      <Link to={`/p/${id}/live`} className={enterClass}>
-        <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+      <Link to={`/p/${id}/live`} className="btn-enter group">
+        <span className="btn-enter-dot">
           <span className="ice-dot" />
         </span>
         Enter residence
@@ -28,8 +25,8 @@ function EnterResidence({ id, page }: { id: string; page: Page }) {
       : "The broker hasn't prepared the residence yet.";
   return (
     <div>
-      <span aria-disabled className={`${enterClass} cursor-not-allowed opacity-45 hover:bg-ivory/[0.08] hover:ring-ivory/25`}>
-        <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+      <span aria-disabled className="btn-enter cursor-not-allowed opacity-45 hover:bg-ivory/[0.08] hover:ring-ivory/25">
+        <span className="btn-enter-dot">
           <span className="h-1.5 w-1.5 rounded-full bg-ivory/40" />
         </span>
         Enter residence
@@ -87,26 +84,26 @@ function Walkthrough({ page, rooms }: { page: Page; rooms: Room[] }) {
               className="absolute top-1/2 grid h-6 w-6 -translate-x-1/2 -translate-y-1/2 place-items-center"
               style={{ left: `${((r.span?.[0] ?? r.t ?? 0) / video.duration) * 100}%` }}
             >
-              <span className={`block rounded-full transition ${r.id === current?.id ? "h-2 w-2 bg-ice shadow-[0_0_10px_rgb(155_230_239/0.8)]" : "h-1.5 w-1.5 bg-ivory/50"}`} />
+              <span className={`block rounded-full transition ${r.id === current?.id ? "h-2 w-2 bg-ice shadow-glow" : "h-1.5 w-1.5 bg-ivory/50"}`} />
             </button>
           ))}
         </div>
       )}
-      <figcaption className="eyebrow mt-2 flex items-center justify-between gap-4 text-ivory/50!">
+      <figcaption className="eyebrow mt-2 flex items-center justify-between gap-4 text-ivory/60!">
         <span>Full walkthrough · {clock(video.duration)} · as filmed</span>
         <span>{current?.name ?? ""}</span>
       </figcaption>
       {rooms.length > 0 && (
-        <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2">
+        <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2 pointer-coarse:gap-y-0">
           {rooms.map((r) => (
             <li key={r.id}>
               <button
                 type="button"
                 onClick={() => seek(r.span?.[0] ?? r.t ?? 0)}
-                className={`flex items-baseline gap-2 text-sm transition hover:text-ivory ${r.id === current?.id ? "text-ivory" : "text-ivory/60"}`}
+                className={`flex items-baseline gap-2 text-sm transition hover:text-ivory pointer-coarse:min-h-11 pointer-coarse:items-center ${r.id === current?.id ? "text-ivory" : "text-ivory/60"}`}
               >
                 {r.name}
-                <span className="font-mono text-[11px] text-ash">{clock(r.span?.[0] ?? r.t ?? 0)}</span>
+                <span className="font-mono text-caption text-ash">{clock(r.span?.[0] ?? r.t ?? 0)}</span>
               </button>
             </li>
           ))}
@@ -153,7 +150,7 @@ export default function PublishedPage() {
           {page.note}
         </p>
       )}
-      <h1 className="mt-4 max-w-4xl font-serif text-5xl leading-[1.04] sm:text-6xl">{page.title}</h1>
+      <h1 className="mt-4 max-w-4xl text-balance font-serif text-4xl leading-[1.04] sm:text-6xl">{page.title}</h1>
       <p className="mt-6 font-mono text-sm text-ivory/80">{factLine(page.facts)}</p>
       <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3">
         {price && <span className="font-mono text-base text-champagne">{price}</span>}
@@ -176,10 +173,7 @@ export default function PublishedPage() {
 
   return (
     <div>
-      <header className="pointer-events-none fixed inset-x-0 top-0 z-40 flex items-start justify-between px-6 py-6 sm:px-10">
-        <Wordmark />
-        <HoverNav />
-      </header>
+      <SiteHeader />
 
       {page.video ? (
         <section className="relative overflow-hidden">
@@ -193,7 +187,7 @@ export default function PublishedPage() {
           )}
           <div className="absolute inset-0 bg-gradient-to-b from-night/40 via-night/70 to-night" />
           <div
-            className={`relative mx-auto grid min-h-dvh max-w-7xl items-center gap-12 px-6 pb-16 pt-24 sm:px-10 ${portrait ? "lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-20" : ""}`}
+            className={`page-x relative mx-auto grid min-h-dvh max-w-7xl grid-cols-1 items-center gap-12 pb-16 pt-28 sm:pt-32 ${portrait ? "lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-20" : ""}`}
           >
             <Walkthrough page={page} rooms={timed} />
             <div>{details}</div>
@@ -203,28 +197,33 @@ export default function PublishedPage() {
         <section className="relative min-h-[88dvh] overflow-hidden">
           {heroSrc && <img src={media(heroSrc)} alt="" className="absolute inset-0 h-full w-full object-cover" />}
           <div className="absolute inset-0 bg-gradient-to-t from-night via-night/55 to-night/10" />
-          <div className="relative mx-auto flex min-h-[88dvh] max-w-7xl flex-col justify-end px-6 pb-16 sm:px-10">{details}</div>
+          <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-night/55 to-transparent" />
+          <div className="page-x relative mx-auto flex min-h-[88dvh] max-w-7xl flex-col justify-end pb-16 pt-28">{details}</div>
         </section>
       )}
 
-      <main className="mx-auto max-w-7xl space-y-24 px-6 pb-32 pt-12 sm:px-10">
-        <section className="grid gap-12 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <main className="page-x mx-auto max-w-7xl space-y-16 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-12 sm:space-y-24">
+        <section className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <div>
+            <h2 className="eyebrow mb-5">The residence</h2>
             {page.description ? (
-              <p className="whitespace-pre-line text-xl font-light leading-relaxed text-ivory/90">{page.description}</p>
+              <p className="whitespace-pre-line text-lg font-light leading-relaxed text-ivory/90 sm:text-xl">{page.description}</p>
             ) : (
               <p className="text-ash">{page.facts.address}</p>
             )}
           </div>
           {page.highlights.length > 0 && (
+            <div className="lg:border-l lg:border-ivory/10 lg:pl-12">
+            <h2 className="eyebrow mb-5">Highlights</h2>
             <ul className="space-y-3">
               {page.highlights.map((h) => (
                 <li key={h.text} className="flex items-center gap-4 text-lg font-light">
-                  <span className="h-1 w-1 rounded-full bg-champagne" />
+                  <span className="h-1 w-1 shrink-0 rounded-full bg-champagne" />
                   {h.text}
                 </li>
               ))}
             </ul>
+            </div>
           )}
         </section>
 
@@ -232,12 +231,11 @@ export default function PublishedPage() {
 
         {rooms.length > 0 &&
           (page.video ? (
-            <details className="group">
-              <summary className="eyebrow cursor-pointer list-none transition hover:text-ivory!">
-                <span className="mr-2 inline-block transition group-open:rotate-90">›</span>
+            <details>
+              <summary className="eyebrow disclosure w-fit hover:text-ivory!">
                 AI-staged stills · {rooms.length} {rooms.length === 1 ? "room" : "rooms"}
               </summary>
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className={`mt-6 grid gap-4 ${rooms.length === 1 ? "max-w-4xl" : rooms.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
                 {rooms.map((room) => (
                   <BeforeAfter key={room.id} room={room} />
                 ))}
@@ -248,7 +246,7 @@ export default function PublishedPage() {
               <h2 id="rooms-heading" className="eyebrow">
                 Rooms
               </h2>
-              <div className="mt-6 grid gap-6 md:grid-cols-2">
+              <div className={`mt-6 grid gap-6 ${rooms.length === 1 ? "max-w-4xl" : "md:grid-cols-2"}`}>
                 {rooms.map((room) => (
                   <BeforeAfter key={room.id} room={room} />
                 ))}

@@ -66,13 +66,13 @@ export default function NewWalkthrough() {
 
   return (
     <form onSubmit={submit}>
-      <h1 className="text-6xl font-[200] tracking-tight sm:text-8xl">Bring the walkthrough.</h1>
-      <p className="mt-5 max-w-lg text-ash">
+      <h1 className="text-balance text-[clamp(3rem,11vw,6rem)] font-[200] leading-[0.95] tracking-tight">Bring the walkthrough.</h1>
+      <p className="mt-6 max-w-lg text-ash">
         One steady pass through the empty unit is enough. Add the facts you know; nothing else gets claimed.
       </p>
 
-      <div className="mt-14 grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-        <div>
+      <div className="mt-12 grid grid-cols-1 gap-10 sm:mt-14 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-14">
+        <div className="flex flex-col">
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -80,7 +80,7 @@ export default function NewWalkthrough() {
             }}
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
-            className={`glass grid min-h-[380px] place-items-center p-10 text-center transition ${dragging ? "bg-ice/[0.06]" : ""}`}
+            className={`glass grid min-h-72 flex-1 place-items-center p-6 text-center transition sm:min-h-[380px] sm:p-10 ${dragging ? "bg-ice/[0.06]" : ""}`}
           >
             <div>
               <span className="mx-auto grid h-16 w-16 place-items-center rounded-full ring-1 ring-ivory/15">
@@ -90,7 +90,7 @@ export default function NewWalkthrough() {
               <button type="button" onClick={() => input.current?.click()} className="btn-glass mt-5">
                 Choose video or photos
               </button>
-              <p className="eyebrow mt-6">MP4, MOV, WebM up to 3 min · JPG, PNG, WebP</p>
+              <p className="eyebrow mt-6 text-balance">MP4, MOV, WebM up to 3 min · JPG, PNG, WebP</p>
               <input
                 ref={input}
                 type="file"
@@ -108,15 +108,15 @@ export default function NewWalkthrough() {
           {files.length > 0 && (
             <ul className="mt-4 space-y-1.5">
               {files.map((f, i) => (
-                <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-4 rounded-xl px-4 py-2.5 odd:bg-ivory/[0.025]">
-                  <span className="truncate text-sm">{f.name}</span>
-                  <span className="flex items-center gap-4">
+                <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-4 rounded-xl px-4 py-1 odd:bg-ivory/[0.025]">
+                  <span className="min-w-0 truncate text-sm">{f.name}</span>
+                  <span className="flex shrink-0 items-center gap-4">
                     <span className="font-mono text-xs text-ash">{size(f.size)}</span>
                     <button
                       type="button"
                       aria-label={`Remove ${f.name}`}
                       onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
-                      className="text-ash transition hover:text-ivory"
+                      className="btn-ghost min-h-11 text-sm text-ash"
                     >
                       Remove
                     </button>
@@ -127,7 +127,7 @@ export default function NewWalkthrough() {
           )}
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <Field label="Address">
             <input name="address" className="field" placeholder="Building, unit, street" autoComplete="off" />
           </Field>
@@ -162,25 +162,27 @@ export default function NewWalkthrough() {
               </select>
             </Field>
           </div>
-          <label className="flex cursor-pointer items-center gap-3 text-sm text-ivory/85">
-            <input type="checkbox" checked={estimate} onChange={(e) => setEstimate(e.target.checked)} className="h-4 w-4 accent-[#9be6ef]" />
-            Estimate the price from comparable sales
-          </label>
-          <label className="flex cursor-pointer items-center gap-3 text-sm text-ivory/85">
-            <input type="checkbox" checked={test} onChange={(e) => setTest(e.target.checked)} className="h-4 w-4 accent-[#9be6ef]" />
-            Test upload · label it "Not a real listing" everywhere
-          </label>
+          <div>
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-ivory/85">
+              <input type="checkbox" checked={estimate} onChange={(e) => setEstimate(e.target.checked)} className="h-4 w-4 shrink-0 accent-ice" />
+              Estimate the price from comparable sales
+            </label>
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-ivory/85">
+              <input type="checkbox" checked={test} onChange={(e) => setTest(e.target.checked)} className="h-4 w-4 shrink-0 accent-ice" />
+              Test upload · label it "Not a real listing" everywhere
+            </label>
+          </div>
 
           <fieldset>
             <legend className="eyebrow mb-2">Staging style</legend>
-            <div className="glass flex w-fit gap-0.5 rounded-full! p-1 text-sm">
+            <div className="glass segmented grid w-full grid-cols-2 rounded-3xl! text-sm sm:flex sm:w-fit sm:rounded-full!">
               {STYLES.map((s) => (
                 <button
                   key={s.value}
                   type="button"
                   aria-pressed={style === s.value}
                   onClick={() => setStyle(s.value)}
-                  className={`rounded-full px-4 py-1.5 transition ${style === s.value ? "bg-ivory/90 text-night" : "text-ivory/80 hover:text-ivory"}`}
+                  className="segment px-4 max-sm:min-h-11"
                 >
                   {s.label}
                 </button>
@@ -194,7 +196,7 @@ export default function NewWalkthrough() {
             </p>
           )}
 
-          <div className="flex items-center gap-5 pt-4">
+          <div className="flex flex-wrap items-center gap-5 pt-4">
             <button type="submit" className="btn-primary" disabled={uploading}>
               {uploading ? "Uploading" : "Process walkthrough"}
             </button>

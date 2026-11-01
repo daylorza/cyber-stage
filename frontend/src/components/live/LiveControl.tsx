@@ -104,16 +104,16 @@ export default function LiveControl({ listing }: { listing: Listing }) {
 
   if (s.status === "ready")
     return (
-      <span className="flex items-center gap-1.5">
+      <span className="flex flex-wrap items-center justify-center gap-1.5">
         {confirmPrepare && <ConfirmDialog message="Re-run full Live-In-It preparation? The current experience will be unavailable while it runs and could be replaced if preparation fails. Cached results may be reused; new Meta calls may use credits." onCancel={() => setConfirmPrepare(false)} onConfirm={() => { setConfirmPrepare(false); void prepare(); }} />}
         <button type="button" className="btn-glass" onClick={() => setConfirmPrepare(true)}>
           Re-run preparation
         </button>
         <Link to={`/p/${listingId}/live`} className="btn-glass">Enter residence</Link>
-        <details className="relative">
-          <summary className="btn-glass cursor-pointer">Re-run a style</summary>
-          <div className="absolute bottom-full right-0 mb-3 w-72 max-h-80 overflow-auto rounded-xl bg-night p-4 shadow-xl ring-1 ring-ivory/20">
-            {payload?.rooms.filter((room) => ["living", "bedroom", "dining"].includes(room.type)).map((room) => <div key={room.id} className="mb-3"><p className="eyebrow mb-2">{room.name}</p>{payload.styles.map((style) => <button key={style.id} type="button" disabled={!!styleJob} onClick={() => setSelectedStyle({ room: room.id, roomName: room.name, style: style.id, label: style.label })} className="block w-full py-1 text-left text-sm text-ivory/80 hover:text-ivory disabled:opacity-40">{room.styles[style.id] ? "Re-run" : "Generate"} {style.label}</button>)}</div>)}
+        <details className="max-sm:static sm:relative">
+          <summary className="btn-glass cursor-pointer list-none [&::-webkit-details-marker]:hidden">Re-run a style</summary>
+          <div className="absolute bottom-full mb-3 max-h-80 overflow-auto rounded-xl bg-night p-4 shadow-xl ring-1 ring-ivory/20 max-sm:inset-x-0 sm:right-0 sm:w-72">
+            {payload?.rooms.filter((room) => ["living", "bedroom", "dining"].includes(room.type)).map((room) => <div key={room.id} className="mb-3"><p className="eyebrow mb-2">{room.name}</p>{payload.styles.map((style) => <button key={style.id} type="button" disabled={!!styleJob} onClick={() => setSelectedStyle({ room: room.id, roomName: room.name, style: style.id, label: style.label })} className="block w-full py-1 text-left text-sm text-ivory/80 transition hover:text-ivory disabled:opacity-40 pointer-coarse:py-3">{room.styles[style.id] ? "Re-run" : "Generate"} {style.label}</button>)}</div>)}
             {selectedStyle && <div className="my-3 rounded-lg bg-ivory/[0.05] p-3 ring-1 ring-ice/30">
               <p className="text-sm text-ivory">Generate {selectedStyle.label} for {selectedStyle.roomName}?</p>
               <p className="mt-2 text-xs leading-relaxed text-ivory/70">This uses Meta credits. The current image is replaced only if checks pass.</p>
@@ -137,17 +137,17 @@ export default function LiveControl({ listing }: { listing: Listing }) {
 
   if (!eligible)
     return (
-      <span className="flex items-center gap-3 px-3">
+      <span className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 px-3">
         <button type="button" className="btn-glass" disabled title={NO_MAIN_ROOM}>
           Enter residence
         </button>
-        <span className="max-w-[16rem] text-xs leading-snug text-rose/80">No main living space found in this video</span>
+        <span className="max-w-[16rem] text-xs leading-snug text-rose">No main living space found in this video</span>
       </span>
     );
 
   return (
-    <span className="flex items-center gap-3">
-      {s.status === "failed" && s.error && <span className="max-w-[18rem] px-2 text-xs leading-snug text-rose/80">{s.error}</span>}
+    <span className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
+      {s.status === "failed" && s.error && <span className="max-w-[18rem] px-2 text-xs leading-snug text-rose">{s.error}</span>}
       <button type="button" className="btn-glass" title={s.error || undefined} onClick={prepare}>
         Prepare Live-In-It
       </button>

@@ -40,7 +40,7 @@ function BoxOverlay({ frame, box, kind }: { frame: Frame; box: Box; kind: "priva
       className={`absolute outline outline-1 ${privacy ? "outline-dashed outline-rose" : "outline-ice/60"}`}
       style={{ left: `${(x1 / w) * 100}%`, top: `${(y1 / h) * 100}%`, width: `${((x2 - x1) / w) * 100}%`, height: `${((y2 - y1) / h) * 100}%` }}
     >
-      <span className={`absolute left-0 top-0 whitespace-nowrap bg-night/70 px-1 font-mono text-[9px] leading-4 tracking-wide ${privacy ? "text-rose" : "text-ice/90"}`}>
+      <span className={`absolute left-0 top-0 whitespace-nowrap bg-night/70 px-1 font-mono text-micro leading-4 tracking-wide ${privacy ? "text-rose" : "text-ice/90"}`}>
         {privacy ? `blurred · ${box.concept}` : box.concept}
       </span>
     </span>
@@ -72,7 +72,7 @@ function FrameCard({ frame, boxes }: { frame: Frame; boxes: boolean }) {
         )}
       </div>
       <figcaption className="mt-3">
-        <p className="flex items-baseline justify-between font-mono text-[10px] tracking-wider text-ash uppercase">
+        <p className="data-label flex items-baseline justify-between text-ash">
           <span>{frame.id}</span>
           <span>{frame.t != null ? clock(frame.t) : `Upload ${frame.upload}`}</span>
         </p>
@@ -88,7 +88,7 @@ function FrameCard({ frame, boxes }: { frame: Frame; boxes: boolean }) {
             {w.condition && <p className="text-xs text-ash">{w.condition}</p>}
             <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Observations">
               {w.observations.map((o) => (
-                <li key={o.id} title={o.id} className="rounded-full bg-ivory/[0.05] px-2.5 py-1 text-[11px] text-ivory/80">
+                <li key={o.id} title={o.id} className="rounded-full bg-ivory/[0.05] px-2.5 py-1 text-caption text-ivory/80">
                   {o.text}
                 </li>
               ))}
@@ -117,7 +117,7 @@ function Saw({ listing }: { listing: Listing }) {
     <div>
       <Heading
         note={
-          <button type="button" aria-pressed={boxes} onClick={() => setBoxes((b) => !b)} className="text-xs text-ash transition hover:text-ivory aria-pressed:text-ice">
+          <button type="button" aria-pressed={boxes} onClick={() => setBoxes((b) => !b)} className="btn-ghost text-xs text-ash aria-pressed:text-ice">
             {boxes ? "SAM boxes on" : "SAM boxes off"}
           </button>
         }
@@ -130,7 +130,7 @@ function Saw({ listing }: { listing: Listing }) {
         ))}
       </div>
       {listing.frames.length > SHOWN_FRAMES && (
-        <button type="button" onClick={() => setAll((a) => !a)} className="mt-8 text-sm text-ash transition hover:text-ivory">
+        <button type="button" onClick={() => setAll((a) => !a)} className="btn-ghost mt-8 text-sm text-ash">
           {all ? "Show fewer frames" : `Show all ${listing.frames.length} frames`}
         </button>
       )}
@@ -144,7 +144,7 @@ function RoomDecision({ room }: { room: Room }) {
   return (
     <li className="grid gap-5 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
       <div className={`aspect-video overflow-hidden rounded-lg bg-smoke ${room.rejected ? "opacity-40 grayscale" : ""}`}>
-        {src ? <img src={media(src)} alt="" loading="lazy" className="h-full w-full object-cover" /> : <p className="eyebrow grid h-full place-items-center px-2 text-center text-[0.55rem]!">Held back</p>}
+        {src ? <img src={media(src)} alt="" loading="lazy" className="h-full w-full object-cover" /> : <p className="eyebrow grid h-full place-items-center px-2 text-center text-micro!">Held back</p>}
       </div>
       <div className="min-w-0">
         <p className="flex flex-wrap items-baseline gap-x-4">
@@ -169,7 +169,7 @@ function RoomDecision({ room }: { room: Room }) {
         {!st && <p className="mt-0.5 text-sm text-ash">Not staged</p>}
         {st?.prompt && (
           <details className="group mt-2">
-            <summary className="w-fit cursor-pointer list-none text-xs text-ash transition hover:text-ivory">
+            <summary className="btn-ghost w-fit cursor-pointer list-none text-xs text-ash [&::-webkit-details-marker]:hidden">
               <span className="group-open:hidden">Show staging prompt</span>
               <span className="hidden group-open:inline">Hide staging prompt</span>
             </summary>
@@ -211,7 +211,7 @@ function Decided({ listing }: { listing: Listing }) {
               {claims.map((c) => (
                 <li key={`${c.label}-${c.key}`}>
                   <p className="text-sm text-ivory/90">
-                    <span className="mr-3 font-mono text-[10px] tracking-wider text-ash uppercase">{c.label}</span>
+                    <span className="data-label mr-3 text-ash">{c.label}</span>
                     {c.text}
                   </p>
                   <EvidenceBlock id={c.id} evidence={c.evidence} listing={listing} className="mt-1.5" />
@@ -299,7 +299,7 @@ function CallList({ title, rows, listing }: { title: string; rows: TraceEntry[];
                   {targetText(r.target, listing) || r.summary}
                 </p>
               </div>
-              <p className={`text-right font-mono text-[10px] tracking-wider uppercase ${r.ok ? "text-ash" : "text-rose"}`}>
+              <p className={`data-label text-right ${r.ok ? "text-ash" : "text-rose"}`}>
                 <span className="block">{r.model}</span>
                 <span className="block">
                   {r.ok ? `${r.ms} ms` : "error"}
@@ -312,7 +312,7 @@ function CallList({ title, rows, listing }: { title: string; rows: TraceEntry[];
         </ul>
       )}
       {rows.length > SHOWN_CALLS && (
-        <button type="button" onClick={() => setAll((a) => !a)} className="mt-5 text-sm text-ash transition hover:text-ivory">
+        <button type="button" onClick={() => setAll((a) => !a)} className="btn-ghost mt-5 text-sm text-ash">
           {all ? "Show fewer" : `Show all ${rows.length}`}
         </button>
       )}
@@ -340,17 +340,17 @@ function Calls({ listing }: { listing: Listing }) {
 export default function DecisionPanel({ listing }: { listing: Listing }) {
   const [open, setOpen] = useState(true);
   return (
-    <section aria-labelledby="decision-heading" className="glass mt-20 p-6 sm:p-10">
+    <section aria-labelledby="decision-heading" className="pt-4">
       <div className="flex items-baseline justify-between gap-6">
-        <h2 id="decision-heading" className="font-serif text-3xl">
+        <h2 id="decision-heading" className="font-serif text-2xl sm:text-3xl">
           What the model saw and decided
         </h2>
-        <button type="button" aria-expanded={open} aria-controls="decision-body" onClick={() => setOpen((o) => !o)} className="text-sm text-ash transition hover:text-ivory">
+        <button type="button" aria-expanded={open} aria-controls="decision-body" onClick={() => setOpen((o) => !o)} className="btn-ghost shrink-0 text-sm text-ash">
           {open ? "Collapse" : "Expand"}
         </button>
       </div>
       {open && (
-        <div id="decision-body" className="mt-12 space-y-20">
+        <div id="decision-body" className="mt-10 space-y-16 sm:space-y-20">
           <Saw listing={listing} />
           <Decided listing={listing} />
           <StillOpen listing={listing} />

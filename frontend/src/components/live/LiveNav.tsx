@@ -17,9 +17,11 @@ type Props = {
   open: boolean;
   setOpen: (open: boolean) => void;
   closeTimer: { current: number };
+  /** Phone: the menu holds only Leave; map and styles live on the page. */
+  leaveOnly?: boolean;
 };
 
-const item = "flex min-h-11 max-w-full min-w-0 items-center gap-2 break-words text-left [overflow-wrap:anywhere] font-serif text-sm transition hover:text-ivory disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-ivory/75 sm:min-h-0 sm:gap-2.5 sm:text-[15px]";
+const item = "flex min-h-11 max-w-full min-w-0 items-center gap-2 break-words text-left [overflow-wrap:anywhere] font-serif text-sm transition hover:text-ivory disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-ivory/75 sm:min-h-0 sm:gap-2.5 sm:text-ui";
 
 /** Hover menu, upper right. The floor plan lives here and nowhere else. */
 export default function LiveNav(p: Props) {
@@ -41,23 +43,24 @@ export default function LiveNav(p: Props) {
         aria-expanded={p.open}
         aria-controls="live-menu"
         onClick={() => (p.open ? p.setOpen(false) : show())}
-        className="grid h-11 w-11 place-items-center rounded-full bg-night/20 ring-1 ring-ivory/25 backdrop-blur-md transition hover:ring-ice/60"
+        className="nav-orb"
       >
         <span className="ice-dot" />
       </button>
       <div className={`flex flex-col items-end transition duration-500 ${reveal}`}>
-        <span aria-hidden className="mr-[21.5px] h-2 w-px bg-gradient-to-b from-ivory/45 to-transparent sm:h-8" />
+        <span aria-hidden className="nav-tick h-2 sm:h-8" />
         <div
           id="live-menu"
-          className="mt-1 max-h-[65dvh] w-[210px] max-w-[calc(100vw-3rem)] space-y-3 overflow-x-hidden overflow-y-auto rounded-xl bg-night/70 p-3 backdrop-blur-xl ring-1 ring-ivory/10 sm:max-h-[78dvh] sm:w-[250px] sm:space-y-6 sm:rounded-2xl sm:bg-night/45 sm:p-5"
+          className={p.leaveOnly ? "mt-1 rounded-xl bg-night/70 px-4 py-1 ring-1 ring-ivory/10 backdrop-blur-xl" : "mt-1 max-h-[65dvh] w-[210px] max-w-[calc(100vw-3rem)] space-y-3 overflow-x-hidden overflow-y-auto rounded-xl bg-night/70 p-3 backdrop-blur-xl ring-1 ring-ivory/10 sm:max-h-[78dvh] sm:w-[250px] sm:space-y-6 sm:rounded-2xl sm:bg-night/45 sm:p-5"}
         >
+          {!p.leaveOnly && <>
           <section aria-label="Rooms" className="space-y-2 sm:space-y-4">
             <p className="eyebrow">Rooms</p>
             {p.mapRoom && (
               <div className="min-w-0">
                 <RoomSchematic room={p.mapRoom} styleId={p.styleId} />
-                <p className="mt-2 text-[11px] leading-snug text-ivory/70">*Floor plan estimation — derived from SAM detections for this room, not a measured floor plan, not to scale.</p>
-                {!p.mapRoom.sam_map && <p className="mt-2 text-[11px] leading-snug text-ivory/70">Map approximate — room geometry not detected</p>}
+                <p className="mt-2 text-caption leading-snug text-ivory/70">*Floor plan estimation — derived from SAM detections for this room, not a measured floor plan, not to scale.</p>
+                {!p.mapRoom.sam_map && <p className="mt-2 text-caption leading-snug text-ivory/70">Map approximate — room geometry not detected</p>}
               </div>
             )}
             <ul className="space-y-0 sm:space-y-2.5">
@@ -116,9 +119,10 @@ export default function LiveNav(p: Props) {
               </ul>
             </section>
           )}
+          </>}
 
-          <div className="flex justify-end pt-1">
-            <Link to={p.listingPath} className="eyebrow text-ivory/70! transition hover:text-ivory!">
+          <div className={p.leaveOnly ? "flex justify-end" : "flex justify-end pt-1"}>
+            <Link to={p.listingPath} className="eyebrow flex min-h-11 items-center text-ivory/75! transition hover:text-ivory!">
               Leave
             </Link>
           </div>

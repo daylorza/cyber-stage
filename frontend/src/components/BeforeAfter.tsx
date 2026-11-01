@@ -18,7 +18,7 @@ export default function BeforeAfter({ room, className = "" }: { room: Room; clas
       disabled={disabled}
       title={disabled ? (value === "after" ? "Staging pending" : HELD_BACK) : undefined}
       onClick={() => setView(value)}
-      className={`rounded-full px-3.5 py-1.5 transition disabled:cursor-not-allowed disabled:opacity-35 ${view === value ? "bg-ivory/90 text-night" : "text-ivory/80 hover:text-ivory"}`}
+      className="segment"
     >
       {label}
     </button>
@@ -37,11 +37,11 @@ export default function BeforeAfter({ room, className = "" }: { room: Room; clas
           <p className="eyebrow">{HELD_BACK}</p>
         </div>
       )}
-      <div role="group" aria-label="Staging view" className="glass absolute left-4 top-4 flex gap-0.5 rounded-full! p-1 text-xs">
+      <div role="group" aria-label="Staging view" className="glass segmented absolute left-3 top-3 rounded-full! text-xs sm:left-4 sm:top-4">
         {option("before", "Before", room.before == null)}
         {option("after", "After", room.after == null)}
       </div>
-      <figcaption className="eyebrow absolute bottom-4 right-4 text-ivory/70!">
+      <figcaption className="eyebrow legible absolute bottom-3 right-3 text-ivory/80! sm:bottom-4 sm:right-4">
         {showingAfter ? "AI-modified" : room.before == null ? "Held back" : room.after == null ? "Staging pending" : "As filmed"}
       </figcaption>
     </figure>

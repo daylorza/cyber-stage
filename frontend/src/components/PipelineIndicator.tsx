@@ -26,7 +26,7 @@ const LABEL: Record<StepState, string> = {
   done: "text-ivory/70",
   active: "text-ivory",
   failed: "text-rose",
-  pending: "text-ash/50",
+  pending: "text-ash",
 };
 
 /** The pipeline read like a lift indicator: stages are floors, the current one is lit. */
@@ -43,10 +43,10 @@ export default function PipelineIndicator({ job }: { job: Job | null }) {
   };
 
   return (
-    <div className="grid items-end gap-12 sm:grid-cols-[auto_1fr]">
+    <div className="grid grid-cols-1 items-end gap-10 sm:grid-cols-[auto_1fr] sm:gap-12">
       <div aria-live="polite">
         <p className="eyebrow">{failed ? "Stopped at" : done ? "Arrived" : "Now on"}</p>
-        <p className="mt-2 font-sans text-[9rem] leading-none font-[150] tracking-tighter tabular-nums text-ivory">
+        <p className="mt-2 font-sans text-8xl leading-none font-[150] tracking-tighter tabular-nums text-ivory sm:text-[9rem]">
           {floor ? String(current + 1).padStart(2, "0") : "00"}
         </p>
         <p className="mt-3 text-lg font-light text-ivory/85">{floor ? floor.label : "Queued"}</p>
@@ -57,7 +57,7 @@ export default function PipelineIndicator({ job }: { job: Job | null }) {
           const state = stateOf(i);
           return (
             <li key={s.id} aria-current={state === "active" ? "step" : undefined} className="flex items-center gap-4">
-              <span className="w-6 text-right font-mono text-[11px] tabular-nums text-ash/70">{String(i + 1).padStart(2, "0")}</span>
+              <span className="w-6 text-right font-mono text-caption tabular-nums text-ash">{String(i + 1).padStart(2, "0")}</span>
               <span className={`h-1.5 w-1.5 rounded-full ${DOT[state]}`} />
               <span className={`text-sm tracking-wide ${LABEL[state]}`}>{s.label}</span>
             </li>
