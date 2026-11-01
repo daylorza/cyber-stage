@@ -91,3 +91,47 @@ def test_session_limit_does_not_invoke_model(client, monkeypatch):
     response = client.post("/api/listings/cap_test/guide/chat", json={"thread_id": "cap", "message": "Hello"})
     assert response.status_code == 200
     assert "12-turn limit" in response.json()["text"]
+
+
+def test_chat_syncs_viewed_room_and_style(client, monkeypatch):
+    import db
+    import guide
+    listing = {"id": "sync_test", "status": "published", "source": "upload", "live": {"status": "ready", "rooms": [
+        {"id": "r1", "styles": {}}, {"id": "r2", "styles": {"coastal": {"available": True, "image": "r2.jpg"}}}
+    ]}}
+    with db.connect() as conn:
+        db.insert_listing(conn, listing)
+    class Agent:
+        def invoke(self, *args, **kwargs):
+            import json
+            room = next(t for t in self.tools if t.name == "get_room")
+            data = json.loads(room.invoke({}))
+            assert data["id"] == "r2"
+            assert data["style"] == "Coastal"
+            return {"messages": [type("Message", (), {"content": "Ready"})()]}
+    def create(*args, **kwargs):
+        agent = Agent()
+        agent.tools = args[1]
+        return agent
+    monkeypatch.setattr(guide, "_model", lambda: None)
+    monkeypatch.setattr(guide, "create_agent", create)
+    response = client.post('/api/listings/sync_test/guide/chat', json={"thread_id": "sync", "message": "Hello", "room_id": "r2", "style_id": "coastal"})
+    assert response.status_code == 200
+
+
+def test_single_room_next_room_is_explicit():
+    import json
+    import guide
+    listing = {"live": {"rooms": [{"id": "r1", "name": "Living room", "styles": {}}]}}
+    result = {"actions_taken": [], "evidence": [], "staged_image_url": None, "deposit": None}
+    tool = next(t for t in guide._tools(listing, {}, result) if t.name == "next_room")
+    assert "only one room" in json.loads(tool.invoke({}))["error"]
+
+
+def test_broker_note_for_price_and_deposit_but_not_pure_style():
+    import guide
+    note = 'A broker decides on any home decision.'
+    assert guide._broker_note('How much is this?', 'It is $1,000,000.', [], None).endswith(note)
+    assert guide._broker_note('Reserve it', 'Simulated deposit.', [], {'simulated': True}).endswith(note)
+    assert guide._broker_note('Show me Coastal', 'Now showing Coastal.', ['switch_style'], None) == 'Now showing Coastal.'
+    assert guide._broker_note('Price?', 'I cannot provide that information.', [], None) == 'I cannot provide that information.'
