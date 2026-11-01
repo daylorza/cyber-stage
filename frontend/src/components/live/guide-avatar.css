@@ -7,9 +7,9 @@
   border-radius: 50%;
   overflow: hidden;
   border: 1px solid rgba(244, 241, 232, .35);
-  background: rgba(30, 26, 44, .4);
+  background: rgba(51, 39, 30, .4);
   backdrop-filter: blur(12px);
-  filter: drop-shadow(0 3px 6px rgba(25, 10, 47, .65)) drop-shadow(0 0 9px rgba(180, 130, 255, .45));
+  filter: drop-shadow(0 3px 6px rgba(38, 25, 16, .65)) drop-shadow(0 0 9px rgba(208, 176, 139, .45));
   animation: guide-float 5s ease-in-out infinite;
 }
 .guide-avatar--large { width: clamp(2rem, calc(23dvh - 106px), 8rem); height: clamp(2rem, calc(23dvh - 106px), 8rem); }
@@ -17,7 +17,7 @@
   content: "";
   position: absolute;
   inset: -15%;
-  background: radial-gradient(ellipse at 35% 60%, rgba(135, 71, 219, .8), rgba(181, 114, 244, .38) 35%, transparent 68%);
+  background: radial-gradient(ellipse at 35% 60%, rgba(150, 105, 70, .8), rgba(211, 181, 145, .38) 35%, transparent 68%);
   filter: blur(7px);
   animation: guide-cloud 6s ease-in-out infinite alternate;
 }
@@ -30,14 +30,14 @@
   left: 43%;
   top: 43%;
   border-radius: 50%;
-  background: #f4eaff;
-  box-shadow: 0 0 8px 3px rgba(194, 143, 255, .8);
+  background: #f8eddb;
+  box-shadow: 0 0 8px 3px rgba(222, 192, 155, .8);
 }
 .guide-avatar__cloud {
   position: absolute;
   inset: 12%;
   border-radius: 46% 54% 57% 43% / 51% 44% 56% 49%;
-  background: radial-gradient(ellipse at 45% 50%, rgba(255, 250, 255, .7), rgba(235, 213, 255, .3) 36%, transparent 68%);
+  background: radial-gradient(ellipse at 45% 50%, rgba(255, 249, 237, .7), rgba(230, 209, 179, .3) 36%, transparent 68%);
   filter: blur(3px);
   mix-blend-mode: screen;
   animation: guide-cloud 7s ease-in-out infinite alternate;
@@ -49,7 +49,7 @@
 .guide-avatar--speaking::before { animation-duration: 1.6s; }
 .guide-avatar--thinking .guide-avatar__cloud { animation-duration: 3s; }
 .guide-avatar--thinking::before { animation-duration: 3s; }
-.guide-avatar--thinking, .guide-avatar--nod, .guide-avatar--excited { filter: drop-shadow(0 3px 6px rgba(25, 10, 47, .65)) drop-shadow(0 0 14px rgba(207, 170, 255, .75)) brightness(1.16); }
+.guide-avatar--thinking, .guide-avatar--nod, .guide-avatar--excited { filter: drop-shadow(0 3px 6px rgba(38, 25, 16, .65)) drop-shadow(0 0 14px rgba(229, 200, 163, .75)) brightness(1.16); }
 .guide-intro {
   left: 50%;
   top: 50%;
