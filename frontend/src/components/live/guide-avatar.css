@@ -73,3 +73,7 @@
   .guide-avatar::before { animation: none; }
   .guide-intro { transition: opacity 150ms ease; }
 }
+
+.guide-avatar--shader { border-color: transparent; background: transparent; backdrop-filter: none; }
+.guide-avatar--shader::before, .guide-avatar--shader::after, .guide-avatar--shader .guide-avatar__cloud { display: none; }
+.guide-avatar canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
