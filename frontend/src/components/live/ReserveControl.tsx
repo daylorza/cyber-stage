@@ -13,7 +13,7 @@ export default function ReserveControl({ listingId }: { listingId: string }) {
   const pill = useRef<HTMLButtonElement>(null);
 
   useLayoutEffect(() => {
-    if (pill.current && width == null) setWidth(pill.current.offsetWidth);
+    if (pill.current && width == null && pill.current.offsetWidth) setWidth(pill.current.offsetWidth);
   }, [width]);
 
   useEffect(() => {
@@ -53,18 +53,21 @@ export default function ReserveControl({ listingId }: { listingId: string }) {
         <div role="status" className="glass animate-fade-in absolute bottom-full right-0 mb-3 w-72 p-5" style={{ animationDelay: "1000ms" }}>
           <p className="font-serif text-lg text-ivory">Hold requested</p>
           <p className="mt-2 text-sm leading-relaxed text-ivory/75">
-            Simulated — no payment taken. The broker confirms your private showing.
+            Simulated deposit — no payment taken. The broker confirms your private showing.
           </p>
           <p className="eyebrow mt-3">Ref {reservation.id.slice(-8)}</p>
         </div>
       )}
+      <button type="button" disabled={state !== "idle"} onClick={reserve} aria-label={done ? "Hold requested" : "Reserve"} className="pointer-events-auto flex min-h-11 items-center text-ivory disabled:cursor-default sm:hidden">
+        <span className="flex h-[34px] items-center gap-2 rounded-full bg-ivory/[0.07] px-3 text-xs tracking-wide ring-1 ring-ivory/25 backdrop-blur-xl">Reserve<span aria-hidden className="h-3 w-3 rounded-full border border-ivory/70" /></span>
+      </button>
       <button
         ref={pill}
         type="button"
         disabled={state !== "idle"}
         onClick={reserve}
         aria-label={done ? "Hold requested" : "Reserve this showing"}
-        className="pointer-events-auto flex h-14 items-center gap-4 overflow-hidden whitespace-nowrap rounded-full bg-ivory/[0.07] pl-2 pr-6 text-left text-ivory ring-1 ring-champagne/45 backdrop-blur-xl transition-colors hover:bg-ivory/[0.12] hover:ring-champagne/70 disabled:cursor-default"
+        className="pointer-events-auto hidden h-14 items-center sm:flex gap-4 overflow-hidden whitespace-nowrap rounded-full bg-ivory/[0.07] pl-2 pr-6 text-left text-ivory ring-1 ring-champagne/45 backdrop-blur-xl transition-colors hover:bg-ivory/[0.12] hover:ring-champagne/70 disabled:cursor-default"
         style={{
           width: done ? 56 : (width ?? undefined),
           paddingRight: done ? 0 : undefined,

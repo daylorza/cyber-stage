@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { LiveRoom } from "../../api";
 import { playDing, primeAudio } from "./ding";
-import { avatarState, isOriginalRequest, matchImageStyle } from "./guideLogic";
+import { avatarState, isOriginalRequest, matchImageStyle, mobileActions } from "./guideLogic";
 import GuideAvatar from "./GuideAvatar";
 
 type Reply = { text: string; emotion: string; actions_taken: string[]; staged_image_url: string | null; room_id: string | null; deposit: { mock_tx: string; simulated: boolean; payment_taken: boolean } | null };
@@ -9,6 +9,7 @@ type Props = { listingId: string; room: LiveRoom; rooms: LiveRoom[]; styleId: st
 
 export default function GuidePanel({ listingId, room, rooms, styleId, onStyle, onRoom, avatarOn, setAvatarOn, intro, styleChange }: Props) {
   const [open, setOpen] = useState(false);
+  const [moreActions, setMoreActions] = useState(false);
   const [message, setMessage] = useState("");
   const [history, setHistory] = useState<{ role: string; text: string }[]>([]);
   const [busy, setBusy] = useState(false);
@@ -76,9 +77,10 @@ export default function GuidePanel({ listingId, room, rooms, styleId, onStyle, o
           {history.length === 0 && <p>Ask about the residence or choose an action.</p>}
           {history.map((item, index) => <p key={index} className="whitespace-pre-wrap break-words"><strong>{item.role}:</strong> {item.text}</p>)}
           {busy && <p>Guide is thinking…</p>}
-          {deposit && <p role="status">Simulated deposit — no payment taken<br />{deposit.mock_tx} · simulated: true · payment_taken: false</p>}
+          {deposit && <p role="status">Simulated deposit — no payment taken. A broker confirms the showing.<br />{deposit.mock_tx} · simulated: true · payment_taken: false</p>}
         </div>
-        <div className="flex flex-wrap gap-1">{["Show me Coastal", "Show me Cyberpunk", "Next room", "Reserve it"].map(action => <button key={action} type="button" disabled={busy} onClick={() => void send(action)} className="min-h-11 rounded-full bg-ivory/10 px-3 text-xs disabled:opacity-50">{action}</button>)}</div>
+        <div className="flex flex-nowrap gap-1 overflow-x-auto sm:hidden">{mobileActions(styleId, rooms.length, moreActions).map(action => <button key={action} type="button" disabled={busy} onClick={() => { if (action === "More") setMoreActions(true); else { setMoreActions(false); void send(action); } }} className="min-h-11 min-w-11 shrink-0 text-xs text-ivory disabled:opacity-50">{action === "Reserve it" ? <span className="flex h-[34px] items-center gap-2 rounded-full bg-ivory/[0.07] px-3 tracking-wide ring-1 ring-ivory/25 backdrop-blur-xl">Reserve<span aria-hidden className="h-3 w-3 rounded-full border border-ivory/70" /></span> : <span className="px-2">{action}</span>}</button>)}</div>
+        <div className="hidden flex-wrap gap-1 sm:flex">{["Show me Coastal", "Show me Cyberpunk", "Next room", "Reserve it"].map(action => <button key={action} type="button" disabled={busy} onClick={() => void send(action)} className="min-h-11 rounded-full bg-ivory/10 px-3 text-xs disabled:opacity-50">{action}</button>)}</div>
         <form onSubmit={submit} className="flex gap-2"><input aria-label="Message the guide" value={message} onChange={e => setMessage(e.target.value)} className="min-h-11 min-w-0 flex-1 rounded-lg bg-ivory/10 px-3 text-sm" placeholder="Ask the guide" /><button disabled={busy || !message.trim()} className="min-h-11 rounded-lg bg-ice/20 px-4 disabled:opacity-50">Send</button></form>
       </div>}
     </section>

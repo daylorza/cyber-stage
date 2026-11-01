@@ -10,3 +10,10 @@ export function matchImageStyle(styles: Record<string, { image: string | null; a
 export function avatarState(thinking: boolean, nodding: boolean, speaking: boolean): 'idle' | 'thinking' | 'nod' | 'speaking' {
   return thinking ? 'thinking' : nodding ? 'nod' : speaking ? 'speaking' : 'idle';
 }
+
+export function mobileActions(styleId: string, roomCount: number, more: boolean): string[] {
+  if (roomCount <= 1) return ['Show me Coastal', 'Show me Cyberpunk', 'Reserve it'];
+  const choices = [styleId !== 'coastal' && 'Show me Coastal', styleId !== '2142' && 'Show me Cyberpunk', 'Next room'].filter((action): action is string => !!action);
+  if (choices.length <= 2) return [...choices, 'Reserve it'];
+  return more ? [...choices.slice(1), 'Reserve it'] : [choices[0], 'More', 'Reserve it'];
+}
