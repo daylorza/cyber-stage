@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_guide_missing_listing_returns_404(client):
     response = client.post('/api/listings/missing/guide/chat', json={'thread_id': 't', 'message': 'Hello'})
     assert response.status_code == 404
@@ -35,7 +38,40 @@ def test_room_reports_only_available_styles():
     }}]}}
     result = {"actions_taken": [], "evidence": [], "staged_image_url": None, "deposit": None}
     room = next(t for t in guide._tools(listing, {}, result) if t.name == "get_room")
-    assert json.loads(room.invoke({}))["available_styles"] == ["coastal"]
+    assert json.loads(room.invoke({}))["available_styles"] == ["Coastal"]
+
+
+@pytest.mark.parametrize(("requested", "expected"), [
+    ("cyberpunk", "2142"), ("cyberpunk-2142", "2142"),
+    ("  CYBERPUNK  --  2142 ", "2142"), ("2142", "2142"),
+    ("Modern", "modern-luxury"), ("modern luxury", "modern-luxury"),
+    ("coastal", "coastal"), ("minimal", "minimal"),
+])
+def test_style_aliases_select_prepared_image(requested, expected):
+    import json
+    import guide
+    styles = {key: {"available": True, "image": f"{key}.jpg"} for key in ("2142", "modern-luxury", "coastal", "minimal")}
+    session = {}
+    result = {"actions_taken": [], "evidence": [], "staged_image_url": None, "deposit": None}
+    switch = next(t for t in guide._tools({"live": {"rooms": [{"id": "r1", "styles": styles}]}}, session, result) if t.name == "switch_style")
+    response = json.loads(switch.invoke({"style_id": requested}))
+    assert session["style"] == expected
+    assert response["staged_image_url"] == f"/api/media/{expected}.jpg"
+
+
+@pytest.mark.parametrize("requested", ["unknown", "original", "unstaged", "minimal"])
+def test_unavailable_style_reports_confirmed_options_without_switch(requested):
+    import json
+    import guide
+    styles = {"2142": {"available": True, "image": "cyber.jpg"}, "minimal": {"available": False, "error": "Geometry failed"}}
+    session = {"style": "modern-luxury"}
+    result = {"actions_taken": [], "evidence": [], "staged_image_url": None, "deposit": None}
+    switch = next(t for t in guide._tools({"live": {"rooms": [{"id": "r1", "styles": styles}]}}, session, result) if t.name == "switch_style")
+    response = json.loads(switch.invoke({"style_id": requested}))
+    assert response["error"]
+    assert response["available_styles"] == ["Cyberpunk"]
+    assert session["style"] == "modern-luxury"
+    assert result["staged_image_url"] is None
 
 
 def test_evidence_reports_citations_from_prior_turns():
