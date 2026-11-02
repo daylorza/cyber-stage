@@ -319,7 +319,13 @@ def _prepare_room(listing: dict[str, Any], room: dict[str, Any], meta, trace: li
         reuse = style_id == room.get("style") and room.get("after")
         # The Stage 1 image is the approved one and is never regenerated. A generated
         # style that drifts gets one retry with a stricter prompt, then stays unavailable.
-        prompts = [None] if reuse else [stage.prompt_for(style_id), stage.prompt_for(style_id) + RETRY_RULES]
+        if reuse:
+            entry["variant"] = (room.get("staging") or {}).get("variant")
+            prompts = [None]
+        else:
+            entry["variant"] = stage.select_variant(style_id)
+            base_prompt = stage.prompt_for(style_id, room, variant=entry["variant"])
+            prompts = [base_prompt, base_prompt + RETRY_RULES]
         try:
             for prompt in prompts:
                 entry["attempts"] += 1
@@ -767,7 +773,8 @@ def rerun_style(job: dict[str, Any]) -> None:
     required = {"living": ("sofa", "table"), "bedroom": ("bed",), "dining": ("table", "chair")}.get(room.get("type"))
     if not required:
         raise ValueError("Targeted furniture rerun is available for living rooms, bedrooms and dining rooms.")
-    prompt = (stage.prompt_for(style_id) + stage.STRICT_FRAMING + stage.STRICT_STRUCTURE
+    variant = stage.select_variant(style_id)
+    prompt = (stage.prompt_for(style_id, room, variant=variant) + " " + stage.STRICT_FRAMING + " " + stage.STRICT_STRUCTURE
               + f" Furnish this {room.get('type')} room with clearly visible " + " and ".join(required) + ". "
               + f"Render variation {job['id']}.")
     # Recheck a face-checked candidate rejected solely for missing source boxes,
@@ -782,6 +789,7 @@ def rerun_style(job: dict[str, Any]) -> None:
     previous_candidate = raw_dir / f"{previous['id']}_checked.jpg" if reusable else None
     if previous_candidate and previous_candidate.is_file():
         candidate.write_bytes(previous_candidate.read_bytes())
+        variant = None  # The reused candidate predates this attempt's selected direction.
     else:
         data = meta.image_stage(before, prompt, trace=trace, purpose="live.image.stage",
                                 target={"room": room_id, "style": style_id, "job": job["id"]})
@@ -847,7 +855,7 @@ def rerun_style(job: dict[str, Any]) -> None:
         raise ValueError("Listing changed during preparation; result not attached.")
     target["styles"][style_id] = {**target["styles"].get(style_id, {}), "label": stage.STYLE_PRESETS[style_id]["label"], "image": rel, "source": "live", "available": True, "concept": is_concept,
                                   "error": None, "geometry": geometry, "concept_geometry": concept_geometry if is_concept else None, "structure": structure, "pieces": pieces,
-                                  "align": align, "drift": drift_record, "mask": None}
+                                  "align": align, "drift": drift_record, "mask": None, "variant": variant}
     current["live"].setdefault("trace", []).extend(trace)
     current["live"]["calls"] = current["live"].get("calls", 0) + meta.calls
     db.save_listing(current)
