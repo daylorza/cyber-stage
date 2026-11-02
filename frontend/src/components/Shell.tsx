@@ -5,7 +5,7 @@ import BrandMark from "./BrandMark";
 const LINKS = [
   { to: "/", label: "Residences", end: true },
   { to: "/inventory", label: "Inventory", end: false },
-  { to: "/new", label: "New walkthrough", end: false },
+  { to: "/new", label: "New stage", end: false },
   { to: "/about", label: "About", end: false },
 ];
 
