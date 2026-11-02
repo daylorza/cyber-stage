@@ -81,7 +81,7 @@ export default function GuidePanel({ listingId, room, rooms, styleId, onStyle, o
       let responseText = cleanGuideText(reply.text);
       if (selected && reply.actions_taken.includes("switch_style")) {
         const label = ({ "modern-luxury": "Modern luxury", coastal: "Coastal", minimal: "Minimal", "2142": "Cyberpunk" } as Record<string, string>)[selected] ?? selected;
-        responseText = `Now showing ${label} in the ${target.name.toLowerCase()}.` + (selected === "2142" ? "\nCyberpunk concept · AI-imagined, not a verified depiction of the property." : "");
+        responseText = `Now showing ${label} in the ${target.name.toLowerCase()}.` + (selected === "2142" ? "\nCyberpunk concept · AI-imagined, not a verified depiction of this home." : "");
       }
       setEvidence(reply.evidence ?? []);
       setHistory(h => [...h, { role: "Guide", text: responseText }]);

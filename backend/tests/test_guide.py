@@ -135,3 +135,114 @@ def test_broker_note_for_price_and_deposit_but_not_pure_style():
     assert guide._broker_note('Reserve it', 'Simulated deposit.', [], {'simulated': True}).endswith(note)
     assert guide._broker_note('Show me Coastal', 'Now showing Coastal.', ['switch_style'], None) == 'Now showing Coastal.'
     assert guide._broker_note('Price?', 'I cannot provide that information.', [], None) == 'I cannot provide that information.'
+
+
+def test_facts_report_only_supplied_fields_and_price_missing_line():
+    import json
+
+    import guide
+
+    listing = {"status": "published",
+               "published": {"title": "Miami Residence",
+                             "facts": {"beds": 3, "city": "Miami", "price": None}},
+               "live": {"rooms": []}}
+    result = {"actions_taken": [], "evidence": [], "staged_image_url": None, "deposit": None}
+    facts = next(t for t in guide._tools(listing, {}, result) if t.name == "get_listing_facts")
+    data = json.loads(facts.invoke({}))
+    assert data["fact:beds"] == 3
+    assert data["fact:title"] == "Miami Residence"
+    assert data["fact:status"] == "published"
+    assert data["price_missing"] == "The supplied listing facts do not include a price."
+    assert "fact:lot" not in data and "fact:year_built" not in data
+
+
+def test_room_reports_staged_furniture_labelled_not_included():
+    import json
+
+    import guide
+
+    listing = {"live": {"rooms": [{"id": "r1", "styles": {"coastal": {
+        "available": True, "image": "c.jpg",
+        "pieces": [{"concept": "sofa"}, {"concept": "table"}, {"concept": "sofa"}]}}}]}}
+    result = {"actions_taken": [], "evidence": [], "staged_image_url": None, "deposit": None}
+    room = next(t for t in guide._tools(listing, {"style": "coastal"}, result) if t.name == "get_room")
+    data = json.loads(room.invoke({}))
+    assert data["staged_furniture"]["label"] == "staged furniture in this room"
+    assert data["staged_furniture"]["items"] == ["sofa", "table"]
+    assert data["staged_furniture"]["included_in_sale"] == "not stated in the broker record"
+
+
+def test_comps_label_is_exact_and_not_a_valuation():
+    import json
+
+    import guide
+
+    listing = {"comps": {"label": "old", "items": []}, "live": {"rooms": []}}
+    result = {"actions_taken": [], "evidence": [], "staged_image_url": None, "deposit": None}
+    comps = next(t for t in guide._tools(listing, {}, result) if t.name == "explain_comps")
+    data = json.loads(comps.invoke({}))
+    assert data["label"] == "Demo comps: seeded sample data, not a live MLS feed"
+    assert data["not_valuation"] is True
+
+
+def test_how_made_reports_checker_statuses_as_recorded():
+    import json
+
+    import guide
+
+    listing = {"live": {"rooms": []},
+               "verification": {"passed": False, "checks": [
+                   {"id": "staging_geometry", "status": "pass", "reason": "ok"},
+                   {"id": "comps_demo", "status": "unclear", "reason": "not run"},
+                   {"id": "blur_pass", "status": "fail", "reason": "blur missed"}],
+                   "flags": [{"message": "blur missed"}]},
+               "frames": [{"blur": {"regions": 2}}, {"blur": None}]}
+    result = {"actions_taken": [], "evidence": [], "staged_image_url": None, "deposit": None}
+    how = next(t for t in guide._tools(listing, {}, result) if t.name == "explain_how_made")
+    data = json.loads(how.invoke({}))
+    assert [c["status"] for c in data["checker"]["checks"]] == ["pass", "unclear", "fail"]
+    assert data["checker"]["passed"] is False
+    assert any(step["model"] is None and "not a model" in step["does"] for step in data["steps"])
+    assert data["privacy_blur"] == {"frames_with_blur": 1, "regions": 2}
+    assert data["asset_origin"] == "not recorded for this listing"
+
+
+def _chat_with_fake_agent(client, monkeypatch, listing_id, message, agent_text, thread):
+    import db
+    import guide
+
+    listing = {"id": listing_id, "status": "published", "source": "upload",
+               "live": {"status": "ready", "rooms": []}}
+    with db.connect() as conn:
+        db.insert_listing(conn, listing)
+
+    class Agent:
+        def invoke(self, *args, **kwargs):
+            return {"messages": [type("Message", (), {"content": agent_text})()]}
+
+    monkeypatch.setattr(guide, "_model", lambda: None)
+    monkeypatch.setattr(guide, "create_agent", lambda *a, **k: Agent())
+    response = client.post(f"/api/listings/{listing_id}/guide/chat",
+                           json={"thread_id": thread, "message": message})
+    assert response.status_code == 200
+    return response.json()["text"]
+
+
+def test_cyberpunk_definition_gets_locked_wording_once(client, monkeypatch):
+    import guide
+
+    text = _chat_with_fake_agent(client, monkeypatch, "cyber_def", "What is Cyberpunk?",
+                                 "Cyberpunk looks futuristic.", "cyber-def")
+    assert guide.CYBERPUNK_DEFINITION_LEAD in text
+    assert text.count(guide.CYBERPUNK_LOCKED_SENTENCE) == 1
+    assert text.count(guide.CYBERPUNK_DISCLAIMER) == 1
+
+
+def test_chat_text_strips_markdown_tags_and_urls(client, monkeypatch):
+    text = _chat_with_fake_agent(
+        client, monkeypatch, "clean_test", "Tell me about the place",
+        "**Bold** room [fact:beds] see https://example.com/page and http://localhost:5173/x",
+        "clean-test")
+    assert "**" not in text and "[fact:" not in text
+    assert "http" not in text and "localhost" not in text
+    assert "Bold room" in text
