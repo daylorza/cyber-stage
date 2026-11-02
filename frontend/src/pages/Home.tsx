@@ -229,6 +229,7 @@ export default function Home() {
         </div>
 
         <div className={`absolute inset-x-0 bottom-[calc(6rem+env(safe-area-inset-bottom))] flex flex-col items-center gap-3.5 lg:bottom-9 ${hud}`}>
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-4">
           <button
             type="button"
             onClick={async () => {
@@ -244,14 +245,23 @@ export default function Home() {
               const live = await api.live(summary.id).catch(() => null);
               navigate(live?.status === "ready" ? `/p/${summary.id}/live` : `/p/${summary.id}`);
             }}
-            className="btn-enter group pointer-events-auto"
+            className="btn-enter group pointer-events-auto max-sm:w-full"
           >
             <span className="btn-enter-dot">
               <span className="ice-dot" />
             </span>
-            Enter residence
-            <span aria-hidden className="transition group-hover:translate-x-1">→</span>
+            <span className="sm:hidden">Enter Residence</span>
+            <span className="max-sm:hidden">View Property</span>
+            <span aria-hidden className="transition group-hover:translate-x-1 max-sm:ml-auto">→</span>
           </button>
+          <Link to="/inventory" className="btn-enter group pointer-events-auto max-sm:w-full">
+            <span className="btn-enter-dot">
+              <span className="h-1.5 w-1.5 rounded-full bg-ivory/70" />
+            </span>
+            View Inventory
+            <span aria-hidden className="transition group-hover:translate-x-1 max-sm:ml-auto">→</span>
+          </Link>
+          </div>
           {entryError && <p role="status" className="pointer-events-auto text-sm text-ivory">{entryError}</p>}
         </div>
 
@@ -270,7 +280,7 @@ export default function Home() {
         <div
           onMouseEnter={show}
           onMouseLeave={hide}
-          className={`hud-right pointer-events-auto absolute bottom-[calc(9.5rem+env(safe-area-inset-bottom))] transition duration-500 max-sm:left-6 lg:bottom-10 ${inside ? "invisible opacity-0" : "visible opacity-100"}`}
+          className={`hud-right pointer-events-auto absolute bottom-[calc(9.5rem+env(safe-area-inset-bottom))] transition duration-500 max-sm:left-6 max-sm:bottom-[calc(14rem+env(safe-area-inset-bottom))] lg:bottom-10 ${inside ? "invisible opacity-0" : "visible opacity-100"}`}
         >
           <div className="max-sm:hidden">
             <FloorPlan plan={residence.plan} heading={heading} label={name} />
