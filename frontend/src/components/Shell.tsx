@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import BrandMark from "./BrandMark";
 
 const LINKS = [
-  { to: "/", label: "Residences", end: true },
+  { to: "/", label: "Home", end: true },
   { to: "/inventory", label: "Inventory", end: false },
   { to: "/new", label: "New walkthrough", end: false },
   { to: "/about", label: "About", end: false },
