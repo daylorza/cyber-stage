@@ -245,19 +245,19 @@ export default function PrototypeTesting() {
 
   return (
     <div className="fixed inset-0 flex flex-col bg-night text-ivory">
-      <header className="relative z-40 flex min-h-28 flex-col items-start justify-center gap-2 px-6 pr-20 sm:px-10 sm:pr-24">
+      <header className="page-x hud-pt relative z-40 flex min-h-28 flex-col items-start gap-1 pb-3 pr-20! sm:pr-24!">
         <Wordmark />
         <p className="eyebrow flex items-center gap-2.5 text-ivory/80!">
           <span className="ice-dot" />
           {isGeneral ? (manifest?.label ?? HEADER) : HEADER}
         </p>
         {/* Over the page, not in its flow: opening the menu never resizes the video. */}
-        <div className="absolute right-6 top-3 sm:right-10">
+        <div className="hud-top hud-right absolute">
           <HoverNav />
         </div>
       </header>
 
-      <main className="flex min-h-0 flex-1 items-center justify-center px-6 py-4 sm:px-10" style={{ containerType: "size" }}>
+      <main className="page-x flex min-h-0 flex-1 items-center justify-center py-4" style={{ containerType: "size" }}>
         <div
           ref={stage}
           className="relative overflow-hidden rounded-2xl bg-smoke"
@@ -280,7 +280,7 @@ export default function PrototypeTesting() {
               <canvas ref={canvas} aria-hidden className={`pointer-events-none absolute inset-0 h-full w-full ${phase === "furnished" && style?.image ? "invisible" : ""}`} />
               {phase === "furnished" && style?.image && <img src={`/api/media/${style.image}`} alt="AI-staged room" className="pointer-events-none absolute inset-0 h-full w-full object-fill" />}
               {playing && !armed.current && placeholder && time <= manifest.hero.pts + 3 && (
-                <div aria-label="Furniture placeholder, not motion tracked" className="pointer-events-none absolute grid place-items-center rounded-md border border-ice/70 bg-ice/25 text-center text-xs text-white"
+                <div aria-label="Furniture placeholder, not motion tracked" className="pointer-events-none absolute grid place-items-center rounded-md border border-ice/70 bg-ice/25 text-center text-xs text-ivory"
                   style={{ left: `${placeholder[0] * 100}%`, top: `${placeholder[1] * 100}%`, width: `${(placeholder[2] - placeholder[0]) * 100}%`, height: `${(placeholder[3] - placeholder[1]) * 100}%` }}>Furniture placeholder</div>
               )}
             </>
@@ -309,7 +309,7 @@ export default function PrototypeTesting() {
         </div>
       </main>
 
-      <footer className="flex flex-wrap items-center gap-x-6 gap-y-3 px-6 pb-5 sm:px-10">
+      <footer className="page-x flex flex-wrap items-center gap-x-6 gap-y-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-2">
           <button type="button" onClick={togglePlay} disabled={!manifest || phase === "loading"} className="btn-glass min-w-28">
             <PlayIcon playing={playing} />
@@ -321,8 +321,8 @@ export default function PrototypeTesting() {
         </div>
 
         {manifest && (
-          <div className="relative transition-opacity duration-700 [@media(hover:hover)]:opacity-20 [@media(hover:hover)]:hover:opacity-100 focus-within:opacity-100">
-            <div role="group" aria-label="Style" className="flex items-center gap-1 rounded-full bg-ivory/[0.04] p-1 ring-1 ring-ivory/10">
+          <div className="relative max-w-full transition-opacity duration-700 [@media(hover:hover)]:opacity-20 [@media(hover:hover)]:hover:opacity-100 focus-within:opacity-100">
+            <div role="group" aria-label="Style" className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-ivory/[0.04] p-1 ring-1 ring-ivory/10">
               {manifest.styles.map((st) => {
                 const active = st.id === styleId;
                 const off = `${st.label} is off. ${st.reason ?? ""}`;
@@ -338,12 +338,12 @@ export default function PrototypeTesting() {
                     onMouseLeave={() => setNote(null)}
                     onFocus={() => !st.available && setNote(off)}
                     onBlur={() => setNote(null)}
-                    className={`rounded-full px-4 py-1.5 text-[13px] tracking-wide transition ${
-                      active ? "bg-ivory/[0.1] text-ivory" : st.available ? "text-ivory/70 hover:text-ivory" : "cursor-not-allowed text-ash/60"
+                    className={`shrink-0 rounded-full px-4 py-1.5 text-data tracking-wide transition pointer-coarse:min-h-11 ${
+                      active ? "bg-ivory/[0.1] text-ivory" : st.available ? "text-ivory/70 hover:text-ivory" : "cursor-not-allowed text-ash"
                     }`}
                   >
                     {st.label}
-                    {!st.available && <span className="ml-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-ash/60">off</span>}
+                    {!st.available && <span className="ml-1.5 font-mono text-micro uppercase tracking-[0.15em] text-ash">off</span>}
                   </button>
                 );
               })}
@@ -354,21 +354,21 @@ export default function PrototypeTesting() {
                 hover -> resize -> mouseleave -> resize, i.e. the glitch. The
                 native title tooltip duplicated it and is gone. */}
             {note && (
-              <p role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-80 max-w-[80vw] -translate-x-1/2 rounded-xl bg-night/95 px-4 py-3 font-mono text-[11px] leading-relaxed text-ivory/85 ring-1 ring-ivory/15">
+              <p role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-80 max-w-[80vw] -translate-x-1/2 rounded-xl bg-night/95 px-4 py-3 font-mono text-caption leading-relaxed text-ivory/85 ring-1 ring-ivory/15">
                 {note}
               </p>
             )}
           </div>
         )}
 
-        <p role="status" aria-live="polite" className="min-w-0 flex-1 font-mono text-[11px] leading-relaxed text-ivory/60">
+        <p role="status" aria-live="polite" className="min-w-0 flex-1 font-mono text-caption leading-relaxed text-ivory/70">
           {status[phase]}
         </p>
 
         <p className="eyebrow text-ivory/70!">{isGeneral ? (manifest?.label ?? FOOTER) : FOOTER}</p>
 
         {manifest && manifest.styles.some((st) => !st.available) && (
-          <p className="basis-full font-mono text-[10.5px] leading-relaxed text-ash/80">
+          <p className="basis-full font-mono text-micro leading-relaxed text-ash">
             {manifest.styles
               .filter((st) => !st.available)
               .map((st) => `${st.label} is off: ${st.reason_short ?? st.reason}`)

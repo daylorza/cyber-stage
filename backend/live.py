@@ -485,6 +485,19 @@ def _prepare_moments(listing: dict[str, Any], rooms: list[dict[str, Any]], meta,
     return moments
 
 
+# ---------- live job log ----------
+# The Meta call trace of each running (or recently finished) Live-In job, by job id, so the
+# console can show what the job is doing. In memory only: the saved trace stays in live["trace"].
+JOB_TRACES: dict[str, list[dict[str, Any]]] = {}
+_JOB_TRACE_KEEP = 20
+
+
+def _track(job_id: str, trace: list[dict[str, Any]]) -> None:
+    JOB_TRACES[job_id] = trace
+    while len(JOB_TRACES) > _JOB_TRACE_KEEP:
+        JOB_TRACES.pop(next(iter(JOB_TRACES)))
+
+
 # ---------- job handler ----------
 
 def run(job: dict[str, Any]) -> None:
@@ -506,6 +519,7 @@ def run(job: dict[str, Any]) -> None:
     live_block["trace"] = []
     live_block["status"] = "preparing"
     trace = live_block["trace"]
+    _track(job["id"], trace)
 
     client = meta_client.get_client()
     if hasattr(client, "reset_budget"):
@@ -747,6 +761,7 @@ def rerun_style(job: dict[str, Any]) -> None:
     raw_dir.mkdir(parents=True, exist_ok=True)
     candidate = raw_dir / f"{job['id']}_checked.jpg"
     trace: list = []
+    _track(job["id"], trace)
     meta = meta_client.get_client()
     meta.reset_budget()
     required = {"living": ("sofa", "table"), "bedroom": ("bed",), "dining": ("table", "chair")}.get(room.get("type"))

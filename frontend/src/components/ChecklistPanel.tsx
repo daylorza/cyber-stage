@@ -66,7 +66,7 @@ export default function ChecklistPanel({
                 <StatusDot status={item.status} />
               </span>
               <div className="flex min-w-0 items-baseline justify-between gap-4">
-                <span className={`shrink-0 text-[13px] ${STATUS_TEXT[item.status]}`}>
+                <span className={`shrink-0 text-data ${STATUS_TEXT[item.status]}`}>
                   {item.label}
                   <span className="sr-only"> ({STATUS_WORD[item.status]})</span>
                 </span>
@@ -76,7 +76,7 @@ export default function ChecklistPanel({
                   </span>
                 )}
               </div>
-              {loud && item.detail && <p className="col-start-2 mt-0.5 text-xs text-rose/75">{item.detail}</p>}
+              {loud && item.detail && <p className="col-start-2 mt-0.5 text-xs text-rose">{item.detail}</p>}
             </li>
           );
         })}
@@ -87,18 +87,18 @@ export default function ChecklistPanel({
       )}
 
       {!live && (
-        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-1">
+        <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2">
           {canAct && (
             <>
-              <button type="button" disabled={!!busy} onClick={() => act("verify")} className="text-xs text-ash transition hover:text-ivory disabled:opacity-40">
+              <button type="button" disabled={!!busy} onClick={() => act("verify")} className="btn-ghost text-xs text-ash">
                 {busy === "verify" ? "Starting checks" : "Re-run checks"}
               </button>
-              <button type="button" disabled={!!busy} onClick={() => setConfirmReprocess(true)} className="text-xs text-ash transition hover:text-ivory disabled:opacity-40">
+              <button type="button" disabled={!!busy} onClick={() => setConfirmReprocess(true)} className="btn-ghost text-xs text-ash">
                 {busy === "reprocess" ? "Starting" : "Reprocess walkthrough"}
               </button>
             </>
           )}
-          <a href={exportLogsUrl(listing.id)} download className="text-xs text-ash transition hover:text-ivory">
+          <a href={exportLogsUrl(listing.id)} download className="btn-ghost text-xs text-ash">
             Export logs
           </a>
         </div>

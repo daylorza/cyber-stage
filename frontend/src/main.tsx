@@ -9,6 +9,7 @@ import NewWalkthrough from "./pages/NewWalkthrough";
 import ListingConsole from "./pages/ListingConsole";
 import PublishedPage from "./pages/PublishedPage";
 import LiveInIt from "./pages/LiveInIt";
+import About from "./pages/About";
 
 const router = createBrowserRouter([
   { index: true, element: <Home /> },
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
       { path: "inventory", element: <Inventory /> },
       { path: "new", element: <NewWalkthrough /> },
       { path: "listings/:id", element: <ListingConsole /> },
+      { path: "about", element: <About /> },
     ],
   },
   { path: "p/:id", element: <PublishedPage /> },

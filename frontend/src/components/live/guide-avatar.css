@@ -15,7 +15,7 @@
 .guide-avatar--speaking .guide-avatar__outlines path { animation-duration: .6s; }
 .guide-avatar--thinking .guide-avatar__outlines { animation-duration: 1.25s; }
 .guide-avatar--thinking, .guide-avatar--nod, .guide-avatar--excited { filter: drop-shadow(0 0 8px rgba(255, 246, 227, .7)); }
-.guide-intro { left: 50%; top: 50%; transform: translate(-50%, -50%) scale(1); opacity: 1; transition: left 650ms cubic-bezier(.22, 1, .36, 1), top 650ms cubic-bezier(.22, 1, .36, 1), transform 650ms cubic-bezier(.22, 1, .36, 1), opacity 550ms ease; }
+.guide-intro { left: 50%; top: calc(100% - 2.5rem - 52px - 2rem); transform: translate(-50%, -100%) scale(1); opacity: 1; transition: left 650ms cubic-bezier(.22, 1, .36, 1), top 650ms cubic-bezier(.22, 1, .36, 1), transform 650ms cubic-bezier(.22, 1, .36, 1), opacity 550ms ease; }
 .guide-intro--leaving { left: calc(100% - min(24rem, 100vw - 1.5rem) + 1.75rem); top: calc(100% - 11rem - 20px - env(safe-area-inset-bottom)); transform: translate(-50%, -50%) scale(.2); opacity: 0; }
 @keyframes guide-drift { to { transform: rotate(7deg) scale(1.06); } }
 @keyframes guide-line {
@@ -26,4 +26,29 @@
 @media (prefers-reduced-motion: reduce) {
   .guide-avatar__outlines, .guide-avatar__outlines path, .guide-avatar__svg circle { animation: none !important; }
   .guide-intro { transition: opacity 150ms ease; }
+}
+.guide-dock .guide-avatar { width: 2.5rem; height: 2.5rem; }
+@media (max-width: 639px) {
+  .guide-intro--leaving { left: 2.25rem; top: calc(100% - 9.5rem - env(safe-area-inset-bottom)); }
+}
+@media (max-width: 639px) {
+  .guide-avatar--large { width: clamp(5rem, 16dvh, 7.5rem); height: clamp(5rem, 16dvh, 7.5rem); }
+  .guide-avatar--large text { font-size: 22px; }
+}
+@media (max-width: 639px) {
+  .guide-intro:not(.guide-intro--leaving) { top: var(--intro-top, 50%); transform: translate(-50%, -50%) scale(1); }
+}
+.guide-pill .guide-avatar { width: 2.25rem; height: 2.25rem; }
+@media (min-width: 640px) {
+  .guide-intro--leaving { left: calc(100% - max(2.5rem, env(safe-area-inset-right)) - 11.5rem); top: calc(100% - 2.5rem - 26px); }
+}
+/* The welcome card sits above the style bar; below xl that bar moves up a row. */
+@media (min-width: 640px) and (max-width: 1279px) {
+  .guide-intro:not(.guide-intro--leaving) { top: calc(100% - 2.5rem - 52px - 1rem - 52px - 2rem); }
+}
+.guide-intro .guide-avatar--large { width: 6rem; height: 6rem; }
+.guide-intro .guide-avatar__svg text { font-size: 30px; letter-spacing: 4px; }
+@media (max-width: 639px) {
+  .guide-intro .guide-avatar--large { width: 4.5rem; height: 4.5rem; }
+  .guide-intro .guide-avatar__svg text { display: none; }
 }

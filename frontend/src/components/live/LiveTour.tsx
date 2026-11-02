@@ -1,3 +1,4 @@
+import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { clock, media, type LiveMoment, type LivePayload } from "../../api";
@@ -5,13 +6,15 @@ import { Wordmark } from "../Shell";
 import Backdrop from "./Backdrop";
 import { cutout } from "./cutout";
 import { playCyberpunk } from "./cyberpunk";
-import { useReducedMotion, useViewport } from "./hooks";
+import { useHeight, useReducedMotion, useViewport } from "./hooks";
 import LiveNav from "./LiveNav";
-import GuidePanel from "./GuidePanel";
+import GuidePanel, { PoweredBy } from "./GuidePanel";
 import GuideAvatar from "./GuideAvatar";
 import MomentFx, { NO_FX, type Fx } from "./MomentFx";
 import ReserveControl from "./ReserveControl";
+import RoomSchematic from "./RoomSchematic";
 import RoomStage, { type Overlay, type StagePhase } from "./RoomStage";
+import StylePicker from "./StylePicker";
 import {
   aim,
   IDENTITY,
@@ -45,8 +48,7 @@ type Move = { cam: Cam | null; ms: number; ease: string };
 type Token = { abort: boolean; wake: (() => void) | null };
 type Mode = "walk" | "room";
 
-const glassButton =
-  "group pointer-events-auto flex items-center gap-4 rounded-full bg-ivory/[0.08] py-2 pl-2 pr-6 text-[15px] tracking-wide text-ivory ring-1 ring-ivory/25 backdrop-blur-xl transition hover:bg-ivory/[0.14] hover:ring-ivory/40";
+const glassButton = "btn-enter group pointer-events-auto";
 
 /**
  * The residence in first person. With a walkthrough video, Live-In-It walks the filmed path in order: the
@@ -84,8 +86,11 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const [chosen, setChosen] = useState("modern-luxury");
   const [intro, setIntro] = useState(true);
   const [introVisible, setIntroVisible] = useState(true);
+  /** Hovering the welcome card holds it; it leaves when the pointer does, once its time is up. */
+  const introHover = useRef(false);
+  const introDue = useRef(false);
   const [titleOpen, setTitleOpen] = useState(true);
-  const [titlePos, setTitlePos] = useState({ x: 24, y: 80 });
+  const [titlePos, setTitlePos] = useState({ x: 24, y: 130 });
   const titleDrag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const [avatarOn, setAvatarOn] = useState(true);
   const [styleChange, setStyleChange] = useState(0);
@@ -126,12 +131,17 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const inRoom = mode === "room";
 
   const phone = viewport.w < 640;
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [titleRef, titleH] = useHeight();
+  const [sheetRef, sheetH] = useHeight(guideOpen);
+  /** On a phone the room sits in the band between the title and the bottom sheet. */
+  const band = { top: titleH, h: Math.max(120, viewport.h - titleH - sheetH - 16) };
   const aspect = inRoom ? roomAspect(room) : walking && video ? video.width / video.height : roomAspect(room);
   const stage = useMemo(() => {
-    if (phone && inRoom) { const height = Math.max(100, viewport.h - 460); const width = Math.min(viewport.w, height * aspect); return { w: width, h: width / aspect, fit: false }; }
+    if (phone && inRoom) { const width = Math.min(viewport.w, band.h * aspect); return { w: width, h: width / aspect, fit: false }; }
     const size = stageSize(viewport.w, viewport.h, aspect);
     return walking && !inRoom && size.fit ? { ...size, w: viewport.h * 0.84 * aspect, h: viewport.h * 0.84 } : size;
-  }, [viewport.w, viewport.h, aspect, walking, inRoom, phone]);
+  }, [viewport.w, viewport.h, aspect, walking, inRoom, phone, band.h]);
   const fit = stage.fit;
   const maxPan = maxPanFor(stage, viewport.w, viewport.h);
   // Keep framing anchored to the room, independent of the selected furniture style.
@@ -170,7 +180,10 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
 
   useEffect(() => {
     if (!entered || !inRoom || !intro) return;
-    const timer = window.setTimeout(() => setIntro(false), 5000);
+    const timer = window.setTimeout(() => {
+      if (introHover.current) introDue.current = true;
+      else setIntro(false);
+    }, 5000);
     return () => clearTimeout(timer);
   }, [entered, inRoom, intro]);
 
@@ -515,6 +528,85 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const roomName = inRoom ? room.name : (pathStop?.name ?? "");
   const nextRoom = rooms[nextStop.current];
 
+  const walkline = (width: string) =>
+    walking && video && (
+      <div className={`pointer-events-auto relative h-5 ${width}`} aria-label="The walkthrough">
+        <div className="absolute inset-x-0 top-1/2 h-px bg-ivory/15" />
+        <div className="absolute left-0 top-1/2 h-px bg-ice/60" style={{ width: `${Math.min(100, (now / video.duration) * 100)}%` }} />
+        {(payload.path ?? []).map((s) => {
+          const index = rooms.findIndex((r) => r.id === s.id);
+          return (
+            <button
+              key={s.id}
+              type="button"
+              title={`${s.name} · ${clock(s.t)}${s.prepared ? "" : " · walked past"}`}
+              aria-label={`${s.name}, ${clock(s.t)}`}
+              onClick={() => (index >= 0 ? goTo(index) : seekWalk(s.span?.[0] ?? s.t))}
+              className="absolute top-1/2 grid h-5 w-5 -translate-x-1/2 -translate-y-1/2 place-items-center pointer-coarse:h-8 pointer-coarse:w-8"
+              style={{ left: `${((index >= 0 ? s.t : (s.span?.[0] ?? s.t)) / video.duration) * 100}%` }}
+            >
+              <span className={`block rounded-full ${s.prepared ? "h-2 w-2 bg-ice shadow-glow" : "h-1 w-1 bg-ivory/45"}`} />
+            </button>
+          );
+        })}
+      </div>
+    );
+  const styleNotes = inRoom && (
+    <>
+      {styleId === "2142" && <p>Cyberpunk concept · AI-imagined, not a verified depiction of the property</p>}
+      {fellBack && styleId && <p>{chosenLabel} isn't available in this room · showing {styleLabel}</p>}
+      {!styleId && chosen !== "original" && <p>Staging isn't available for this room</p>}
+    </>
+  );
+  const floorPlan = <RoomSchematic room={room} styleId={chosen === "original" ? "original" : styleId} />;
+  const pressedStyle = chosen === "original" ? "original" : styleId;
+  const chooseFurniture = () => goTo(Math.max(0, rooms.findIndex((r) => r.main)), true);
+  const counter = <span className="font-mono text-caption tracking-widest text-ivory/60">{roomIndex + 1} / {rooms.length}</span>;
+
+  const sheet = phone && entered && !moment && (inRoom || walking) && (
+    <div ref={sheetRef} className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 flex max-h-[85dvh] flex-col rounded-t-3xl bg-night/85 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 text-ivory shadow-[0_-24px_60px_-30px_rgb(0_0_0/0.9)] ring-1 ring-ivory/10 backdrop-blur-xl">
+      <span aria-hidden className="mx-auto mb-1 block h-1 w-9 shrink-0 rounded-full bg-ivory/20" />
+      {inRoom ? (
+        <>
+          <GuidePanel docked listingId={payload.listing_id} room={room} rooms={rooms} styleId={chosen} onStyle={choose} onRoom={(i) => goTo(i, true)} avatarOn={avatarOn} setAvatarOn={setAvatarOn} intro={introVisible} styleChange={styleChange} onOpenChange={setGuideOpen} />
+          {!guideOpen && (
+            <>
+              <div className="mx-4 my-1 h-px bg-ivory/10" />
+              <StylePicker variant="sheet" styles={styles} room={room} pressed={pressedStyle} onChoose={choose} className={`transition-opacity duration-700 ${dark ? "opacity-0" : "opacity-100"}`} />
+              <div className="px-4 text-caption leading-snug text-ivory/60 empty:hidden">{styleNotes}</div>
+              <div className="flex items-center justify-between gap-3 px-4 pt-2">
+                <ReserveControl listingId={payload.listing_id} />
+                {walking ? (
+                  <button type="button" onClick={continueWalk} className="btn-glass gap-3">Continue walking {counter}</button>
+                ) : finishPressed ? (
+                  <Link to={listingPath} className="btn-glass">View listing →</Link>
+                ) : (
+                  <button type="button" onClick={() => (last ? setFinishPressed(true) : goTo(roomIndex + 1))} className="btn-glass gap-3">{last ? "Finish" : "Next room"} {counter}</button>
+                )}
+              </div>
+            </>
+          )}
+        </>
+      ) : (
+        <div className="space-y-3 px-4 pb-1 pt-2">
+          {walkline("w-full")}
+          <div className="flex items-center justify-between gap-3">
+            {ended ? (
+              <button type="button" onClick={() => seekWalk(0)} className="btn-glass">Walk again</button>
+            ) : (
+              <button type="button" onClick={() => (playing ? videoRef.current?.pause() : play())} className="btn-glass" aria-label={playing ? "Pause the walk" : "Resume the walk"}>
+                <span className={playing ? "ice-dot animate-pulse" : "ice-dot"} />
+                {playing ? "Pause" : "Resume"}
+              </button>
+            )}
+            {ended ? <Link to={listingPath} className="btn-glass">View listing</Link> : <button type="button" onClick={chooseFurniture} className="btn-primary">Choose furniture</button>}
+          </div>
+          <p className="eyebrow truncate text-ivory/60!">{playing && nextRoom ? `Walking to the ${nextRoom.name.toLowerCase()}` : caption}</p>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 overflow-hidden bg-night select-none">
       {(fit || (phone && inRoom)) && <Backdrop path={backdropPath} />}
@@ -524,7 +616,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
           width: stage.w,
           height: stage.h,
           left: "50%",
-          top: "50%",
+          top: phone && inRoom ? band.top + 8 + band.h / 2 : "50%",
           marginLeft: -stage.w / 2,
           marginTop: -stage.h / 2,
           transform: `perspective(1600px) translate3d(${x}px, ${y}px, 0) rotateY(${tilt}deg) scale(${cam ? cam.s : 1})`,
@@ -621,12 +713,48 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
         style={{ opacity: dark ? 1 : 0, transition: `opacity ${dark ? 380 : entered ? 800 : 1600}ms ease-in-out` }}
       />
 
-      {entered && inRoom && !moment && <GuidePanel listingId={payload.listing_id} room={room} rooms={rooms} styleId={chosen} onStyle={choose} onRoom={(i) => goTo(i, true)} avatarOn={avatarOn} setAvatarOn={setAvatarOn} intro={introVisible} styleChange={styleChange} />}
-      {entered && inRoom && introVisible && <div className={`guide-intro pointer-events-none absolute z-10 flex flex-col items-center gap-3 rounded-3xl bg-night/55 px-5 py-4 text-center text-ivory shadow-xl ring-1 ring-ivory/15 backdrop-blur-md ${intro ? "" : "guide-intro--leaving"}`}>{avatarOn && <GuideAvatar large />}<span className="text-base leading-relaxed">Please choose your staging type below.</span></div>}
+      {entered && inRoom && !moment && !phone && <GuidePanel listingId={payload.listing_id} room={room} rooms={rooms} styleId={chosen} onStyle={choose} onRoom={(i) => goTo(i, true)} avatarOn={avatarOn} setAvatarOn={setAvatarOn} intro={introVisible} styleChange={styleChange} />}
+      {entered && inRoom && introVisible && (
+        <div
+          role="status"
+          onMouseEnter={() => { introHover.current = true; }}
+          onMouseLeave={() => { introHover.current = false; if (introDue.current) setIntro(false); }}
+          className={`guide-intro pointer-events-none absolute z-30 [@media(hover:hover)]:pointer-events-auto w-[min(30rem,calc(100vw-2rem))] rounded-3xl bg-night/60 p-5 text-ivory shadow-[0_30px_80px_-30px_rgb(0_0_0/0.8)] ring-1 ring-ivory/20 backdrop-blur-xl sm:p-6 ${intro ? "" : "guide-intro--leaving"}`}
+          style={phone ? ({ "--intro-top": `${band.top + 8 + band.h / 2}px` } as React.CSSProperties) : undefined}
+        >
+          <div className="flex items-center gap-4 sm:gap-5">
+            {avatarOn && <GuideAvatar large />}
+            <div className="min-w-0">
+              <p className="eyebrow flex items-center gap-2.5 text-ivory/80!">
+                <span className="ice-dot" />
+                AI Live-In Guide
+              </p>
+              <p className="mt-2 text-balance font-serif text-xl leading-tight sm:text-2xl">Welcome to the {room.name.toLowerCase()}.</p>
+              <p className="mt-1.5 text-sm leading-relaxed text-ivory/75">Choose a staging style below to furnish it.</p>
+              <PoweredBy className="mt-3" />
+            </div>
+          </div>
+          <span aria-hidden className="absolute left-1/2 top-full hidden h-6 w-px bg-gradient-to-b from-ivory/45 to-transparent sm:block" />
+        </div>
+      )}
       <div className="legible pointer-events-none absolute inset-0">
-        <div className="absolute left-6 top-6 sm:left-10 sm:top-9"><Wordmark />{!titleOpen && <button type="button" aria-label="Expand title" onClick={() => setTitleOpen(true)} className="pointer-events-auto mt-10 grid h-11 w-11 place-items-center"><span className="grid h-8 w-8 place-items-center rounded-full bg-ivory/10 text-ivory ring-1 ring-ivory/30">+</span></button>}</div>
+        <div className="hud-top hud-left absolute"><Wordmark />{!titleOpen && !phone && <button type="button" aria-label="Expand title" onClick={() => setTitleOpen(true)} className="pointer-events-auto mt-6 grid h-11 w-11 place-items-center"><span className="grid h-8 w-8 place-items-center rounded-full bg-ivory/10 text-ivory ring-1 ring-ivory/30">+</span></button>}</div>
         <div inert={!!moment} className={chrome}>
-          <div className="pointer-events-auto absolute max-w-[min(26rem,75vw)] touch-none" style={{ left: Math.min(titlePos.x, Math.max(0, viewport.w - 48)), top: Math.min(titlePos.y + 50, Math.max(0, viewport.h - 48)) }} onPointerDown={e => { if ((e.target as HTMLElement).closest("button")) return; const rect = e.currentTarget.getBoundingClientRect(); titleDrag.current = { x: e.clientX, y: e.clientY, left: rect.left, top: rect.top - 50 }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => { const start = titleDrag.current; if (!start) return; const rect = e.currentTarget.getBoundingClientRect(); setTitlePos({ x: Math.max(0, Math.min(viewport.w - rect.width, start.left + e.clientX - start.x)), y: Math.max(0, Math.min(viewport.h - rect.height - 50, start.top + e.clientY - start.y)) }); }} onPointerUp={() => { titleDrag.current = null; }} onPointerCancel={() => { titleDrag.current = null; }}>
+          {phone && (
+            <div ref={titleRef} className="page-x absolute inset-x-0 top-0 flex items-start gap-4 pb-3" style={{ paddingTop: "calc(var(--gutter-top) + env(safe-area-inset-top) + 3.5rem)" }}>
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-3 text-balance font-serif text-2xl leading-tight text-ivory">{payload.title}</p>
+                <p key={roomName} className="eyebrow mt-2 flex animate-fade-in items-center gap-2.5 text-ivory/85!">
+                  <span className="ice-dot" />
+                  {roomName}
+                </p>
+                <p className="eyebrow mt-1 text-ivory/60!" aria-live="polite">{caption}</p>
+                {payload.note && !/test upload/i.test(payload.note) && <p className="eyebrow mt-2 text-micro! normal-case tracking-wide text-rose!">{payload.note}</p>}
+              </div>
+              {inRoom && <div className="w-36 shrink-0">{floorPlan}</div>}
+            </div>
+          )}
+          <div hidden={phone} className="pointer-events-auto absolute max-w-[min(26rem,75vw)] touch-none" style={{ left: Math.min(titlePos.x, Math.max(0, viewport.w - 48)), top: Math.min(titlePos.y + 50, Math.max(0, viewport.h - 48)) }} onPointerDown={e => { if ((e.target as HTMLElement).closest("button")) return; const rect = e.currentTarget.getBoundingClientRect(); titleDrag.current = { x: e.clientX, y: e.clientY, left: rect.left, top: rect.top - 50 }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => { const start = titleDrag.current; if (!start) return; const rect = e.currentTarget.getBoundingClientRect(); setTitlePos({ x: Math.max(0, Math.min(viewport.w - rect.width, start.left + e.clientX - start.x)), y: Math.max(0, Math.min(viewport.h - rect.height - 50, start.top + e.clientY - start.y)) }); }} onPointerUp={() => { titleDrag.current = null; }} onPointerCancel={() => { titleDrag.current = null; }}>
             {titleOpen && <button type="button" aria-label="Collapse title" onClick={() => setTitleOpen(false)} className="absolute right-0 top-0 z-10 grid h-11 w-11 place-items-center"><span className="grid h-8 w-8 place-items-center rounded-full bg-ivory/10 text-ivory ring-1 ring-ivory/30">−</span></button>}
             <div hidden={!titleOpen} className="rounded-2xl bg-night/45 p-4 pr-12 shadow-lg backdrop-blur-md sm:p-5 sm:pr-12">
             <p className="font-serif text-xl text-ivory/90">{payload.title}</p>
@@ -639,17 +767,22 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
             </p>
             {inRoom && styleId === "2142" && <p className="eyebrow mt-1.5 max-w-xs normal-case tracking-wide text-ivory/70!">Cyberpunk concept · AI-imagined, not a verified depiction of the property</p>}
             {inRoom && fellBack && styleId && (
-              <p className="eyebrow mt-1.5 text-ivory/45!">
+              <p className="eyebrow mt-1.5 text-ivory/60!">
                 {chosenLabel} isn't available in this room · showing {styleLabel}
               </p>
             )}
-            {inRoom && !styleId && chosen !== "original" && <p className="eyebrow mt-1.5 text-ivory/45!">Staging isn't available for this room</p>}
-            {payload.note && !/test upload/i.test(payload.note) && <p className="eyebrow mt-3 max-w-xs text-[0.58rem]! leading-relaxed normal-case tracking-wide text-rose/80!">{payload.note}</p>}
+            {inRoom && !styleId && chosen !== "original" && <p className="eyebrow mt-1.5 text-ivory/60!">Staging isn't available for this room</p>}
+            {payload.note && !/test upload/i.test(payload.note) && <p className="eyebrow mt-3 max-w-xs text-micro! leading-relaxed normal-case tracking-wide text-rose!">{payload.note}</p>}
             <div className="mt-1 sm:mt-9"><ReserveControl listingId={payload.listing_id} /></div>
             </div>
           </div>
 
-          <div className="absolute right-6 top-6 sm:right-10 sm:top-9">
+          {!phone && inRoom && (
+            <div className="hud-right pointer-events-auto absolute w-48 rounded-2xl bg-night/45 p-4 shadow-lg backdrop-blur-md" style={{ top: 180 }}>
+              {floorPlan}
+            </div>
+          )}
+          <div className="hud-top hud-right absolute">
             <LiveNav
               listingPath={listingPath}
               rooms={rooms}
@@ -664,10 +797,11 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               open={navOpen}
               setOpen={setNavOpen}
               closeTimer={closeTimer}
+              leaveOnly
             />
           </div>
 
-          <div className="absolute inset-x-0 bottom-24 flex flex-col items-center gap-3.5 sm:bottom-9">
+          <div className="absolute inset-x-0 bottom-9 hidden flex-col items-center gap-3.5 sm:flex">
             {roomMoments.length > 0 && (
               <div className={`flex flex-wrap items-center justify-center gap-x-7 gap-y-2 transition-opacity duration-700 ${phase === "staged" && !dark ? "opacity-100" : "opacity-0"}`}>
                 {roomMoments.map((m) => (
@@ -690,55 +824,27 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
               </button>
             )}
 
-            {walking && video && (
-              <div className="pointer-events-auto relative h-5 w-[min(34rem,80vw)]" aria-label="The walkthrough">
-                <div className="absolute inset-x-0 top-1/2 h-px bg-ivory/15" />
-                <div className="absolute left-0 top-1/2 h-px bg-ice/60" style={{ width: `${Math.min(100, (now / video.duration) * 100)}%` }} />
-                {(payload.path ?? []).map((s) => {
-                  const index = rooms.findIndex((r) => r.id === s.id);
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      title={`${s.name} · ${clock(s.t)}${s.prepared ? "" : " · walked past"}`}
-                      aria-label={`${s.name}, ${clock(s.t)}`}
-                      onClick={() => (index >= 0 ? goTo(index) : seekWalk(s.span?.[0] ?? s.t))}
-                      className="absolute top-1/2 grid h-5 w-5 -translate-x-1/2 -translate-y-1/2 place-items-center"
-                      style={{ left: `${((index >= 0 ? s.t : (s.span?.[0] ?? s.t)) / video.duration) * 100}%` }}
-                    >
-                      <span
-                        className={`block rounded-full ${s.prepared ? "h-2 w-2 bg-ice shadow-[0_0_10px_rgb(155_230_239/0.7)]" : "h-1 w-1 bg-ivory/45"}`}
-                      />
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            {walkline("w-[min(34rem,80vw)]")}
           </div>
 
-          {!inRoom && walking && <button type="button" onClick={() => goTo(Math.max(0, rooms.findIndex(r => r.main)), true)} className="pointer-events-auto absolute bottom-4 left-3 z-10 min-h-11 rounded-full bg-night/90 px-5 text-sm text-ivory sm:hidden">Choose furniture</button>}
-          {inRoom && <div className="pointer-events-auto absolute inset-x-0 z-10 rounded-xl bg-night/35 px-2 ring-1 ring-ivory/15 backdrop-blur-xl sm:hidden" style={{ bottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
-            <div role="group" aria-label="Style" className="flex justify-between gap-0.5">{styles.map(s => { const status = s.id === "original" ? { ok: !!room.before, reason: "Original unavailable" } : styleStatus(room, s.id); return <button key={s.id} type="button" disabled={!status.ok} title={status.reason} aria-pressed={s.id === (chosen === "original" ? "original" : styleId)} onClick={() => choose(s.id)} className={`min-h-11 min-w-0 border-b px-1 text-[11px] tracking-wide text-ivory disabled:opacity-35 ${s.id === (chosen === "original" ? "original" : styleId) ? "border-ice" : "border-transparent"}`}>{s.label}</button>; })}</div>
-            <div className="flex items-center justify-end gap-2"><button type="button" className="flex min-h-11 w-28 items-center text-xs text-ivory/85" onClick={() => walking ? continueWalk() : last ? setFinishPressed(true) : goTo(roomIndex + 1)}><span className="flex h-[34px] w-full items-center justify-center rounded-full bg-ivory/[0.07] px-2 ring-1 ring-ivory/25">{walking ? "Continue walking" : last ? "Finish" : "Next room"}</span></button></div>
-          </div>}
-          <div className="absolute inset-x-0 bottom-10 hidden items-center px-6 sm:flex sm:px-10">
+          <div className="page-x absolute inset-x-0 bottom-10 hidden items-center sm:flex">
             <div className="pointer-events-auto">
               {walking ? (
                 inRoom ? (
                   <button type="button" onClick={continueWalk} className={glassButton}>
-                    <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+                    <span className="btn-enter-dot">
                       <span className="ice-dot" />
                     </span>
                     Continue walking
                     <span aria-hidden className="transition group-hover:translate-x-1">→</span>
-                    <span className="font-mono text-[11px] tracking-widest text-ivory/55">
+                    <span className="font-mono text-caption tracking-widest text-ivory/60">
                       {roomIndex + 1} / {rooms.length}
                     </span>
                   </button>
                 ) : ended ? (
                   <div className="flex items-center gap-3">
                     <button type="button" onClick={() => seekWalk(0)} className={glassButton}>
-                      <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+                      <span className="btn-enter-dot">
                         <span className="ice-dot" />
                       </span>
                       Walk again
@@ -754,7 +860,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                     className={glassButton}
                     aria-label={playing ? "Pause the walk" : "Resume the walk"}
                   >
-                    <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+                    <span className="btn-enter-dot">
                       <span className={playing ? "ice-dot animate-pulse" : "ice-dot"} />
                     </span>
                     {playing ? (nextRoom ? `Walking to the ${nextRoom.name.toLowerCase()}` : "Walking") : "Resume walking"}
@@ -762,7 +868,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                 )
               ) : finishPressed ? (
                 <Link to={listingPath} className={glassButton}>
-                  <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+                  <span className="btn-enter-dot">
                     <span className="ice-dot" />
                   </span>
                   View listing
@@ -770,12 +876,12 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                 </Link>
               ) : (
                 <button type="button" onClick={() => (last ? setFinishPressed(true) : goTo(roomIndex + 1))} className={glassButton}>
-                  <span className="grid h-9 w-9 place-items-center rounded-full ring-1 ring-ivory/30">
+                  <span className="btn-enter-dot">
                     <span className="ice-dot" />
                   </span>
                   {last ? "Finish" : "Next room"}
                   {!last && <span aria-hidden className="transition group-hover:translate-x-1">→</span>}
-                  <span className="font-mono text-[11px] tracking-widest text-ivory/55">
+                  <span className="font-mono text-caption tracking-widest text-ivory/60">
                     {roomIndex + 1} / {rooms.length}
                   </span>
                 </button>
@@ -783,32 +889,13 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
             </div>
             {inRoom && (
               <div
-                role="group"
-                aria-label="Style"
-                className={`pointer-events-auto absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5 transition-opacity duration-700 ${!dark ? "opacity-100" : "opacity-0"}`}
+                className={`pointer-events-auto absolute left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5 transition-opacity duration-700 max-xl:bottom-full max-xl:mb-4 ${!dark ? "opacity-100" : "opacity-0"}`}
               >
-                <div className="flex items-center gap-1 rounded-full bg-night/35 p-1 ring-1 ring-ivory/15 backdrop-blur-xl">
-                  {styles.map((s) => {
-                    const status = s.id === "original" ? { ok: !!room.before, reason: "Original unavailable" } : styleStatus(room, s.id);
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        disabled={!status.ok}
-                        title={status.ok ? `Restyle as ${s.label}` : status.reason}
-                        aria-pressed={s.id === (chosen === "original" ? "original" : styleId)}
-                        onClick={() => choose(s.id)}
-                        className={`rounded-full px-3.5 py-1.5 text-[12px] tracking-wide transition disabled:cursor-not-allowed ${s.id === (chosen === "original" ? "original" : styleId) ? "bg-ivory/90 text-night" : status.ok ? "text-ivory/80 hover:text-ivory" : "text-ivory/30 line-through decoration-ivory/30"}`}
-                      >
-                        {s.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                <StylePicker variant="bar" styles={styles} room={room} pressed={pressedStyle} onChoose={choose} />
                 {styles
                   .filter((s) => s.id !== "original" && !styleStatus(room, s.id).ok)
                   .map((s) => (
-                    <p key={s.id} className="max-w-md text-center text-[11px] leading-snug text-ivory/45">
+                    <p key={s.id} className="max-w-md text-center text-caption leading-snug text-ivory/60">
                       {s.label} unavailable here · {styleStatus(room, s.id).reason.split(" Not compared")[0].split(" Framing")[0]}
                     </p>
                   ))}
@@ -822,10 +909,11 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
           className={`absolute inset-x-0 bottom-12 flex flex-col items-center gap-1.5 transition-opacity duration-700 ${moment ? "opacity-100" : "opacity-0"}`}
         >
           <p className="eyebrow text-ivory/85!">{moment ? CAPTION[moment.id] : ""}</p>
-          <p className="eyebrow text-ivory/45!">{styleId ? `AI-staged · ${styleLabel}` : ""}</p>
-          <p className="eyebrow text-ivory/35!">Esc or click to return</p>
+          <p className="eyebrow text-ivory/60!">{styleId ? `AI-staged · ${styleLabel}` : ""}</p>
+          <p className="eyebrow text-ivory/55!">Esc or click to return</p>
         </div>
       </div>
+      {sheet}
     </div>
   );
 }

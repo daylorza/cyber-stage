@@ -12,7 +12,7 @@ const STATUS: Record<ListingStatus, { label: string; tone: string }> = {
 export default function StatusMark({ status }: { status: ListingStatus }) {
   const { label, tone } = STATUS[status];
   return (
-    <span className={`eyebrow inline-flex items-center gap-2 ${tone}`}>
+    <span data-status={status} className={`eyebrow inline-flex items-center gap-2 ${tone}`}>
       <span className="h-1 w-1 rounded-full bg-current" />
       {label}
     </span>

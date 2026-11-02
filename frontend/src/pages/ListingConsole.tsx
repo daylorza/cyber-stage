@@ -1,3 +1,4 @@
+import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, clock, factLine, media, money, type Job, type Listing, type MetaStatus } from "../api";
@@ -11,7 +12,8 @@ import PipelineIndicator from "../components/PipelineIndicator";
 import LiveControl from "../components/live/LiveControl";
 import SourcePanel from "../components/SourcePanel";
 import StatusMark from "../components/StatusMark";
-import { ClaimTrust, EvidenceBlock, ITEM_SHORT, ResultLine, roomIssues } from "../components/trust";
+import { ClaimTrust, claimResult, EvidenceBlock, ITEM_SHORT, ResultLine, roomIssues } from "../components/trust";
+import TechnicalDetails from "../components/TechnicalDetails";
 
 const clean = (lines: string[]) => lines.map((l) => l.trim()).filter(Boolean);
 
@@ -29,12 +31,12 @@ function Header({ listing, onTestLabel }: { listing: Listing; onTestLabel?: (tes
         {listing.source === "seed" && <span className="eyebrow">Seeded hero listing</span>}
         <StatusMark status={listing.status} />
         {onTestLabel && listing.source === "upload" && (
-          <button type="button" onClick={() => onTestLabel(!isTest)} className="eyebrow transition hover:text-ivory!">
+          <button type="button" onClick={() => onTestLabel(!isTest)} className="eyebrow btn-ghost hover:text-ivory!">
             {isTest ? "Remove test label" : "Mark as test upload"}
           </button>
         )}
       </div>
-      <h1 className="mt-4 max-w-4xl font-serif text-5xl leading-[1.05]">{copy?.title || "Untitled residence"}</h1>
+      <h1 className="mt-4 max-w-4xl text-balance font-serif text-4xl leading-[1.05] sm:text-5xl">{copy?.title || "Untitled residence"}</h1>
       <div className="mt-5 flex flex-wrap items-center gap-x-8 gap-y-2">
         {factLine(facts) && <span className="font-mono text-sm text-ivory/75">{factLine(facts)}</span>}
         {price && <span className="font-mono text-sm text-champagne">{price}</span>}
@@ -46,7 +48,7 @@ function Header({ listing, onTestLabel }: { listing: Listing; onTestLabel?: (tes
 
 function Processing({ listing, job }: { listing: Listing; job: Job | null }) {
   return (
-    <section className="grid min-h-[60dvh] items-center gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+    <section className="grid min-h-[60dvh] grid-cols-1 items-center gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
       <div className="grid content-center gap-14">
         <div aria-live="polite">
           <p className="eyebrow">
@@ -63,13 +65,11 @@ function Processing({ listing, job }: { listing: Listing; job: Job | null }) {
 
 function Review({
   listing,
-  meta,
   gates,
   onChange,
   reload,
 }: {
   listing: Listing;
-  meta: MetaStatus | null;
   gates: boolean;
   onChange: (l: Listing) => void;
   reload: () => void;
@@ -108,6 +108,7 @@ function Review({
   const open = openItems(listing);
   const blocked = open.length > 0 && gates;
   const descriptionClean = description.trim() === copy.description;
+  const verifiedSentences = copy.sentences.filter((c) => claimResult(checks, c.id, c.evidence).tone === "pass").length;
   const blockedHint = `Resolve first: ${open.map((i) => i.label).join(", ")}${dirty ? ". Save your edits to re-run the checks." : ""}`;
   const publishHint =
     listing.status !== "approved"
@@ -187,7 +188,7 @@ function Review({
         </div>
       </div>
 
-      <div className="mt-12 grid gap-12 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+      <div className="mt-12 grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-14">
         <div className="space-y-16">
           <section aria-labelledby="rooms-heading" className="scroll-mt-28">
             <h2 id="rooms-heading" className="eyebrow">
@@ -254,7 +255,7 @@ function Review({
                   </div>
                 )}
                 {listing.rooms.length > 1 && (
-                  <div className="mt-6 flex gap-3 overflow-x-auto pb-2" role="tablist" aria-label="Rooms">
+                  <div className="-mx-1 mt-5 flex gap-3 overflow-x-auto p-1 pb-2" role="tablist" aria-label="Rooms">
                     {listing.rooms.map((r, i) => (
                       <button
                         key={r.id}
@@ -268,10 +269,10 @@ function Review({
                         {r.before ? (
                           <img src={media(r.before)} alt="" className={`h-16 w-28 object-cover ${rejected.includes(r.id) ? "grayscale" : ""}`} />
                         ) : (
-                          <span className="eyebrow grid h-16 w-28 place-items-center bg-smoke px-2 text-center text-[0.55rem]! leading-snug">Held back</span>
+                          <span className="eyebrow grid h-16 w-28 place-items-center bg-smoke px-2 text-center text-micro! leading-snug">Held back</span>
                         )}
                         {roomIssues(checks, r.id).length > 0 && <span aria-hidden className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-rose" />}
-                        {r.main && <span className="eyebrow absolute bottom-1 left-1.5 text-[0.5rem]! text-ice!">Main</span>}
+                        {r.main && <span className="eyebrow absolute bottom-1 left-1.5 rounded-sm bg-night/60 px-1 text-micro! text-ice!">Main</span>}
                       </button>
                     ))}
                   </div>
@@ -284,14 +285,62 @@ function Review({
                   : "No rooms were found in this upload."}
               </p>
             )}
+            <div className="glass fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 flex flex-wrap items-center justify-center gap-1.5 rounded-3xl! p-1.5 max-sm:[&_:is(.btn,.btn-glass,.btn-primary)]:px-4 sm:inset-x-auto sm:bottom-6 sm:right-[max(1.5rem,calc((100vw-80rem)/2+2.5rem))] sm:rounded-full! lg:relative lg:inset-auto lg:z-30 lg:mt-8 lg:w-fit lg:justify-start">
+            {locked ? (
+              <>
+                <LiveControl listing={listing} />
+                <Link to={`/p/${listing.id}`} className="btn-primary">
+                  View published page
+                </Link>
+                <button
+                  type="button"
+                  className="btn-glass"
+                  disabled={!!busy}
+                  onClick={() => setConfirmation("unpublish")}
+                >
+                  {busy === "unpublish" ? "Unpublishing" : "Unpublish for edits"}
+                </button>
+              </>
+            ) : (
+              <>
+                {dirty && <span className="eyebrow basis-full px-3 py-1 text-center text-ice/80! sm:basis-auto sm:py-0">Unsaved edits</span>}
+                <button type="button" className="btn" disabled={!dirty || !!busy} onClick={() => review("save")}>
+                  {busy === "save" ? "Saving" : "Save"}
+                </button>
+                <button type="button" className="btn text-rose" disabled={!!busy || (listing.status === "rejected" && !dirty)} onClick={() => review("reject")}>
+                  {busy === "reject" ? "Rejecting" : "Reject"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-glass"
+                  disabled={!!busy || blocked || (listing.status === "approved" && !dirty)}
+                  title={blocked ? blockedHint : undefined}
+                  aria-describedby={blocked ? "action-hint" : undefined}
+                  onClick={() => review("approve")}
+                >
+                  {busy === "approve" ? "Approving" : listing.status === "approved" && !dirty ? "Approved" : "Approve"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={!!busy || !!publishHint}
+                  title={publishHint}
+                  aria-describedby={publishHint ? "action-hint" : undefined}
+                  onClick={() => run("publish", () => api.publish(listing.id))}
+                >
+                  {busy === "publish" ? "Publishing" : "Publish"}
+                </button>
+              </>
+            )}
+          </div>
           </section>
 
           {listing.comps && <CompsTable comps={listing.comps} />}
         </div>
 
-        <aside aria-labelledby="copy-heading">
-          <div className="glass space-y-6 p-6 sm:p-8">
-            <div className="flex items-baseline justify-between gap-4">
+        <aside aria-labelledby="copy-heading" className="lg:sticky lg:top-28 lg:self-start">
+          <div className="glass space-y-6 p-6 sm:p-8 lg:max-h-[calc(100dvh-13rem)] lg:overflow-y-auto lg:overscroll-contain">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <h2 id="copy-heading" className="eyebrow">Listing copy</h2>
               <span className="eyebrow">Only what was seen or supplied</span>
             </div>
@@ -299,7 +348,7 @@ function Review({
               <span className="eyebrow mb-2 block">Title</span>
               <input data-claim="title" className="field font-serif text-lg" value={title} disabled={locked} onChange={(e) => setTitle(e.target.value)} />
               {title.trim() === copy.title ? (
-                <EvidenceBlock id="title" evidence={copy.evidence.title ?? []} listing={listing} className="mt-2 pl-1" />
+                <EvidenceBlock id="title" evidence={copy.evidence.title ?? []} listing={listing} className="mt-2 pl-1" compact />
               ) : (
                 <ClaimTrust claim={undefined} listing={listing} className="mt-2 pl-1" />
               )}
@@ -317,14 +366,20 @@ function Review({
                 />
               </label>
               {descriptionClean && copy.sentences.length > 0 ? (
-                <ul className="mt-3 space-y-3 pl-1">
-                  {copy.sentences.map((c) => (
-                    <li key={c.id ?? c.text}>
-                      <p className="line-clamp-1 text-xs text-ivory/60">{c.text}</p>
-                      <EvidenceBlock id={c.id} evidence={c.evidence} listing={listing} className="mt-0.5" />
-                    </li>
-                  ))}
-                </ul>
+                <details className="group mt-2 pl-1">
+                  <summary className="flex w-fit cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+                    <ResultLine tone={verifiedSentences === copy.sentences.length ? "pass" : "fail"} label={`Verified · ${verifiedSentences} of ${copy.sentences.length} claims`} />
+                    <span className="data-label text-ash transition group-hover:text-ivory group-open:text-ivory">Evidence <span aria-hidden className="inline-block transition group-open:rotate-90">›</span></span>
+                  </summary>
+                  <ul className="mt-3 space-y-3">
+                    {copy.sentences.map((c) => (
+                      <li key={c.id ?? c.text}>
+                        <p className="line-clamp-1 text-xs text-ivory/60">{c.text}</p>
+                        <EvidenceBlock id={c.id} evidence={c.evidence} listing={listing} className="mt-0.5" />
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               ) : (
                 description.trim() !== "" && <ClaimTrust claim={undefined} listing={listing} className="mt-2 pl-1" />
               )}
@@ -350,19 +405,19 @@ function Review({
                             type="button"
                             aria-label={`Remove highlight ${i + 1}`}
                             onClick={() => setHighlights((prev) => prev.filter((_, j) => j !== i))}
-                            className="px-2 text-ash transition hover:text-ivory"
+                            className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-lg text-ash transition hover:bg-ivory/[0.04] hover:text-ivory"
                           >
                             ×
                           </button>
                         )}
                       </div>
-                      <ClaimTrust claim={claim} listing={listing} className="mt-2 pl-1" />
+                      <ClaimTrust claim={claim} listing={listing} className="mt-2 pl-1" compact />
                     </li>
                   );
                 })}
               </ul>
               {!locked && (
-                <button type="button" className="mt-4 text-sm text-ash transition hover:text-ivory" onClick={() => setHighlights((p) => [...p, ""])}>
+                <button type="button" className="btn-ghost mt-4 text-sm text-ash" onClick={() => setHighlights((p) => [...p, ""])}>
                   Add highlight
                 </button>
               )}
@@ -376,66 +431,31 @@ function Review({
         </aside>
       </div>
 
-      <section aria-labelledby="diagnostics-heading" className="mt-20 space-y-4">
-        <div><p className="eyebrow">Technical details</p><h2 id="diagnostics-heading" className="mt-2 font-serif text-3xl">Diagnostics &amp; source data</h2><p className="mt-3 max-w-2xl text-sm text-ash">Inspect the source, verification checks, and model decisions behind this listing.</p></div>
-        {listing.note && !/test upload/i.test(listing.note) && <p className="text-sm text-ash">{listing.note}</p>}
-        {listing.source === "upload" && <details className="glass p-6"><summary className="cursor-pointer text-lg text-ivory">Source walkthrough and data</summary><div className="mt-6"><SourcePanel listing={listing} /></div></details>}
-        <details className="glass p-6"><summary className="cursor-pointer text-lg text-ivory">Verification and Meta diagnostics</summary><div className="mt-6"><ChecklistPanel listing={listing} meta={meta} blocking={gates} onRerun={reload} /></div></details>
-        <details className="glass p-6"><summary className="cursor-pointer text-lg text-ivory">Model decisions and evidence</summary><DecisionPanel listing={listing} /></details>
-      </section>
 
-      <div className="glass fixed bottom-6 right-6 z-30 flex flex-wrap items-center gap-1.5 rounded-full! p-1.5">
-        {locked ? (
-          <>
-            <LiveControl listing={listing} />
-            <Link to={`/p/${listing.id}`} className="btn-primary">
-              View published page
-            </Link>
-            <button
-              type="button"
-              className="btn-glass"
-              disabled={!!busy}
-              onClick={() => setConfirmation("unpublish")}
-            >
-              {busy === "unpublish" ? "Unpublishing" : "Unpublish for edits"}
-            </button>
-          </>
-        ) : (
-          <>
-            {dirty && <span className="eyebrow px-3 text-ice/80!">Unsaved edits</span>}
-            <button type="button" className="btn" disabled={!dirty || !!busy} onClick={() => review("save")}>
-              {busy === "save" ? "Saving" : "Save"}
-            </button>
-            <button type="button" className="btn text-rose" disabled={!!busy || (listing.status === "rejected" && !dirty)} onClick={() => review("reject")}>
-              {busy === "reject" ? "Rejecting" : "Reject"}
-            </button>
-            <button
-              type="button"
-              className="btn-glass"
-              disabled={!!busy || blocked || (listing.status === "approved" && !dirty)}
-              title={blocked ? blockedHint : undefined}
-              aria-describedby={blocked ? "action-hint" : undefined}
-              onClick={() => review("approve")}
-            >
-              {busy === "approve" ? "Approving" : listing.status === "approved" && !dirty ? "Approved" : "Approve"}
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={!!busy || !!publishHint}
-              title={publishHint}
-              aria-describedby={publishHint ? "action-hint" : undefined}
-              onClick={() => run("publish", () => api.publish(listing.id))}
-            >
-              {busy === "publish" ? "Publishing" : "Publish"}
-            </button>
-          </>
-        )}
-      </div>
       <p id="action-hint" className="sr-only">
         {publishHint ?? (blocked ? blockedHint : "")}
       </p>
     </>
+  );
+}
+
+/** Top of every console: the jump to the judges' technical section, and About. */
+function JudgesBar() {
+  const jump = (e: React.MouseEvent) => {
+    const el = document.getElementById("technical");
+    if (!el) return;
+    e.preventDefault();
+    el.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    history.replaceState(null, "", "#technical");
+    document.getElementById("technical-heading")?.focus({ preventScroll: true });
+  };
+  return (
+    <div className="mb-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+      <a href="#technical" onClick={jump} className="btn-glass group text-base [@media(hover:hover)]:hover:shadow-[0_0_24px_-6px_rgb(155_230_239/0.45)]">
+        Technical details — for judges <span aria-hidden className="transition group-hover:translate-y-0.5">↓</span>
+      </a>
+      <Link to="/about" className="btn-ghost text-base text-ivory/80">About Cyber Stage</Link>
+    </div>
   );
 }
 
@@ -514,8 +534,12 @@ export default function ListingConsole() {
 
   const reviewing = !!listing.copy && !["processing", "failed"].includes(listing.status);
 
+  const gates = blockingChecks || listing.source !== "upload";
+  const reload = () => load().catch((e: Error) => setError(e.message));
+
   return (
     <>
+      <JudgesBar />
       {listing.status !== "processing" && !reviewing && <Header listing={listing} />}
       {error && (
         <p role="alert" className="mt-6 text-sm text-rose">
@@ -532,9 +556,9 @@ export default function ListingConsole() {
           </Link>
         </section>
       )}
-      {reviewing && <Review listing={listing} meta={meta} gates={blockingChecks || listing.source !== "upload"} onChange={setListing} reload={() => load().catch((e: Error) => setError(e.message))} />}
+      {reviewing && <Review listing={listing} gates={gates} onChange={setListing} reload={reload} />}
       {listing.source === "upload" && (
-        <div className="mt-16"><button type="button" className="btn-glass text-rose!" disabled={deleting || listing.status === "processing"} onClick={() => setConfirmDelete(true)}>{deleting ? "Deleting…" : "Delete listing"}</button>
+        <div className="mt-16 sm:mt-20"><button type="button" className="btn-glass text-rose!" disabled={deleting || listing.status === "processing"} onClick={() => setConfirmDelete(true)}>{deleting ? "Deleting…" : "Delete listing"}</button>
         {confirmDelete && <ConfirmDialog message="Delete this listing and its job history? A published listing will no longer be available. Uploaded files remain on disk." onCancel={() => setConfirmDelete(false)} onConfirm={async () => {
           setConfirmDelete(false);
           setDeleting(true);
@@ -547,6 +571,16 @@ export default function ListingConsole() {
           }
         }} />}</div>
       )}
+      <TechnicalDetails listing={listing}>
+        {listing.status !== "processing" && (
+          <>
+            {listing.note && !/test upload/i.test(listing.note) && <p className="text-sm text-ash">{listing.note}</p>}
+            {listing.source === "upload" && <details className="glass px-5 py-3 sm:px-6"><summary className="disclosure text-lg text-ivory">Source walkthrough and data</summary><div className="mb-3 mt-4"><SourcePanel listing={listing} /></div></details>}
+            <details className="glass px-5 py-3 sm:px-6"><summary className="disclosure text-lg text-ivory">Verification and Meta diagnostics</summary><div className="mb-3 mt-4"><ChecklistPanel listing={listing} meta={meta} blocking={gates} onRerun={reload} /></div></details>
+            <details className="glass px-5 py-3 sm:px-6"><summary className="disclosure text-lg text-ivory">Model decisions and evidence</summary><div className="mb-3"><DecisionPanel listing={listing} /></div></details>
+          </>
+        )}
+      </TechnicalDetails>
     </>
   );
 }

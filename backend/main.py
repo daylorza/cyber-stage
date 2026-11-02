@@ -153,6 +153,10 @@ def get_job(job_id: str) -> dict[str, Any]:
     job = db.get_job(job_id)
     if job is None:
         raise HTTPException(404, "Job not found.")
+    trace = live.JOB_TRACES.get(job_id)
+    if trace is not None:
+        job["log"] = [{k: e.get(k) for k in ("at", "model", "purpose", "ms", "ok", "cached", "error", "target")}
+                      for e in list(trace)[-200:]]
     return job
 
 
