@@ -101,7 +101,7 @@
   .inventory-shell #main-menu a:hover, .inventory-shell #main-menu a[aria-current="page"] { color: var(--color-ink) !important; }
   .inventory-shell > header nav button .ice-dot { background: var(--color-verdant); box-shadow: none; }
   .inventory-page { color: var(--color-ink); }
-  .inventory-hero { min-height: 270px; padding: 0 0 40px; border-bottom: 1px solid var(--color-linen); }
+  .inventory-hero { position: relative; min-height: 270px; padding: 0 0 40px; border-bottom: 1px solid var(--color-linen); }
   .inventory-eyebrow { color: var(--color-clay); font: var(--text-micro) var(--font-mono); letter-spacing: .22em; text-transform: uppercase; }
   .inventory-title { margin-top: 16px; font-size: clamp(3.5rem, 7vw, 7rem); font-weight: 250; line-height: .86; letter-spacing: -.06em; }
   .inventory-title span { color: var(--color-umber); font-family: var(--font-serif); font-style: italic; font-weight: 400; }
@@ -138,7 +138,27 @@
   .inventory-page [data-status="failed"] > span, .inventory-page [data-status="rejected"] > span { background: var(--color-brick); }
   @media (min-width: 768px) {
     .inventory-controls > label { padding-left: 24px; border-left: 1px solid var(--color-linen); }
+    /* The whole top (hero, radar, toolbar) stays pinned under the header; the hero compacts once scrolled. */
+    .inventory-hero, .inventory-toolbar { position: sticky; background: var(--color-parchment); box-shadow: 0 0 0 100vmax var(--color-parchment); clip-path: inset(-1.5rem -100vmax 0); }
+    .inventory-hero { top: calc(var(--gutter-top) + env(safe-area-inset-top) + 3.25rem); z-index: 21; }
+    .inventory-toolbar { top: calc(var(--gutter-top) + env(safe-area-inset-top) + 3.25rem + var(--inventory-hero-h, 0px)); z-index: 20; border-bottom: 1px solid var(--color-linen); }
+    .inventory-hero[data-compact="true"] { min-height: 172px; padding-bottom: 16px; }
+    .inventory-hero[data-compact="true"] .inventory-title { margin-top: 8px; font-size: clamp(2.25rem, 3.5vw, 3rem); }
+    .inventory-hero[data-compact="true"] .inventory-intro { display: none; }
+    .inventory-hero[data-compact="true"] .inventory-new { bottom: 16px; }
+    .inventory-hero[data-compact="true"] .inventory-radar { width: 100px; height: 100px; top: 34px; right: 420px; }
+    .inventory-hero[data-compact="true"] .inventory-radar::before { inset: 13px; }
+    .inventory-hero[data-compact="true"] .inventory-radar::after { inset: 27px; }
+    .inventory-hero[data-compact="true"] .inventory-radar .r-top { top: -28px; }
+    .inventory-hero[data-compact="true"] .inventory-radar .r-bottom { bottom: -28px; }
+    .inventory-hero[data-compact="true"] .inventory-radar-caption { display: none; }
   }
+  .inventory-radar svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .inventory-radar polygon { fill: rgb(128 94 71 / .16); stroke: var(--color-umber); stroke-width: 1; stroke-linejoin: round; }
+  .inventory-radar circle { fill: var(--color-umber); }
+  .inventory-radar small em { font-style: normal; color: var(--color-umber); letter-spacing: .06em; text-transform: none; }
+  .inventory-radar small em::before { content: " · "; color: var(--color-bark); }
+  .inventory-radar-caption { position: absolute; left: 50%; top: calc(100% + 40px); max-width: 260px; transform: translateX(-50%); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-serif); font-size: .9375rem; color: var(--color-bark); }
   .inventory-status { display: inline-flex; align-items: center; justify-content: center; min-height: 34px; background: rgb(250 248 243 / .6); border: 1px solid rgb(255 255 255 / .55); backdrop-filter: blur(8px); }
   .inventory-status .eyebrow { display: inline-flex; align-items: center; line-height: 1; }
   .inventory-status .eyebrow span { width: 8px; height: 8px; }
