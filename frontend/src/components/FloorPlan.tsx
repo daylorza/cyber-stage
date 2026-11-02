@@ -1,76 +1,36 @@
-import { useEffect, useRef, useState } from "react";
 import type { Plan } from "../residences";
 
-const DEG_PER_MS = 0.06;
-
-/** Floor plan with the viewer's position and view cone. Click and hold to rotate it. */
+/** Floor plan with the viewer's position and view cone. */
 export default function FloorPlan({ plan, heading, label }: { plan: Plan; heading: number; label: string }) {
-  const [rotation, setRotation] = useState(0);
-  const frame = useRef(0);
-
-  useEffect(() => () => cancelAnimationFrame(frame.current), []);
-  useEffect(() => setRotation(0), [plan]);
-
-  function hold() {
-    let last = performance.now();
-    const tick = (now: number) => {
-      setRotation((r) => (r + (now - last) * DEG_PER_MS) % 360);
-      last = now;
-      frame.current = requestAnimationFrame(tick);
-    };
-    frame.current = requestAnimationFrame(tick);
-  }
-
-  const release = () => cancelAnimationFrame(frame.current);
   const [x, y] = plan.position;
   const labelled = plan.rooms.filter((r) => r.label);
 
   return (
     <div className="flex items-center gap-6">
-      <svg
-        viewBox="0 0 200 140"
-        role="img"
-        aria-label={`${label} floor plan. Click and hold to rotate.`}
-        tabIndex={0}
-        className="h-32 w-44 cursor-grab touch-none overflow-visible active:cursor-grabbing"
-        onPointerDown={(e) => {
-          e.currentTarget.setPointerCapture(e.pointerId);
-          hold();
-        }}
-        onPointerUp={release}
-        onPointerCancel={release}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-            e.preventDefault();
-            setRotation((r) => r + (e.key === "ArrowRight" ? 15 : -15));
-          }
-        }}
-      >
+      <svg viewBox="0 0 200 140" role="img" aria-label={`${label} floor plan.`} className="h-32 w-44 overflow-visible">
         <defs>
           <radialGradient id="plan-cone" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="scale(40)">
             <stop offset="0" style={{ stopColor: "var(--color-ice)" }} stopOpacity="0.45" />
             <stop offset="1" style={{ stopColor: "var(--color-ice)" }} stopOpacity="0" />
           </radialGradient>
         </defs>
-        <g transform={`rotate(${rotation} 100 70)`}>
-          {plan.rooms.map((r) => (
-            <path
-              key={r.id}
-              d={r.d}
-              className={r.id === plan.current ? "fill-ice/10 stroke-ice/55" : "fill-none stroke-ivory/30"}
-              strokeWidth={0.75}
-            />
-          ))}
-          {plan.details?.map((d) => (
-            <path key={d} d={d} className="fill-none stroke-ice/35" strokeWidth={0.75} />
-          ))}
-          <path d={plan.outline} className="fill-none stroke-ivory/70" strokeWidth={1.2} />
-          <g transform={`translate(${x} ${y}) rotate(${heading})`}>
-            <path d="M0 0 L-17 -36 A40 40 0 0 1 17 -36 Z" fill="url(#plan-cone)" />
-          </g>
-          <circle cx={x} cy={y} r={7} className="animate-pulse fill-ice/20" />
-          <circle cx={x} cy={y} r={2.6} className="fill-ice" />
+        {plan.rooms.map((r) => (
+          <path
+            key={r.id}
+            d={r.d}
+            className={r.id === plan.current ? "fill-ice/10 stroke-ice/55" : "fill-none stroke-ivory/30"}
+            strokeWidth={0.75}
+          />
+        ))}
+        {plan.details?.map((d) => (
+          <path key={d} d={d} className="fill-none stroke-ice/35" strokeWidth={0.75} />
+        ))}
+        <path d={plan.outline} className="fill-none stroke-ivory/70" strokeWidth={1.2} />
+        <g transform={`translate(${x} ${y}) rotate(${heading})`}>
+          <path d="M0 0 L-17 -36 A40 40 0 0 1 17 -36 Z" fill="url(#plan-cone)" />
         </g>
+        <circle cx={x} cy={y} r={7} className="animate-pulse fill-ice/20" />
+        <circle cx={x} cy={y} r={2.6} className="fill-ice" />
       </svg>
       <ul className="space-y-3">
         {labelled.map((r) => (

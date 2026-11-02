@@ -4,7 +4,7 @@ import { api, type ListingSummary } from "../api";
 import { BRAND } from "../brand";
 import BrandMark from "../components/BrandMark";
 import FloorPlan from "../components/FloorPlan";
-import { RESIDENCES } from "../residences";
+import { RESIDENCES, UPCOMING_CITIES } from "../residences";
 
 const REST_SCALE = 1.14;
 const LOOK_DEGREES = 35;
@@ -29,7 +29,6 @@ function factLine(summary: ListingSummary | undefined): string {
 }
 
 export default function Home() {
-  const [index, setIndex] = useState(0);
   const [listings, setListings] = useState<Record<string, ListingSummary>>({});
   const [pan, setPan] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -42,7 +41,7 @@ export default function Home() {
   const enterTimer = useRef(0);
   const navigate = useNavigate();
 
-  const residence = RESIDENCES[index];
+  const residence = RESIDENCES[0];
   const summary = Object.values(listings).find((item) => item.city?.toLowerCase() === residence.city.toLowerCase() && item.status === "published")
     ?? Object.values(listings).find((item) => item.city?.toLowerCase() === residence.city.toLowerCase() && item.source === "seed");
   const name = summary?.title || residence.city;
@@ -69,18 +68,9 @@ export default function Home() {
     return () => clearInterval(timer);
   }, []);
 
-  const go = (next: number) => {
-    clearTimeout(enterTimer.current);
-    setIndex((next + RESIDENCES.length) % RESIDENCES.length);
-    setEntryError("");
-    setPan(0);
-  };
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof SVGElement) return;
-      if (e.key === "ArrowRight") go(index + 1);
-      if (e.key === "ArrowLeft") go(index - 1);
       if (e.key === "Escape") {
         clearTimeout(enterTimer.current);
         setInside(false);
@@ -124,15 +114,7 @@ export default function Home() {
           transition: dragging ? "none" : "transform 1.8s cubic-bezier(0.22, 0.7, 0.12, 1)",
         }}
       >
-        {RESIDENCES.map((r, i) => (
-          <img
-            key={r.id}
-            src={r.hero}
-            alt=""
-            draggable={false}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1400ms] ease-out ${i === index ? "opacity-100" : "opacity-0"}`}
-          />
-        ))}
+        <img src={residence.hero} alt="" draggable={false} className="absolute inset-0 h-full w-full object-cover" />
       </div>
 
       <div className="pointer-events-none absolute inset-0">
@@ -192,17 +174,17 @@ export default function Home() {
           <div className={`flex flex-col items-end transition duration-500 ${reveal}`}>
             <span aria-hidden className="nav-tick" />
             <ul id="home-menu" className="mt-1 flex flex-col items-end gap-2 rounded-2xl bg-night/30 py-2 pl-3 pr-2 backdrop-blur-md pointer-coarse:gap-0 pointer-coarse:py-1 [&_:is(a,button)]:pointer-coarse:min-h-11">
-              {RESIDENCES.map((r, i) => (
-                <li key={r.id}>
-                  <button
-                    type="button"
-                    aria-current={i === index ? "true" : undefined}
-                    onClick={() => go(i)}
-                    className={`eyebrow flex items-center gap-2 transition hover:text-ivory! ${i === index ? "text-ivory!" : "text-ivory/75!"}`}
-                  >
-                    {i === index && <span className="ice-dot" />}
-                    {r.city}
-                  </button>
+              <li>
+                <span aria-current="true" className="eyebrow flex items-center gap-2 text-ivory! pointer-coarse:min-h-11">
+                  <span className="ice-dot" />
+                  {residence.city}
+                </span>
+              </li>
+              {UPCOMING_CITIES.map((city) => (
+                <li key={city}>
+                  <span aria-disabled="true" className="eyebrow flex cursor-not-allowed items-center text-ivory/35! pointer-coarse:min-h-11">
+                    {city}
+                  </span>
                 </li>
               ))}
               <li>

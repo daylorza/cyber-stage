@@ -39,42 +39,7 @@ export const RESIDENCES: Residence[] = [
       facing: 90,
     },
   },
-  {
-    id: "seed_los_angeles",
-    city: "Los Angeles",
-    collection: "Private collection",
-    hero: "/residences/los-angeles.webp",
-    plan: {
-      outline: "M10 20 H190 V120 H10 Z",
-      rooms: [
-        { id: "primary", label: "Primary suite", d: "M10 20 H62 V84 H10 Z" },
-        { id: "living", label: "Living", d: "M62 20 H150 V84 H62 Z" },
-        { id: "kitchen", d: "M150 20 H190 V84 H150 Z" },
-        { id: "terrace", label: "Pool terrace", d: "M10 84 H190 V120 H10 Z" },
-      ],
-      details: ["M72 94 H182 V112 H72 Z"],
-      current: "living",
-      position: [104, 52],
-      facing: 150,
-    },
-  },
-  {
-    id: "seed_london",
-    city: "London",
-    collection: "Private collection",
-    hero: "/residences/london.webp",
-    plan: {
-      outline: "M10 14 H190 V126 H10 Z",
-      rooms: [
-        { id: "living", label: "Living room", d: "M10 14 H128 V92 H10 Z" },
-        { id: "primary", label: "Primary suite", d: "M128 14 H190 V78 H128 Z" },
-        { id: "dining", d: "M128 78 H190 V126 H128 Z" },
-        { id: "terrace", label: "Terrace", d: "M10 92 H128 V126 H10 Z" },
-      ],
-      details: ["M16 19 H122"],
-      current: "living",
-      position: [62, 66],
-      facing: 8,
-    },
-  },
 ];
+
+/** Cities shown grayed out in the Home menu: not live yet, so no link. */
+export const UPCOMING_CITIES = ["Los Angeles", "New York"];
