@@ -3,6 +3,7 @@ import ConfirmDialog from "../ConfirmDialog";
 import { Link } from "react-router-dom";
 import { api, type Job, type Listing, type LivePayload } from "../../api";
 import JobTerminal, { trackJob, type JobEvent } from "./JobTerminal";
+import StyleVersions from "./StyleVersions";
 
 type State = { status: "unknown" | "none" | "preparing" | "ready" | "failed"; error: string; progress: number; jobId: string | null };
 
@@ -18,6 +19,7 @@ export default function LiveControl({ listing }: { listing: Listing }) {
   const [payload, setPayload] = useState<LivePayload | null>(null);
   const [styleJob, setStyleJob] = useState<string | null>(null);
   const [styleMessage, setStyleMessage] = useState("");
+  const [versionsRefresh, setVersionsRefresh] = useState(0);
   const [selectedStyle, setSelectedStyle] = useState<{ room: string; roomName: string; style: string; label: string } | null>(null);
   const [s, setS] = useState<State>({ status: "unknown", error: "", progress: 0, jobId: null });
   // Terminal logs: the latest polled job and the console's own events, per kind of job.
@@ -101,7 +103,7 @@ export default function LiveControl({ listing }: { listing: Listing }) {
         if (job.status === "done" || job.status === "failed") {
           setStyleMessage(job.status === "done" ? "Style updated." : (job.error ?? "Style rerun failed; previous image retained."));
           setStyleJob(null);
-          if (job.status === "done") setPayload(await api.live(listingId));
+          if (job.status === "done") { setPayload(await api.live(listingId)); setVersionsRefresh((n) => n + 1); }
         } else timer = window.setTimeout(tick, 1000);
       } catch (e) {
         if (!stopped) { setStyleMessage((e as Error).message); setStyleJob(null); }
@@ -149,6 +151,9 @@ export default function LiveControl({ listing }: { listing: Listing }) {
               </div>
             </div>}
             <p role="status" className="px-2 text-xs text-ivory/70">{styleJob ? "Preparing style…" : styleMessage}</p>
+            <div className="my-3 h-px bg-ivory/10" />
+            <p className="eyebrow mb-2 px-2">Style versions</p>
+            {payload && <StyleVersions listingId={listingId} payload={payload} refresh={versionsRefresh} disabled={!!styleJob} onChanged={() => void api.live(listingId).then(setPayload)} />}
             </div>
             {styleRun && <JobTerminal title={styleRun.title} job={styleRun.job} events={styleRun.events} onClose={styleJob ? undefined : () => setStyleRun(null)} className="h-72 sm:h-auto sm:min-h-[22rem]" />}
           </div>
