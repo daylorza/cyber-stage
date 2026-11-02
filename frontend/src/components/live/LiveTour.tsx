@@ -142,6 +142,10 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
     const size = stageSize(viewport.w, viewport.h, aspect);
     return walking && !inRoom && size.fit ? { ...size, w: viewport.h * 0.84 * aspect, h: viewport.h * 0.84 } : size;
   }, [viewport.w, viewport.h, aspect, walking, inRoom, phone, band.h]);
+  /** Phone room view: the band's spare height is split between lowering the title and lifting the sheet's controls, so the room sits right under the title. */
+  const spare = phone && inRoom ? Math.max(0, band.h - stage.h) : 0;
+  const titleDrop = spare * 0.4;
+  const roomCenter = band.top + titleDrop + 8 + stage.h / 2;
   const fit = stage.fit;
   const maxPan = maxPanFor(stage, viewport.w, viewport.h);
   // Keep framing anchored to the room, independent of the selected furniture style.
@@ -564,7 +568,8 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const counter = <span className="font-mono text-caption tracking-widest text-ivory/60">{roomIndex + 1} / {rooms.length}</span>;
 
   const sheet = phone && entered && !moment && (inRoom || walking) && (
-    <div ref={sheetRef} className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 flex max-h-[85dvh] flex-col rounded-t-3xl bg-night/85 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 text-ivory shadow-[0_-24px_60px_-30px_rgb(0_0_0/0.9)] ring-1 ring-ivory/10 backdrop-blur-xl">
+    <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 flex max-h-[85dvh] flex-col rounded-t-3xl bg-night/85 text-ivory shadow-[0_-24px_60px_-30px_rgb(0_0_0/0.9)] ring-1 ring-ivory/10 backdrop-blur-xl">
+    <div ref={sheetRef} className="flex min-h-0 flex-1 flex-col pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2">
       <span aria-hidden className="mx-auto mb-1 block h-1 w-9 shrink-0 rounded-full bg-ivory/20" />
       {inRoom ? (
         <>
@@ -605,6 +610,8 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
         </div>
       )}
     </div>
+    {!guideOpen && <div aria-hidden className="shrink-0" style={{ height: spare - titleDrop }} />}
+    </div>
   );
 
   return (
@@ -616,7 +623,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
           width: stage.w,
           height: stage.h,
           left: "50%",
-          top: phone && inRoom ? band.top + 8 + band.h / 2 : "50%",
+          top: phone && inRoom ? roomCenter : "50%",
           marginLeft: -stage.w / 2,
           marginTop: -stage.h / 2,
           transform: `perspective(1600px) translate3d(${x}px, ${y}px, 0) rotateY(${tilt}deg) scale(${cam ? cam.s : 1})`,
@@ -720,7 +727,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
           onMouseEnter={() => { introHover.current = true; }}
           onMouseLeave={() => { introHover.current = false; if (introDue.current) setIntro(false); }}
           className={`guide-intro pointer-events-none absolute z-30 [@media(hover:hover)]:pointer-events-auto w-[min(30rem,calc(100vw-2rem))] rounded-3xl bg-night/60 p-5 text-ivory shadow-[0_30px_80px_-30px_rgb(0_0_0/0.8)] ring-1 ring-ivory/20 backdrop-blur-xl sm:p-6 ${intro ? "" : "guide-intro--leaving"}`}
-          style={phone ? ({ "--intro-top": `${band.top + 8 + band.h / 2}px` } as React.CSSProperties) : undefined}
+          style={phone ? ({ "--intro-top": `${roomCenter}px` } as React.CSSProperties) : undefined}
         >
           <div className="flex items-center gap-4 sm:gap-5">
             {avatarOn && <GuideAvatar large />}
@@ -741,7 +748,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
         <div className="hud-top hud-left absolute"><Wordmark />{!titleOpen && !phone && <button type="button" aria-label="Expand title" onClick={() => setTitleOpen(true)} className="pointer-events-auto mt-6 grid h-11 w-11 place-items-center"><span className="grid h-8 w-8 place-items-center rounded-full bg-ivory/10 text-ivory ring-1 ring-ivory/30">+</span></button>}</div>
         <div inert={!!moment} className={chrome}>
           {phone && (
-            <div ref={titleRef} className="page-x absolute inset-x-0 top-0 flex items-start gap-4 pb-3" style={{ paddingTop: "calc(var(--gutter-top) + env(safe-area-inset-top) + 3.5rem)" }}>
+            <div ref={titleRef} className="page-x absolute inset-x-0 top-0 flex items-start gap-4 pb-3" style={{ paddingTop: "calc(var(--gutter-top) + env(safe-area-inset-top) + 3.5rem)", marginTop: titleDrop }}>
               <div className="min-w-0 flex-1">
                 <p className="line-clamp-3 text-balance font-serif text-2xl leading-tight text-ivory">{payload.title}</p>
                 <p key={roomName} className="eyebrow mt-2 flex animate-fade-in items-center gap-2.5 text-ivory/85!">
