@@ -492,3 +492,36 @@
 .reserve-reveal {
   animation: reserve-reveal 700ms cubic-bezier(0.6, 0, 0.2, 1) both;
 }
+
+/* The one call-out button: ice fill, a soft glow and a halo ring that breathes outward. */
+.btn-halo {
+  position: relative;
+  isolation: isolate;
+  background: rgb(155 230 239 / 0.16);
+  color: var(--color-ice);
+  box-shadow: inset 0 0 0 1px rgb(155 230 239 / 0.65), 0 0 22px -2px rgb(155 230 239 / 0.55), 0 0 64px -8px rgb(155 230 239 / 0.45);
+  animation: halo-glow 2.8s ease-in-out infinite;
+  transition: background-color 0.3s, color 0.3s;
+}
+.btn-halo:hover { background: rgb(155 230 239 / 0.26); color: #e6fbfd; }
+.btn-halo::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  z-index: -1;
+  border-radius: inherit;
+  border: 1px solid rgb(155 230 239 / 0.45);
+  animation: halo-ring 2.8s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes halo-glow {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgb(155 230 239 / 0.65), 0 0 20px -2px rgb(155 230 239 / 0.5), 0 0 56px -10px rgb(155 230 239 / 0.4); }
+  50% { box-shadow: inset 0 0 0 1px rgb(155 230 239 / 0.85), 0 0 30px 0 rgb(155 230 239 / 0.7), 0 0 90px -6px rgb(155 230 239 / 0.55); }
+}
+@keyframes halo-ring {
+  0% { transform: scale(0.96); opacity: 0.8; }
+  80%, 100% { transform: scale(1.18, 1.45); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-halo::before { animation: none; opacity: 0.5; transform: none; }
+}

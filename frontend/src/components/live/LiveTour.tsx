@@ -90,7 +90,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
   const introHover = useRef(false);
   const introDue = useRef(false);
   const [titleOpen, setTitleOpen] = useState(true);
-  const [titlePos, setTitlePos] = useState({ x: 24, y: 80 });
+  const [titlePos, setTitlePos] = useState({ x: 24, y: 130 });
   const titleDrag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const [avatarOn, setAvatarOn] = useState(true);
   const [styleChange, setStyleChange] = useState(0);
@@ -751,7 +751,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
                 <p className="eyebrow mt-1 text-ivory/60!" aria-live="polite">{caption}</p>
                 {payload.note && !/test upload/i.test(payload.note) && <p className="eyebrow mt-2 text-micro! normal-case tracking-wide text-rose!">{payload.note}</p>}
               </div>
-              {inRoom && <div className="w-28 shrink-0">{floorPlan}</div>}
+              {inRoom && <div className="w-36 shrink-0">{floorPlan}</div>}
             </div>
           )}
           <div hidden={phone} className="pointer-events-auto absolute max-w-[min(26rem,75vw)] touch-none" style={{ left: Math.min(titlePos.x, Math.max(0, viewport.w - 48)), top: Math.min(titlePos.y + 50, Math.max(0, viewport.h - 48)) }} onPointerDown={e => { if ((e.target as HTMLElement).closest("button")) return; const rect = e.currentTarget.getBoundingClientRect(); titleDrag.current = { x: e.clientX, y: e.clientY, left: rect.left, top: rect.top - 50 }; e.currentTarget.setPointerCapture(e.pointerId); }} onPointerMove={e => { const start = titleDrag.current; if (!start) return; const rect = e.currentTarget.getBoundingClientRect(); setTitlePos({ x: Math.max(0, Math.min(viewport.w - rect.width, start.left + e.clientX - start.x)), y: Math.max(0, Math.min(viewport.h - rect.height - 50, start.top + e.clientY - start.y)) }); }} onPointerUp={() => { titleDrag.current = null; }} onPointerCancel={() => { titleDrag.current = null; }}>
@@ -778,7 +778,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
           </div>
 
           {!phone && inRoom && (
-            <div className="hud-right pointer-events-auto absolute w-48 rounded-2xl bg-night/45 p-4 shadow-lg backdrop-blur-md" style={{ top: 130 }}>
+            <div className="hud-right pointer-events-auto absolute w-48 rounded-2xl bg-night/45 p-4 shadow-lg backdrop-blur-md" style={{ top: 180 }}>
               {floorPlan}
             </div>
           )}

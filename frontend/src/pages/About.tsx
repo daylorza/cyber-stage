@@ -39,8 +39,8 @@ export default function About() {
       <p className="mt-6 max-w-2xl text-balance font-serif text-2xl leading-snug text-ivory/90 sm:text-3xl">
         Staging software for real estate and brokers. A phone walkthrough video in, a staged, broker-approved listing out.
       </p>
-      <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
-        <Link to={SHOWCASE} className="btn-glass text-base">Technical details — for judges →</Link>
+      <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-5">
+        <Link to={SHOWCASE} className="btn btn-halo group px-6 py-3 text-base font-medium">Technical details — for judges <span aria-hidden className="transition group-hover:translate-x-1">→</span></Link>
         <Link to="/inventory" className="btn-ghost text-base text-ivory/80">See the inventory</Link>
       </div>
 

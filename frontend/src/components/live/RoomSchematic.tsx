@@ -1,3 +1,4 @@
+import museLogo from "../../assets/muse-logo.svg";
 import type { LiveRoom } from "../../api";
 
 /** Image-space SAM detections rendered as a view diagram, not room coordinates. */
@@ -6,7 +7,17 @@ export default function RoomSchematic({ room, styleId }: { room?: LiveRoom; styl
   const pieces = styleId ? room?.styles[styleId]?.pieces ?? [] : [];
   return (
     <div className="min-w-0">
-      <p className="eyebrow mb-2 text-ivory/80!">Floor plan</p>
+      {pieces.length > 0 ? (
+        <div className="mb-2">
+          <p className="eyebrow text-ivory/85!">{pieces.length} {pieces.length === 1 ? "object" : "objects"} added</p>
+          <p className="mt-1 flex items-center gap-1.5 text-micro tracking-wide text-ivory/65">
+            Created by Muse Image 1.0
+            <span className="inline-flex shrink-0 items-center rounded-[4px] bg-white px-1 py-0.5"><img src={museLogo} alt="Muse" className="h-2.5 w-auto" /></span>
+          </p>
+        </div>
+      ) : (
+        <p className="eyebrow mb-2 text-ivory/80!">{styleId === "original" ? "Original room · nothing added" : "No objects added"}</p>
+      )}
       <svg viewBox="0 0 200 140" role="img" aria-label="Estimated room view; furniture positions approximate" className="block h-auto w-full max-w-44">
         <path d="M15 15 H185 V95 H15 Z" className="fill-ice/5 stroke-ivory/65" />
         <path d="M15 95 L0 130 H200 L185 95" className="fill-ice/[0.04] stroke-ivory/40" />
@@ -28,7 +39,6 @@ export default function RoomSchematic({ room, styleId }: { room?: LiveRoom; styl
         <path d="M100 130 L88 104 H112 Z" className="fill-ice/25" />
         <circle cx="100" cy="130" r="3" className="fill-ice" />
       </svg>
-      <p className="mt-1.5 text-micro leading-snug text-ivory/65">Estimate · not to scale</p>
     </div>
   );
 }

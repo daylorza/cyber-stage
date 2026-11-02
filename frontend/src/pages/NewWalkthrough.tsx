@@ -65,7 +65,11 @@ export default function NewWalkthrough() {
   const [error, setError] = useState("");
   const [facts, setFacts] = useState({ city: "", beds: "" });
 
-  const add = (list: FileList | null) => list && setFiles((prev) => [...prev, ...Array.from(list)]);
+  // Copy now: the input's FileList is live and empties when the input is reset right after.
+  const add = (list: FileList | null) => {
+    const picked = Array.from(list ?? []);
+    if (picked.length) setFiles((prev) => [...prev, ...picked]);
+  };
   const urls = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
   useEffect(() => () => urls.forEach((u) => URL.revokeObjectURL(u)), [urls]);
 
@@ -118,6 +122,7 @@ export default function NewWalkthrough() {
       </p>
 
       <div className="mt-12 grid grid-cols-1 gap-10 sm:mt-14 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-14">
+        <div className="flex min-w-0 flex-col">
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -125,7 +130,7 @@ export default function NewWalkthrough() {
           }}
           onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
-          className={`glass flex flex-col p-5 transition duration-300 sm:p-8 ${dragging ? "bg-ice/[0.06] shadow-[inset_0_0_0_1px_rgb(155_230_239/0.45)]!" : ""}`}
+          className={`glass flex flex-1 flex-col p-5 transition duration-300 sm:p-8 ${dragging ? "bg-ice/[0.06] shadow-[inset_0_0_0_1px_rgb(155_230_239/0.45)]!" : ""}`}
         >
           {files.length === 0 ? (
             <div className="grid flex-1 place-items-center py-8 text-center sm:py-12">
@@ -182,6 +187,16 @@ export default function NewWalkthrough() {
               </li>
             ))}
           </ol>
+        </div>
+          <div className="glass fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-3 overflow-hidden rounded-3xl! py-1.5 pl-5 pr-1.5 sm:inset-x-auto sm:bottom-6 sm:right-[max(1.5rem,calc((100vw-80rem)/2+2.5rem))] sm:max-w-[min(44rem,calc(100vw-3rem))] sm:rounded-full! lg:static lg:inset-auto lg:mt-6 lg:max-w-none">
+            {uploading && <span aria-hidden className="absolute inset-x-0 top-0 h-px origin-left bg-ice/80 shadow-glow transition-transform duration-300" style={{ transform: `scaleX(${progress})` }} />}
+            <p className="min-w-0 flex-1 truncate text-xs text-ivory/75 sm:text-sm" aria-live="polite">
+              {error ? <span role="alert" className="text-rose">{error}</span> : uploading ? <span className="font-mono tabular-nums text-ice">Uploading · {Math.round(progress * 100)}%</span> : summary.join(" · ")}
+            </p>
+            <button type="submit" className="btn-primary shrink-0" disabled={uploading}>
+              {uploading ? "Uploading" : "Process walkthrough"}
+            </button>
+          </div>
         </div>
 
         <div className="min-w-0 space-y-6">
@@ -254,15 +269,6 @@ export default function NewWalkthrough() {
         </div>
       </div>
 
-      <div className="glass fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-3 overflow-hidden rounded-3xl! py-1.5 pl-5 pr-1.5 sm:inset-x-auto sm:bottom-6 sm:right-[max(1.5rem,calc((100vw-80rem)/2+2.5rem))] sm:max-w-[min(44rem,calc(100vw-3rem))] sm:rounded-full!">
-        {uploading && <span aria-hidden className="absolute inset-x-0 top-0 h-px origin-left bg-ice/80 shadow-glow transition-transform duration-300" style={{ transform: `scaleX(${progress})` }} />}
-        <p className="min-w-0 flex-1 truncate text-xs text-ivory/75 sm:text-sm" aria-live="polite">
-          {error ? <span role="alert" className="text-rose">{error}</span> : uploading ? <span className="font-mono tabular-nums text-ice">Uploading · {Math.round(progress * 100)}%</span> : summary.join(" · ")}
-        </p>
-        <button type="submit" className="btn-primary shrink-0" disabled={uploading}>
-          {uploading ? "Uploading" : "Process walkthrough"}
-        </button>
-      </div>
     </form>
   );
 }

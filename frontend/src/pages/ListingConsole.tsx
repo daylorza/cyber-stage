@@ -285,6 +285,54 @@ function Review({
                   : "No rooms were found in this upload."}
               </p>
             )}
+            <div className="glass fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 flex flex-wrap items-center justify-center gap-1.5 rounded-3xl! p-1.5 max-sm:[&_:is(.btn,.btn-glass,.btn-primary)]:px-4 sm:inset-x-auto sm:bottom-6 sm:right-[max(1.5rem,calc((100vw-80rem)/2+2.5rem))] sm:rounded-full! lg:relative lg:inset-auto lg:z-30 lg:mt-8 lg:w-fit lg:justify-start">
+            {locked ? (
+              <>
+                <LiveControl listing={listing} />
+                <Link to={`/p/${listing.id}`} className="btn-primary">
+                  View published page
+                </Link>
+                <button
+                  type="button"
+                  className="btn-glass"
+                  disabled={!!busy}
+                  onClick={() => setConfirmation("unpublish")}
+                >
+                  {busy === "unpublish" ? "Unpublishing" : "Unpublish for edits"}
+                </button>
+              </>
+            ) : (
+              <>
+                {dirty && <span className="eyebrow basis-full px-3 py-1 text-center text-ice/80! sm:basis-auto sm:py-0">Unsaved edits</span>}
+                <button type="button" className="btn" disabled={!dirty || !!busy} onClick={() => review("save")}>
+                  {busy === "save" ? "Saving" : "Save"}
+                </button>
+                <button type="button" className="btn text-rose" disabled={!!busy || (listing.status === "rejected" && !dirty)} onClick={() => review("reject")}>
+                  {busy === "reject" ? "Rejecting" : "Reject"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-glass"
+                  disabled={!!busy || blocked || (listing.status === "approved" && !dirty)}
+                  title={blocked ? blockedHint : undefined}
+                  aria-describedby={blocked ? "action-hint" : undefined}
+                  onClick={() => review("approve")}
+                >
+                  {busy === "approve" ? "Approving" : listing.status === "approved" && !dirty ? "Approved" : "Approve"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={!!busy || !!publishHint}
+                  title={publishHint}
+                  aria-describedby={publishHint ? "action-hint" : undefined}
+                  onClick={() => run("publish", () => api.publish(listing.id))}
+                >
+                  {busy === "publish" ? "Publishing" : "Publish"}
+                </button>
+              </>
+            )}
+          </div>
           </section>
 
           {listing.comps && <CompsTable comps={listing.comps} />}
@@ -384,54 +432,6 @@ function Review({
       </div>
 
 
-      <div className="glass fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 flex flex-wrap items-center justify-center gap-1.5 rounded-3xl! p-1.5 max-sm:[&_:is(.btn,.btn-glass,.btn-primary)]:px-4 sm:inset-x-auto sm:bottom-6 sm:right-[max(1.5rem,calc((100vw-80rem)/2+2.5rem))] sm:rounded-full!">
-        {locked ? (
-          <>
-            <LiveControl listing={listing} />
-            <Link to={`/p/${listing.id}`} className="btn-primary">
-              View published page
-            </Link>
-            <button
-              type="button"
-              className="btn-glass"
-              disabled={!!busy}
-              onClick={() => setConfirmation("unpublish")}
-            >
-              {busy === "unpublish" ? "Unpublishing" : "Unpublish for edits"}
-            </button>
-          </>
-        ) : (
-          <>
-            {dirty && <span className="eyebrow basis-full px-3 py-1 text-center text-ice/80! sm:basis-auto sm:py-0">Unsaved edits</span>}
-            <button type="button" className="btn" disabled={!dirty || !!busy} onClick={() => review("save")}>
-              {busy === "save" ? "Saving" : "Save"}
-            </button>
-            <button type="button" className="btn text-rose" disabled={!!busy || (listing.status === "rejected" && !dirty)} onClick={() => review("reject")}>
-              {busy === "reject" ? "Rejecting" : "Reject"}
-            </button>
-            <button
-              type="button"
-              className="btn-glass"
-              disabled={!!busy || blocked || (listing.status === "approved" && !dirty)}
-              title={blocked ? blockedHint : undefined}
-              aria-describedby={blocked ? "action-hint" : undefined}
-              onClick={() => review("approve")}
-            >
-              {busy === "approve" ? "Approving" : listing.status === "approved" && !dirty ? "Approved" : "Approve"}
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={!!busy || !!publishHint}
-              title={publishHint}
-              aria-describedby={publishHint ? "action-hint" : undefined}
-              onClick={() => run("publish", () => api.publish(listing.id))}
-            >
-              {busy === "publish" ? "Publishing" : "Publish"}
-            </button>
-          </>
-        )}
-      </div>
       <p id="action-hint" className="sr-only">
         {publishHint ?? (blocked ? blockedHint : "")}
       </p>

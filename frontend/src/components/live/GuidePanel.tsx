@@ -12,7 +12,7 @@ type Props = { listingId: string; room: LiveRoom; rooms: LiveRoom[]; styleId: st
 export function PoweredBy({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-1.5 text-micro tracking-wide text-ivory/65 ${className}`}>
-      <img src={museLogo} alt="Muse" className="h-3 w-auto shrink-0" />
+      <span className="inline-flex shrink-0 items-center rounded-[4px] bg-white px-1 py-0.5"><img src={museLogo} alt="Muse" className="h-3 w-auto" /></span>
       Powered by Muse Spark 1.3
     </span>
   );

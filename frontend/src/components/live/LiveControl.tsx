@@ -125,13 +125,13 @@ export default function LiveControl({ listing }: { listing: Listing }) {
 
   if (s.status === "ready")
     return (
-      <span className="flex flex-wrap items-center justify-center gap-1.5 max-sm:static sm:relative">
+      <span className="flex flex-wrap items-center justify-center gap-1.5 max-sm:static sm:relative lg:static">
         {confirmPrepare && <ConfirmDialog message="Re-run full Live-In-It preparation? The current experience will be unavailable while it runs and could be replaced if preparation fails. Cached results may be reused; new Meta calls may use credits." onCancel={() => setConfirmPrepare(false)} onConfirm={() => { setConfirmPrepare(false); void prepare(); }} />}
-        {prep && <JobTerminal title="Live-In-It preparation" job={prep.job} events={prep.events} onClose={() => setPrep(null)} className="absolute bottom-full mb-3 h-72 max-sm:inset-x-0 sm:right-0 sm:w-[min(34rem,calc(100vw-3rem))]" />}
+        {prep && <JobTerminal title="Live-In-It preparation" job={prep.job} events={prep.events} onClose={() => setPrep(null)} className="absolute bottom-full mb-3 h-72 max-sm:inset-x-0 sm:right-0 sm:w-[min(34rem,calc(100vw-3rem))] lg:left-0 lg:right-auto" />}
         <Link to={`/p/${listingId}/live`} className="btn-glass">Enter residence</Link>
-        <details className="group max-sm:static sm:relative">
+        <details className="group max-sm:static sm:relative lg:static">
           <summary className="btn-glass cursor-pointer list-none [&::-webkit-details-marker]:hidden">More <span aria-hidden className="inline-block text-ivory/60 transition group-open:rotate-180">⌃</span></summary>
-          <div className={`absolute bottom-full mb-3 grid max-h-[min(32rem,75dvh)] grid-cols-1 gap-4 overflow-auto rounded-2xl bg-night/95 p-4 shadow-xl ring-1 ring-ivory/20 backdrop-blur-xl max-sm:inset-x-0 sm:right-0 ${styleRun ? "sm:w-[min(48rem,calc(100vw-3rem))] sm:grid-cols-[18rem_minmax(0,1fr)] sm:overflow-hidden" : "sm:w-80"}`}>
+          <div className={`absolute bottom-full mb-3 grid max-h-[min(32rem,75dvh)] grid-cols-1 gap-4 overflow-auto rounded-2xl bg-night/95 p-4 shadow-xl ring-1 ring-ivory/20 backdrop-blur-xl max-sm:inset-x-0 sm:right-0 lg:left-0 lg:right-auto ${styleRun ? "sm:w-[min(48rem,calc(100vw-3rem))] sm:grid-cols-[18rem_minmax(0,1fr)] sm:overflow-hidden" : "sm:w-80"}`}>
             <div className="min-w-0 sm:overflow-y-auto">
             <button type="button" onClick={() => setConfirmPrepare(true)} className="block w-full rounded-lg px-2 py-2 text-left text-sm text-ivory/85 transition hover:bg-ivory/[0.05] hover:text-ivory pointer-coarse:py-3">
               Re-run preparation
@@ -158,8 +158,8 @@ export default function LiveControl({ listing }: { listing: Listing }) {
 
   if (s.status === "preparing")
     return (
-      <span className="max-sm:static sm:relative">
-        {prep && <JobTerminal title="Live-In-It preparation" job={prep.job} events={prep.events} className="absolute bottom-full mb-3 h-72 max-sm:inset-x-0 sm:right-0 sm:w-[min(34rem,calc(100vw-3rem))]" />}
+      <span className="max-sm:static sm:relative lg:static">
+        {prep && <JobTerminal title="Live-In-It preparation" job={prep.job} events={prep.events} className="absolute bottom-full mb-3 h-72 max-sm:inset-x-0 sm:right-0 sm:w-[min(34rem,calc(100vw-3rem))] lg:left-0 lg:right-auto" />}
         <button type="button" className="btn-glass" disabled aria-live="polite">
           Preparing · {Math.round(s.progress)}%
         </button>
@@ -177,8 +177,8 @@ export default function LiveControl({ listing }: { listing: Listing }) {
     );
 
   return (
-    <span className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 max-sm:static sm:relative">
-      {prep && <JobTerminal title="Live-In-It preparation" job={prep.job} events={prep.events} onClose={() => setPrep(null)} className="absolute bottom-full mb-3 h-72 max-sm:inset-x-0 sm:right-0 sm:w-[min(34rem,calc(100vw-3rem))]" />}
+    <span className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 max-sm:static sm:relative lg:static">
+      {prep && <JobTerminal title="Live-In-It preparation" job={prep.job} events={prep.events} onClose={() => setPrep(null)} className="absolute bottom-full mb-3 h-72 max-sm:inset-x-0 sm:right-0 sm:w-[min(34rem,calc(100vw-3rem))] lg:left-0 lg:right-auto" />}
       {s.status === "failed" && s.error && <span className="max-w-[18rem] px-2 text-xs leading-snug text-rose">{s.error}</span>}
       <button type="button" className="btn-glass" title={s.error || undefined} onClick={prepare}>
         Prepare Live-In-It
