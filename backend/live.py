@@ -14,6 +14,7 @@ write to the non-served staged_raw dir, SAM face check, blur, then publish
 under media_dir. Meta calls trace into live["trace"], never listing["trace"].
 """
 
+import hashlib
 import io
 import json
 import logging
@@ -110,6 +111,104 @@ def _save_checked(data: bytes, pre_path: Path, dest_path: Path, meta, trace: lis
     if faces:
         privacy.blur_regions(img, faces)
     img.save(dest_path, "JPEG", quality=90)
+
+
+# ---------- style image versions ----------
+# Every generated style image is kept as a numbered version (room_1_coastal_v1.jpg, v2, ...);
+# a rerun adds a version and never overwrites one. History lives in listing["live"]["versions"],
+# keyed "room:style", and is carried over when a re-prepare replaces the live block. Exactly one
+# version per key is current: the one the live room shows.
+
+VERSION_FIELDS = ("label", "image", "source", "available", "concept", "error", "attempts", "geometry",
+                  "concept_geometry", "structure", "drift", "pieces", "align", "mask", "mask_changed")
+
+
+def _versions(listing: dict[str, Any], room_id: str, style_id: str) -> list[dict[str, Any]]:
+    return listing.setdefault("live", {}).setdefault("versions", {}).setdefault(f"{room_id}:{style_id}", [])
+
+
+def _next_version(listing: dict[str, Any], room_id: str, style_id: str) -> int:
+    return 1 + max((v["version"] for v in _versions(listing, room_id, style_id)), default=0)
+
+
+def _preset_version(style_id: str) -> str:
+    return hashlib.sha1(stage.STYLE_PRESETS[style_id]["description"].encode()).hexdigest()[:10]
+
+
+def _record_version(listing: dict[str, Any], room_id: str, style_id: str, entry: dict[str, Any], *,
+                    created_by: str, model: str | None, version: int | None = None, attempt: int | None = None,
+                    broker_approved: bool = False, created_at: str | None = None) -> dict[str, Any]:
+    """Add (or, for an image already on record, refresh) one version of a room's style image."""
+    versions = _versions(listing, room_id, style_id)
+    snapshot = {k: entry[k] for k in VERSION_FIELDS if k in entry}
+    checker = {k: entry[k] for k in ("geometry", "structure", "drift", "concept_geometry") if entry.get(k)}
+    existing = next((v for v in versions if v["image"] == entry.get("image")), None)
+    if existing is not None:
+        existing.update(entry=snapshot, checker=checker, available=bool(entry.get("available")))
+        return existing
+    record = {
+        "version": version or _next_version(listing, room_id, style_id),
+        "image": entry.get("image"),
+        "created_at": created_at or db.now(),
+        "created_by": created_by,
+        "model": model,
+        "preset_id": style_id,
+        "preset_version": _preset_version(style_id) if style_id in stage.STYLE_PRESETS else None,
+        "attempt": attempt,
+        "checker": checker,
+        "available": bool(entry.get("available")),
+        "broker_approved": broker_approved,
+        # Verified object counts come from To-do 3 tracking; until then no count is claimed.
+        "objects_added_verified": None,
+        "is_current": False,
+        "entry": snapshot,
+    }
+    versions.append(record)
+    return record
+
+
+def _set_current(listing: dict[str, Any], room_id: str, style_id: str, image: str | None) -> None:
+    for v in _versions(listing, room_id, style_id):
+        v["is_current"] = image is not None and v["image"] == image
+
+
+def _capture_legacy(listing: dict[str, Any]) -> None:
+    """Images prepared before versioning existed become a version before anything replaces them.
+    Already-overwritten images can't be recovered; this only protects what is still on disk."""
+    block = listing.get("live") or {}
+    for room in block.get("rooms") or []:
+        for style_id, entry in (room.get("styles") or {}).items():
+            image = entry.get("image")
+            if not image or _versions(listing, room["id"], style_id) or not (config.settings.media_dir / image).is_file():
+                continue
+            _record_version(listing, room["id"], style_id, entry, created_by="before versioning",
+                            model=None, broker_approved=entry.get("source") == "stage1",
+                            created_at=block.get("prepared_at"))
+            _set_current(listing, room["id"], style_id, image)
+
+
+def public_versions(listing: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    return {key: [{k: v for k, v in record.items() if k != "entry"} for record in records]
+            for key, records in ((listing.get("live") or {}).get("versions") or {}).items()}
+
+
+def use_version(listing: dict[str, Any], room_id: str, style_id: str, version: int) -> dict[str, Any]:
+    """Make an earlier (or later) version the one the residence shows. Selection only: no Meta
+    calls, nothing regenerated, every other version kept."""
+    block = listing.get("live") or {}
+    if listing.get("status") != "published" or block.get("status") != "ready":
+        raise listings.ReviewError(409, "A published, prepared residence is required.")
+    room = next((r for r in block.get("rooms") or [] if r.get("id") == room_id), None)
+    record = next((v for v in _versions(listing, room_id, style_id) if v["version"] == version), None)
+    if room is None or record is None:
+        raise listings.ReviewError(404, "Version not found.")
+    if not record["available"]:
+        raise listings.ReviewError(409, "This version didn't pass the checks, so it can't be shown.")
+    if not record["image"] or not (config.settings.media_dir / record["image"]).is_file():
+        raise listings.ReviewError(409, "This version's image is missing.")
+    room.setdefault("styles", {})[style_id] = {**room["styles"].get(style_id, {}), **record["entry"]}
+    _set_current(listing, room_id, style_id, record["image"])
+    return db.save_listing(listing)
 
 
 # ---------- per-room preparation ----------
@@ -254,7 +353,8 @@ def _pieces(path: Path, meta, trace: list, room_id: str, style: str) -> list[dic
 def _cascade_prep(room_id: str, style_id: str, lid: str, before_path: Path, plate_path: Path,
                   plate_align: dict[str, float], style_path: Path,
                   align: dict[str, float] | None = None) -> dict[str, Any]:
-    """Align the style image to the filmed frame and cut its furniture mask (no model calls)."""
+    """Align the style image to the filmed frame and cut its furniture mask (no model calls).
+    `style_id` may carry the version (e.g. "coastal_v2") so each version keeps its own mask."""
     align = align or cascade.align(before_path, style_path)
     rel = f"live/{lid}/{room_id}_{style_id}_mask.png"
     info = cascade.furniture_mask(before_path, plate_path, plate_align, style_path, align,
@@ -310,6 +410,8 @@ def _prepare_room(listing: dict[str, Any], room: dict[str, Any], meta, trace: li
         out["plate_align"] = cascade.align(before_path, plate_path)
 
     dst_windows: dict[str, list] = {}
+    model = getattr(meta, "image_model", meta_client.DEFAULT_MODELS["image"])
+    job_label = f"live job {listing.get('live', {}).get('job_id')}"
     for style_id, preset in stage.STYLE_PRESETS.items():
         entry: dict[str, Any] = {
             "label": preset["label"], "image": None, "source": "live",
@@ -320,9 +422,11 @@ def _prepare_room(listing: dict[str, Any], room: dict[str, Any], meta, trace: li
         # The Stage 1 image is the approved one and is never regenerated. A generated
         # style that drifts gets one retry with a stricter prompt, then stays unavailable.
         prompts = [None] if reuse else [stage.prompt_for(style_id), stage.prompt_for(style_id) + RETRY_RULES]
+        record: dict[str, Any] | None = None
         try:
             for prompt in prompts:
                 entry["attempts"] += 1
+                version = _next_version(listing, room["id"], style_id)
                 if prompt is None:
                     entry["image"] = room["after"]
                     entry["source"] = "stage1"
@@ -331,7 +435,7 @@ def _prepare_room(listing: dict[str, Any], room: dict[str, Any], meta, trace: li
                         before_path, prompt, trace=trace, purpose="live.image.stage",
                         target={"room": room["id"], "style": style_id, "attempt": entry["attempts"]},
                     )
-                    filename = f"{room['id']}_{style_id}.jpg"
+                    filename = f"{room['id']}_{style_id}_v{version}.jpg"
                     _save_checked(data, raw_dir / filename, live_dir / filename, meta, trace,
                                   {"room": room["id"], "style": style_id})
                     entry["image"] = f"live/{lid}/{filename}"
@@ -346,15 +450,23 @@ def _prepare_room(listing: dict[str, Any], room: dict[str, Any], meta, trace: li
                     and entry["geometry"]["status"] == "pass"
                     and entry["structure"]["status"] != "fail"
                 )
+                stage1 = prompt is None
+                record = _record_version(
+                    listing, room["id"], style_id, entry, version=version, attempt=entry["attempts"],
+                    created_by="stage 1 (broker-approved)" if stage1 else job_label,
+                    model=model, broker_approved=stage1)
                 if entry["available"]:
                     break
             if entry["available"]:
                 entry["pieces"] = _pieces(style_path, meta, trace, room["id"], style_id)
-                entry.update(_cascade_prep(room["id"], style_id, lid, before_path, plate_path,
-                                           out["plate_align"], style_path, entry["align"]))
+                entry.update(_cascade_prep(room["id"], f"{style_id}_v{record['version']}", lid, before_path,
+                                           plate_path, out["plate_align"], style_path, entry["align"]))
+                _record_version(listing, room["id"], style_id, entry, created_by=job_label, model=model)
         except meta_client.MetaError as exc:
             entry["available"] = False
             entry["error"] = str(exc)
+        if entry["image"]:
+            _set_current(listing, room["id"], style_id, entry["image"])
         out["styles"][style_id] = entry
 
     # Window: prefer the source frame's structure box, else the largest window
@@ -618,8 +730,11 @@ def request(listing: dict[str, Any], residence: str | None = None) -> str:
         raise listings.ReviewError(422, gate["reason"])
     if (listing.get("live") or {}).get("status") == "preparing":
         raise listings.ReviewError(409, "Live-In-It is already being prepared.")
+    _capture_legacy(listing)
+    versions = (listing.get("live") or {}).get("versions") or {}
     job_id = db.new_id("job")
     listing["live"] = {
+        "versions": versions,
         "residence": residence,
         "status": "preparing",
         "job_id": job_id,
@@ -836,18 +951,23 @@ def rerun_style(job: dict[str, Any]) -> None:
     missing = [concept for concept in primary if not any(p["concept"] == concept for p in pieces)]
     if missing:
         raise ValueError(f"Furniture not detected: {', '.join(missing)}; existing style retained.")
-    rel = f"live/{listing['id']}/{room_id}_{style_id}_{job['id']}.jpg"
-    dest = config.settings.media_dir / rel
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(candidate.read_bytes())
     current = db.get_listing(listing["id"])
     target = next((r for r in (current or {}).get("live", {}).get("rooms", []) if r.get("id") == room_id), None)
     if not target or current.get("status") != "published":
-        dest.unlink(missing_ok=True)
         raise ValueError("Listing changed during preparation; result not attached.")
+    _capture_legacy(current)
+    version = _next_version(current, room_id, style_id)
+    rel = f"live/{listing['id']}/{room_id}_{style_id}_v{version}.jpg"
+    dest = config.settings.media_dir / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(candidate.read_bytes())
     target["styles"][style_id] = {**target["styles"].get(style_id, {}), "label": stage.STYLE_PRESETS[style_id]["label"], "image": rel, "source": "live", "available": True, "concept": is_concept,
                                   "error": None, "geometry": geometry, "concept_geometry": concept_geometry if is_concept else None, "structure": structure, "pieces": pieces,
                                   "align": align, "drift": drift_record, "mask": None}
+    _record_version(current, room_id, style_id, target["styles"][style_id], version=version,
+                    created_by=f"style rerun job {job['id']}",
+                    model=getattr(meta, "image_model", meta_client.DEFAULT_MODELS["image"]))
+    _set_current(current, room_id, style_id, rel)
     current["live"].setdefault("trace", []).extend(trace)
     current["live"]["calls"] = current["live"].get("calls", 0) + meta.calls
     db.save_listing(current)

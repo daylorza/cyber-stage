@@ -376,6 +376,27 @@ def rerun_live_style(listing_id: str, room_id: str, style_id: str) -> dict[str, 
     return {"listing_id": listing_id, "job_id": job_id}
 
 
+@router.get("/listings/{listing_id}/live/versions")
+def live_style_versions(listing_id: str) -> dict[str, Any]:
+    """Every kept version of every room's style image, keyed "room:style"."""
+    return {"versions": live.public_versions(_listing_or_404(listing_id))}
+
+
+@router.post("/listings/{listing_id}/live/rooms/{room_id}/styles/{style_id}/versions/{version}/use")
+def use_live_style_version(listing_id: str, room_id: str, style_id: str, version: int) -> dict[str, Any]:
+    """Show a kept version instead of the current one. Selection only: no Meta calls."""
+    listing = _listing_or_404(listing_id)
+    with db.connect() as conn:
+        if conn.execute("SELECT 1 FROM jobs WHERE listing_id = ? AND status IN ('queued', 'running')",
+                        (listing_id,)).fetchone():
+            raise HTTPException(409, "Wait for the current job to finish.")
+    try:
+        listing = live.use_version(listing, room_id, style_id, version)
+    except listings.ReviewError as exc:
+        raise HTTPException(exc.status_code, str(exc)) from None
+    return {"versions": live.public_versions(listing)}
+
+
 @router.get("/listings/{listing_id}/live")
 def get_live(listing_id: str) -> dict[str, Any]:
     listing = _listing_or_404(listing_id)

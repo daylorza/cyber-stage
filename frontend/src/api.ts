@@ -361,6 +361,24 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+type CheckRecord = { status: string; reason?: string; value?: number };
+/** One kept version of a room's style image. `objects_added_verified` stays null until verified tracking exists. */
+export type StyleVersion = {
+  version: number;
+  image: string | null;
+  created_at: string;
+  created_by: string;
+  model: string | null;
+  preset_id: string;
+  preset_version: string | null;
+  attempt: number | null;
+  checker: { geometry?: CheckRecord; structure?: CheckRecord; drift?: CheckRecord; concept_geometry?: CheckRecord };
+  available: boolean;
+  broker_approved: boolean;
+  objects_added_verified: number | null;
+  is_current: boolean;
+};
+
 const json = (body: unknown): RequestInit => ({
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -394,6 +412,9 @@ export const api = {
   settings: () => request<{ blocking_checks: boolean }>("/settings"),
   reprocess: (id: string) => request<{ listing_id: string; job_id: string }>(`/listings/${id}/reprocess`, { method: "POST" }),
   live: (id: string) => request<LivePayload>(`/listings/${id}/live`),
+  liveVersions: (id: string) => request<{ versions: Record<string, StyleVersion[]> }>(`/listings/${id}/live/versions`),
+  useLiveVersion: (id: string, room: string, style: string, version: number) =>
+    request<{ versions: Record<string, StyleVersion[]> }>(`/listings/${id}/live/rooms/${encodeURIComponent(room)}/styles/${encodeURIComponent(style)}/versions/${version}/use`, { method: "POST" }),
   rerunLiveStyle: (id: string, room: string, style: string) => request<{ job_id: string }>(`/listings/${id}/live/rooms/${encodeURIComponent(room)}/styles/${encodeURIComponent(style)}/rerun`, { method: "POST" }),
   /** `residence` only links a Miami listing to the seeded home-page residence; any listing can be prepared. */
   prepareLive: (id: string, residence: string | null = null) =>
