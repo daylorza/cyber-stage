@@ -637,6 +637,21 @@ def request(listing: dict[str, Any], residence: str | None = None) -> str:
     return job_id
 
 
+def auto_prepare(listing: dict[str, Any]) -> dict[str, Any]:
+    """Queue the same preparation job right after publish. Never blocks publish: an ineligible
+    listing or a refused request is recorded on the listing and the publish still stands."""
+    if (listing.get("live") or {}).get("status") in {"preparing", "ready"}:
+        return listing
+    try:
+        request(listing)
+    except listings.ReviewError as exc:
+        log.info("auto-prepare skipped for %s: %s", listing["id"], exc)
+        listing["live_auto"] = {"queued": False, "reason": str(exc), "at": db.now()}
+        return db.save_listing(listing)
+    listing["live_auto"] = {"queued": True, "reason": None, "at": db.now()}
+    return db.save_listing(listing)
+
+
 def _seed_entry(residence_id: str | None) -> dict[str, Any] | None:
     if not residence_id:
         return None

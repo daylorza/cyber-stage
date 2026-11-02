@@ -18,6 +18,9 @@ class Settings:
     max_video_seconds: int = field(default_factory=lambda: int(_env("VRE_MAX_VIDEO_SECONDS", "180")))
     # Demo default: checks run and flag, but only block Approve/Publish when this is on.
     blocking_checks: bool = field(default_factory=lambda: _env("VRE_BLOCKING_CHECKS", "0") == "1")
+    # Queue Live-In-It preparation the moment a listing is published. Off by default: each run
+    # spends Meta calls (~33 per room), so it stays off until credits are confirmed.
+    auto_prepare_live: bool = field(default_factory=lambda: _env("VRE_AUTO_PREPARE_LIVE", "0") == "1")
     # Videos are sampled over their WHOLE length (max_video_seconds bounds the count);
     # this caps photo uploads only.
     max_photos: int = 40

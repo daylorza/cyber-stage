@@ -22,6 +22,7 @@ export default function LiveControl({ listing }: { listing: Listing }) {
   const [s, setS] = useState<State>({ status: "unknown", error: "", progress: 0, jobId: null });
   // Terminal logs: the latest polled job and the console's own events, per kind of job.
   const [prep, setPrep] = useState<{ job: Job | null; events: JobEvent[] } | null>(null);
+  const [logOpen, setLogOpen] = useState(true);
   const [styleRun, setStyleRun] = useState<{ title: string; job: Job | null; events: JobEvent[] } | null>(null);
   const lastPrep = useRef<Job | null>(null);
   const lastStyle = useRef<Job | null>(null);
@@ -159,8 +160,8 @@ export default function LiveControl({ listing }: { listing: Listing }) {
   if (s.status === "preparing")
     return (
       <span className="max-sm:static sm:relative lg:static">
-        {prep && <JobTerminal title="Live-In-It preparation" job={prep.job} events={prep.events} className="absolute bottom-full mb-3 h-72 max-sm:inset-x-0 sm:right-0 sm:w-[min(34rem,calc(100vw-3rem))] lg:left-0 lg:right-auto" />}
-        <button type="button" className="btn-glass" disabled aria-live="polite">
+        {prep && logOpen && <JobTerminal title="Live-In-It preparation" job={prep.job} events={prep.events} onClose={() => setLogOpen(false)} className="absolute bottom-full mb-3 h-72 max-sm:inset-x-0 sm:right-0 sm:w-[min(34rem,calc(100vw-3rem))] lg:left-0 lg:right-auto" />}
+        <button type="button" className="btn-glass" aria-live="polite" aria-expanded={logOpen} title={logOpen ? "Hide the preparation log" : "Show the preparation log"} onClick={() => setLogOpen((open) => !open)}>
           Preparing · {Math.round(s.progress)}%
         </button>
       </span>
@@ -181,7 +182,7 @@ export default function LiveControl({ listing }: { listing: Listing }) {
       {prep && <JobTerminal title="Live-In-It preparation" job={prep.job} events={prep.events} onClose={() => setPrep(null)} className="absolute bottom-full mb-3 h-72 max-sm:inset-x-0 sm:right-0 sm:w-[min(34rem,calc(100vw-3rem))] lg:left-0 lg:right-auto" />}
       {s.status === "failed" && s.error && <span className="max-w-[18rem] px-2 text-xs leading-snug text-rose">{s.error}</span>}
       <button type="button" className="btn-glass" title={s.error || undefined} onClick={prepare}>
-        Prepare Live-In-It
+        {s.status === "failed" ? "Retry preparation" : "Prepare Live-In-It"}
       </button>
     </span>
   );
