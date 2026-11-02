@@ -52,7 +52,7 @@ The brief asked for a visual/structural pass only: no layout changes, no new pat
 - **Uniform cards:** one-line title, price on the right, one fact line, and notes as a tag on the photo. The grid is 3 columns at `xl`, with 16:10 photos.
 - **Phones:** a compact hero, a sticky city + sort bar under a parchment header band, and photo-left list rows.
 
-### New walkthrough (`/new`)
+### New stage (`/new`)
 - **Form:** one list, kept deliberately.
 - **Upload area:** filming tips; previews with the first frame, duration and size; a dashed "drop more" area. The box stretches to the form's height.
 - **Staging styles:** image cards using the same room in each style (`public/styles/*.jpg`).

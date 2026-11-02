@@ -74,7 +74,7 @@ export default function Inventory() {
           <small className="r-bottom">Walkability</small>
           <small className="r-left">Location</small>
         </div>
-        <Link to="/new" className="inventory-new group">New walkthrough <span aria-hidden="true" className="transition group-hover:translate-x-1">→</span></Link>
+        <Link to="/new" className="inventory-new group">New stage <span aria-hidden="true" className="transition group-hover:translate-x-1">→</span></Link>
       </section>
       <section aria-labelledby="inventory-heading">
         <div className="inventory-toolbar">
@@ -93,7 +93,7 @@ export default function Inventory() {
         </div>
         {error && <p role="alert" className="py-10 text-brick">{error}</p>}
         {items === null && !error && <p className="inventory-eyebrow py-10">Loading inventory</p>}
-        {items && (visible.length ? <ul className={layout === "grid" ? "inventory-grid grid grid-cols-1 gap-x-8 gap-y-12 max-md:gap-y-5 md:grid-cols-2 xl:grid-cols-3" : "inventory-list grid grid-cols-1 gap-y-10 max-md:gap-y-5"}>{visible.map((item) => <ListingCard key={item.id} item={item} broker={broker} list={layout === "list"} />)}</ul> : <div className="py-16"><p className="font-serif text-3xl">{city ? "No residences in this city." : "Your collection starts here."}</p><p className="mt-3 text-taupe">Start with a phone walkthrough to bring a space to life.</p><Link to="/new" className="mt-6 inline-flex min-h-11 items-center text-umber transition hover:text-ink">New walkthrough →</Link></div>)}
+        {items && (visible.length ? <ul className={layout === "grid" ? "inventory-grid grid grid-cols-1 gap-x-8 gap-y-12 max-md:gap-y-5 md:grid-cols-2 xl:grid-cols-3" : "inventory-list grid grid-cols-1 gap-y-10 max-md:gap-y-5"}>{visible.map((item) => <ListingCard key={item.id} item={item} broker={broker} list={layout === "list"} />)}</ul> : <div className="py-16"><p className="font-serif text-3xl">{city ? "No residences in this city." : "Your collection starts here."}</p><p className="mt-3 text-taupe">Start with a phone walkthrough to bring a space to life.</p><Link to="/new" className="mt-6 inline-flex min-h-11 items-center text-umber transition hover:text-ink">New stage →</Link></div>)}
       </section>
     </div>
   );
