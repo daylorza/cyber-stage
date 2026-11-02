@@ -37,7 +37,7 @@ function EnterResidence({ id, page }: { id: string; page: Page }) {
 }
 
 /** The walkthrough, played whole and in order: the page itself. */
-function Walkthrough({ page, rooms }: { page: Page; rooms: Room[] }) {
+function Walkthrough({ page, rooms, poster }: { page: Page; rooms: Room[]; poster?: string }) {
   const video = page.video!;
   const ref = useRef<HTMLVideoElement>(null);
   const [now, setNow] = useState(0);
@@ -56,11 +56,11 @@ function Walkthrough({ page, rooms }: { page: Page; rooms: Room[] }) {
       <video
         ref={ref}
         src={media(video.path)}
-        autoPlay
+        poster={poster ? media(poster) : undefined}
         muted
         playsInline
         controls
-        preload="auto"
+        preload="metadata"
         onLoadedData={(e) => {
           e.currentTarget.defaultPlaybackRate = 1;
           e.currentTarget.playbackRate = 1;
@@ -117,6 +117,8 @@ export default function PublishedPage() {
   const { id = "" } = useParams();
   const [page, setPage] = useState<Page | null>(null);
   const [error, setError] = useState("");
+  const enterRef = useRef<HTMLDivElement>(null);
+  const [enterVisible, setEnterVisible] = useState(true);
 
   useEffect(() => {
     api.page(id).then(setPage).catch((e: Error) => setError(e.message));
@@ -124,6 +126,14 @@ export default function PublishedPage() {
 
   useEffect(() => {
     if (page) document.title = page.title;
+  }, [page]);
+
+  useEffect(() => {
+    const el = enterRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => setEnterVisible(entry.isIntersecting));
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [page]);
 
   if (!page)
@@ -138,9 +148,7 @@ export default function PublishedPage() {
   const price =
     page.price_display ?? (range ? `Guide ${money(range.low, range.currency)} – ${money(range.high, range.currency)}` : null);
   const timed = rooms.filter((r) => r.t != null).sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
-  const backdrop = rooms.find((r) => r.main)?.before ?? rooms[0]?.before;
   const heroSrc = rooms[0]?.after ?? rooms[0]?.before;
-  const portrait = page.video ? page.video.height > page.video.width : false;
 
   const details = (
     <>
@@ -165,7 +173,7 @@ export default function PublishedPage() {
           </span>
         )}
       </div>
-      <div className="mt-10">
+      <div ref={enterRef} className="mt-10">
         <EnterResidence id={id} page={page} />
       </div>
     </>
@@ -175,32 +183,12 @@ export default function PublishedPage() {
     <div>
       <SiteHeader />
 
-      {page.video ? (
-        <section className="relative overflow-hidden">
-          {backdrop && (
-            <img
-              src={media(backdrop)}
-              alt=""
-              aria-hidden
-              className="absolute inset-0 h-full w-full scale-110 object-cover opacity-30 blur-3xl"
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-b from-night/40 via-night/70 to-night" />
-          <div
-            className={`page-x relative mx-auto grid min-h-dvh max-w-7xl grid-cols-1 items-center gap-12 pb-16 pt-28 sm:pt-32 ${portrait ? "lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-20" : ""}`}
-          >
-            <Walkthrough page={page} rooms={timed} />
-            <div>{details}</div>
-          </div>
-        </section>
-      ) : (
-        <section className="relative min-h-[88dvh] overflow-hidden">
-          {heroSrc && <img src={media(heroSrc)} alt="" className="absolute inset-0 h-full w-full object-cover" />}
-          <div className="absolute inset-0 bg-gradient-to-t from-night via-night/55 to-night/10" />
-          <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-night/55 to-transparent" />
-          <div className="page-x relative mx-auto flex min-h-[88dvh] max-w-7xl flex-col justify-end pb-16 pt-28">{details}</div>
-        </section>
-      )}
+      <section className="relative min-h-[88dvh] overflow-hidden">
+        {heroSrc && <img src={media(heroSrc)} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+        <div className="absolute inset-0 bg-gradient-to-t from-night via-night/55 to-night/10" />
+        <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-night/55 to-transparent" />
+        <div className="page-x relative mx-auto flex min-h-[88dvh] max-w-7xl flex-col justify-center pb-16 pt-28">{details}</div>
+      </section>
 
       <main className="page-x mx-auto max-w-7xl space-y-16 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-12 sm:space-y-24">
         <section className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
@@ -254,8 +242,22 @@ export default function PublishedPage() {
             </section>
           ))}
 
+        {page.video && (
+          <section aria-labelledby="walkthrough-heading">
+            <h2 id="walkthrough-heading" className="eyebrow mb-5">The walkthrough, as filmed</h2>
+            <Walkthrough page={page} rooms={timed} poster={heroSrc ?? undefined} />
+          </section>
+        )}
+
         <p className="eyebrow">Published {shortDate(page.published_at)}</p>
       </main>
+      {page.live?.status === "ready" && (
+        <div
+          className={`fixed inset-x-0 bottom-0 z-30 flex justify-center bg-gradient-to-t from-night via-night/85 to-transparent px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-8 transition duration-300 sm:hidden ${enterVisible ? "pointer-events-none invisible translate-y-4 opacity-0" : "visible translate-y-0 opacity-100"}`}
+        >
+          <EnterResidence id={id} page={page} />
+        </div>
+      )}
     </div>
   );
 }
