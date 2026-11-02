@@ -17,7 +17,7 @@ export function mobileActions(_styleId: string, roomCount: number, more: boolean
 }
 
 export function cleanGuideText(text: string): string {
-  const disclaimer = 'Cyberpunk concept · AI-imagined, not a verified depiction of the property.';
+  const disclaimer = 'Cyberpunk concept · AI-imagined, not a verified depiction of this home.';
   let found = false;
   return text.replace(/(?:want|would you like|shall i|i recommend|you should|what i can do)[^.!?\n]*(?:coastal|cyberpunk|minimal|modern luxury)[^.!?\n]*[?.!]?/gi, '\nWould you like to see the next style?').replace(/https?:\/\/\S+/gi, '').replace(/\[(?:fact:[\w-]+|o_[\w-]+)\]/gi, '').replace(/\*+/g, '').split('\n').map(line => {
     if (/cyberpunk concept\s*·\s*ai-imagined/i.test(line)) {

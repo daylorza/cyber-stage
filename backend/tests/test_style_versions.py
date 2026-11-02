@@ -34,7 +34,7 @@ def test_prepare_records_one_current_version_per_room_style(client):
             assert r["preset_id"] == key.split(":")[1] and r["preset_version"]
             assert r["created_at"] and r["created_by"]
             assert r["checker"]["geometry"]["status"] == "pass"
-            assert r["objects_added_verified"] is None, "no verified count until To-do 3"
+            assert isinstance(r["objects_added_verified"], int), "To-do 3 fills the verified count"
             assert "entry" not in r
     stage1 = found["room_1:modern-luxury"][0]
     assert stage1["broker_approved"] is True and stage1["created_by"] == "stage 1 (broker-approved)"

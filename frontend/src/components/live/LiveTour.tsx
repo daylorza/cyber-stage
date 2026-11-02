@@ -557,7 +557,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
     );
   const styleNotes = inRoom && (
     <>
-      {styleId === "2142" && <p>Cyberpunk concept · AI-imagined, not a verified depiction of the property</p>}
+      {styleId === "2142" && <p>Cyberpunk concept · AI-imagined, not a verified depiction of this home</p>}
       {fellBack && styleId && <p>{chosenLabel} isn't available in this room · showing {styleLabel}</p>}
       {!styleId && chosen !== "original" && <p>Staging isn't available for this room</p>}
     </>
@@ -772,7 +772,7 @@ export default function LiveTour({ payload }: { payload: LivePayload }) {
             <p className="eyebrow mt-1.5 text-ivory/55!" aria-live="polite">
               {caption}
             </p>
-            {inRoom && styleId === "2142" && <p className="eyebrow mt-1.5 max-w-xs normal-case tracking-wide text-ivory/70!">Cyberpunk concept · AI-imagined, not a verified depiction of the property</p>}
+            {inRoom && styleId === "2142" && <p className="eyebrow mt-1.5 max-w-xs normal-case tracking-wide text-ivory/70!">Cyberpunk concept · AI-imagined, not a verified depiction of this home</p>}
             {inRoom && fellBack && styleId && (
               <p className="eyebrow mt-1.5 text-ivory/60!">
                 {chosenLabel} isn't available in this room · showing {styleLabel}

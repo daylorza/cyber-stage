@@ -64,6 +64,7 @@ PIECE_DEDUPE_IOU = 0.6
 COFFEE_FALLBACK_FOCUS = [0.3, 0.5, 0.7, 0.8]
 STRUCTURE_CONCEPTS = ("window", "door")
 SAM_WORKERS = 4
+STYLE_WORKERS = 4  # To-do 15: styles in one room are independent; prepare them concurrently.
 
 
 # ---------- small geometry/box helpers ----------
@@ -145,6 +146,12 @@ def _record_version(listing: dict[str, Any], room_id: str, style_id: str, entry:
     existing = next((v for v in versions if v["image"] == entry.get("image")), None)
     if existing is not None:
         existing.update(entry=snapshot, checker=checker, available=bool(entry.get("available")))
+        if entry.get("pieces") is not None:
+            # To-do 3: pieces are the SAM-verified objects for this image; no count is
+            # claimed for an image whose pieces were never recorded (unavailable styles
+            # keep None, not a 0).
+            if entry.get("available"):
+                existing["objects_added_verified"] = len(entry["pieces"])
         return existing
     record = {
         "version": version or _next_version(listing, room_id, style_id),
@@ -158,8 +165,8 @@ def _record_version(listing: dict[str, Any], room_id: str, style_id: str, entry:
         "checker": checker,
         "available": bool(entry.get("available")),
         "broker_approved": broker_approved,
-        # Verified object counts come from To-do 3 tracking; until then no count is claimed.
-        "objects_added_verified": None,
+        "objects_added_verified": len(entry["pieces"]) if (entry.get("available")
+                                                           and entry.get("pieces") is not None) else None,
         "is_current": False,
         "entry": snapshot,
     }
@@ -170,6 +177,56 @@ def _record_version(listing: dict[str, Any], room_id: str, style_id: str, entry:
 def _set_current(listing: dict[str, Any], room_id: str, style_id: str, image: str | None) -> None:
     for v in _versions(listing, room_id, style_id):
         v["is_current"] = image is not None and v["image"] == image
+
+
+def _image_hash(path: Path) -> str | None:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
+def _record_tracking(listing: dict[str, Any], room: dict[str, Any], frame: dict[str, Any] | None,
+                     style_id: str, entry: dict[str, Any]) -> None:
+    """To-do 3: durable staged-objects record for one newly prepared image. No Meta calls and
+    no backfill: pieces are the SAM detections already computed for the cascade, base geometry
+    is the Stage 1 source frame's stored structure boxes (recorded once per room), and the key
+    is listing + room + style + image hash. Displayed (n) is the verified count only; an image
+    with no record shows no count. The verifiable request set is the concepts SAM segmented
+    for pieces — preset prose is not structured, so a piece no concept covers is neither
+    verified nor claimed not-found."""
+    image = entry.get("image")
+    if not image:
+        return
+    style_path = config.settings.media_dir / image
+    if not style_path.is_file():
+        return
+    tracking = listing.setdefault("live", {}).setdefault("tracking", {"rooms": {}, "images": {}})
+    rooms = tracking.setdefault("rooms", {})
+    if room["id"] not in rooms:
+        base = None
+        if frame and frame.get("width") and frame.get("height"):
+            size = (frame["width"], frame["height"])
+            base = {"source_frame": frame.get("id"),
+                    "detections": [_norm(b["box"], size)
+                                   for b in ((frame.get("sam") or {}).get("structure") or [])
+                                   if b.get("concept") in STRUCTURE_CONCEPTS
+                                   and isinstance(b.get("box"), list) and len(b["box"]) == 4]}
+        rooms[room["id"]] = {"base_geometry": base}
+    pieces = entry.get("pieces") or []
+    found = {p.get("concept") for p in pieces}
+    objects = [{"concept": p.get("concept"), "status": "verified",
+                "box": p.get("box"), "score": p.get("score")} for p in pieces]
+    objects += [{"concept": concept, "status": "not found"}
+                for concept in FURNITURE_CONCEPTS if concept not in found]
+    image_hash = _image_hash(style_path)
+    tracking.setdefault("images", {})[f"{room['id']}:{style_id}:{image_hash or image}"] = {
+        "listing_id": listing["id"], "room_id": room["id"], "style_id": style_id,
+        "image": image, "image_hash": image_hash,
+        "verified_count": len(pieces), "objects": objects,
+        "requested_concepts": list(FURNITURE_CONCEPTS),
+        "mask": entry.get("mask"), "align": entry.get("align"),
+    }
 
 
 def _capture_legacy(listing: dict[str, Any]) -> None:
@@ -362,6 +419,77 @@ def _cascade_prep(room_id: str, style_id: str, lid: str, before_path: Path, plat
     return {"align": align, "mask": rel if info["usable"] else None, "mask_changed": info["changed"]}
 
 
+def _prepare_style(listing: dict[str, Any], room: dict[str, Any], style_id: str, preset: dict[str, Any],
+                   meta, trace: list, raw_dir: Path, live_dir: Path, base_version: int,
+                   before_path: Path, frame: dict[str, Any] | None, plate_path: Path,
+                   plate_align: dict[str, float]) -> dict[str, Any]:
+    """Prepare one style independently of the other styles (To-do 15). It makes the same
+    Meta calls and produces the same entry as the old sequential loop — including the one
+    stricter-prompt retry when the first attempt is unavailable, which is why a style such as
+    2142 can legitimately be staged twice. It never touches the shared versions list: it
+    returns version records in order and the caller records them on the main thread."""
+    s = config.settings
+    lid = listing["id"]
+    entry: dict[str, Any] = {
+        "label": preset["label"], "image": None, "source": "live",
+        "available": False, "error": None, "attempts": 0,
+        "geometry": None, "structure": None, "pieces": [],
+    }
+    model = getattr(meta, "image_model", meta_client.DEFAULT_MODELS["image"])
+    job_label = f"live job {listing.get('live', {}).get('job_id')}"
+    records: list[dict[str, Any]] = []
+    windows: list = []
+    reuse = style_id == room.get("style") and room.get("after")
+    # The Stage 1 image is the approved one and is never regenerated. A generated
+    # style that drifts gets one retry with a stricter prompt, then stays unavailable.
+    prompts = [None] if reuse else [stage.prompt_for(style_id), stage.prompt_for(style_id) + RETRY_RULES]
+    last_version = base_version
+    try:
+        for prompt in prompts:
+            entry["attempts"] += 1
+            version = base_version + entry["attempts"] - 1
+            last_version = version
+            if prompt is None:
+                entry["image"] = room["after"]
+                entry["source"] = "stage1"
+            else:
+                data = meta.image_stage(
+                    before_path, prompt, trace=trace, purpose="live.image.stage",
+                    target={"room": room["id"], "style": style_id, "attempt": entry["attempts"]},
+                )
+                filename = f"{room['id']}_{style_id}_v{version}.jpg"
+                _save_checked(data, raw_dir / filename, live_dir / filename, meta, trace,
+                              {"room": room["id"], "style": style_id})
+                entry["image"] = f"live/{lid}/{filename}"
+            style_path = s.media_dir / entry["image"]
+            entry["align"] = cascade.align(before_path, style_path)
+            entry["geometry"] = _geometry_check(before_path, style_path, entry["align"])
+            entry["structure"], dst_boxes = _structure_check(room, frame, style_path, meta, trace,
+                                                             style_id, before_path, entry["align"])
+            windows = dst_boxes.get("window", [])
+            entry["available"] = (
+                style_path.is_file()
+                and entry["geometry"]["status"] == "pass"
+                and entry["structure"]["status"] != "fail"
+            )
+            stage1 = prompt is None
+            records.append({"entry": dict(entry), "version": version, "attempt": entry["attempts"],
+                            "created_by": "stage 1 (broker-approved)" if stage1 else job_label,
+                            "model": model, "broker_approved": stage1})
+            if entry["available"]:
+                break
+        if entry["available"]:
+            entry["pieces"] = _pieces(style_path, meta, trace, room["id"], style_id)
+            entry.update(_cascade_prep(room["id"], f"{style_id}_v{last_version}", lid, before_path,
+                                       plate_path, plate_align, style_path, entry["align"]))
+            records.append({"entry": dict(entry), "version": last_version, "attempt": entry["attempts"],
+                            "created_by": job_label, "model": model, "broker_approved": False})
+    except meta_client.MetaError as exc:
+        entry["available"] = False
+        entry["error"] = str(exc)
+    return {"entry": entry, "records": records, "windows": windows}
+
+
 def _prepare_room(listing: dict[str, Any], room: dict[str, Any], meta, trace: list,
                   raw_dir: Path, live_dir: Path) -> dict[str, Any]:
     s = config.settings
@@ -409,65 +537,31 @@ def _prepare_room(listing: dict[str, Any], room: dict[str, Any], meta, trace: li
     if out["plate_source"] == "generated":
         out["plate_align"] = cascade.align(before_path, plate_path)
 
+    # To-do 15: styles are independent, so prepare them concurrently; the wall time of a
+    # room is now bounded by its slowest style instead of the sum of all styles. The Meta
+    # calls, outputs, retry behaviour, and prepared styles are unchanged, and version
+    # records are written on this thread, in order, after each style finishes.
+    base_versions = {style_id: _next_version(listing, room["id"], style_id)
+                     for style_id in stage.STYLE_PRESETS}
+    with ThreadPoolExecutor(max_workers=STYLE_WORKERS) as pool:
+        results = list(pool.map(
+            lambda item: _prepare_style(listing, room, item[0], item[1], meta, trace, raw_dir,
+                                        live_dir, base_versions[item[0]], before_path, frame,
+                                        plate_path, out["plate_align"]),
+            list(stage.STYLE_PRESETS.items())))
     dst_windows: dict[str, list] = {}
-    model = getattr(meta, "image_model", meta_client.DEFAULT_MODELS["image"])
-    job_label = f"live job {listing.get('live', {}).get('job_id')}"
-    for style_id, preset in stage.STYLE_PRESETS.items():
-        entry: dict[str, Any] = {
-            "label": preset["label"], "image": None, "source": "live",
-            "available": False, "error": None, "attempts": 0,
-            "geometry": None, "structure": None, "pieces": [],
-        }
-        reuse = style_id == room.get("style") and room.get("after")
-        # The Stage 1 image is the approved one and is never regenerated. A generated
-        # style that drifts gets one retry with a stricter prompt, then stays unavailable.
-        prompts = [None] if reuse else [stage.prompt_for(style_id), stage.prompt_for(style_id) + RETRY_RULES]
-        record: dict[str, Any] | None = None
-        try:
-            for prompt in prompts:
-                entry["attempts"] += 1
-                version = _next_version(listing, room["id"], style_id)
-                if prompt is None:
-                    entry["image"] = room["after"]
-                    entry["source"] = "stage1"
-                else:
-                    data = meta.image_stage(
-                        before_path, prompt, trace=trace, purpose="live.image.stage",
-                        target={"room": room["id"], "style": style_id, "attempt": entry["attempts"]},
-                    )
-                    filename = f"{room['id']}_{style_id}_v{version}.jpg"
-                    _save_checked(data, raw_dir / filename, live_dir / filename, meta, trace,
-                                  {"room": room["id"], "style": style_id})
-                    entry["image"] = f"live/{lid}/{filename}"
-                style_path = s.media_dir / entry["image"]
-                entry["align"] = cascade.align(before_path, style_path)
-                entry["geometry"] = _geometry_check(before_path, style_path, entry["align"])
-                entry["structure"], dst_boxes = _structure_check(room, frame, style_path, meta, trace,
-                                                                 style_id, before_path, entry["align"])
-                dst_windows[style_id] = dst_boxes.get("window", [])
-                entry["available"] = (
-                    style_path.is_file()
-                    and entry["geometry"]["status"] == "pass"
-                    and entry["structure"]["status"] != "fail"
-                )
-                stage1 = prompt is None
-                record = _record_version(
-                    listing, room["id"], style_id, entry, version=version, attempt=entry["attempts"],
-                    created_by="stage 1 (broker-approved)" if stage1 else job_label,
-                    model=model, broker_approved=stage1)
-                if entry["available"]:
-                    break
-            if entry["available"]:
-                entry["pieces"] = _pieces(style_path, meta, trace, room["id"], style_id)
-                entry.update(_cascade_prep(room["id"], f"{style_id}_v{record['version']}", lid, before_path,
-                                           plate_path, out["plate_align"], style_path, entry["align"]))
-                _record_version(listing, room["id"], style_id, entry, created_by=job_label, model=model)
-        except meta_client.MetaError as exc:
-            entry["available"] = False
-            entry["error"] = str(exc)
+    for (style_id, _preset), result in zip(stage.STYLE_PRESETS.items(), results):
+        for rec in result["records"]:
+            _record_version(listing, room["id"], style_id, rec["entry"], version=rec["version"],
+                            attempt=rec["attempt"], created_by=rec["created_by"],
+                            model=rec["model"], broker_approved=rec["broker_approved"])
+        entry = result["entry"]
         if entry["image"]:
             _set_current(listing, room["id"], style_id, entry["image"])
         out["styles"][style_id] = entry
+        dst_windows[style_id] = result["windows"]
+        if entry["available"] and entry["image"]:
+            _record_tracking(listing, room, frame, style_id, entry)
 
     # Window: prefer the source frame's structure box, else the largest window
     # seen on the default style image.
@@ -732,9 +826,11 @@ def request(listing: dict[str, Any], residence: str | None = None) -> str:
         raise listings.ReviewError(409, "Live-In-It is already being prepared.")
     _capture_legacy(listing)
     versions = (listing.get("live") or {}).get("versions") or {}
+    tracking = (listing.get("live") or {}).get("tracking") or {}
     job_id = db.new_id("job")
     listing["live"] = {
         "versions": versions,
+        "tracking": tracking,
         "residence": residence,
         "status": "preparing",
         "job_id": job_id,
@@ -848,6 +944,7 @@ def payload(listing: dict[str, Any]) -> dict[str, Any]:
         "default_style": listing.get("style") or listings.DEFAULT_STYLE,
         "rooms": rooms,
         "moments": (live_block.get("moments") or []) if ready else [],
+        "tracking": live_block.get("tracking") or {"rooms": {}, "images": {}},
         "video": video,
         "path": _walk_path(published, {r["id"] for r in rooms}) if video else [],
         "guard": live_block.get("guard"),
@@ -982,6 +1079,7 @@ def rerun_style(job: dict[str, Any]) -> None:
     _record_version(current, room_id, style_id, target["styles"][style_id], version=version,
                     created_by=f"style rerun job {job['id']}",
                     model=getattr(meta, "image_model", meta_client.DEFAULT_MODELS["image"]))
+    _record_tracking(current, target, frame, style_id, target["styles"][style_id])
     _set_current(current, room_id, style_id, rel)
     current["live"].setdefault("trace", []).extend(trace)
     current["live"]["calls"] = current["live"].get("calls", 0) + meta.calls
