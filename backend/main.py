@@ -218,7 +218,10 @@ def review_listing(listing_id: str, body: ReviewBody) -> dict[str, Any]:
 
 @router.post("/listings/{listing_id}/publish")
 def publish_listing(listing_id: str) -> dict[str, Any]:
-    return _review_call(listings.publish, _listing_or_404(listing_id))
+    listing = _review_call(listings.publish, _listing_or_404(listing_id))
+    if config.settings.auto_prepare_live:
+        listing = live.auto_prepare(listing)
+    return listing
 
 
 @router.post("/listings/{listing_id}/unpublish")
