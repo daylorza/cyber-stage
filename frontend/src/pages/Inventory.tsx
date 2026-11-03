@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api, factLine, media, money, type Facts, type ListingSummary } from "../api";
 import StatusMark from "../components/StatusMark";
 import { useHeight } from "../components/live/hooks";
+import { createRadarSelection } from "./inventoryRadar";
 
 const GridIcon = () => (
   <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.2} aria-hidden>
@@ -59,14 +60,14 @@ function Radar({ item, pool }: { item: ListingSummary | undefined; pool: Listing
   );
 }
 
-function ListingCard({ item, broker, list, onActive }: { item: ListingSummary; broker: boolean; list: boolean; onActive: (id: string) => void }) {
+function ListingCard({ item, broker, list, onHover, onActive }: { item: ListingSummary; broker: boolean; list: boolean; onHover: (id: string) => void; onActive: (id: string) => void }) {
   const facts = factLine(item.facts);
   const details = [item.city || "City not set", facts].filter(Boolean).join(" · ");
   const note = item.note && !/test upload/i.test(item.note) ? item.note : "";
   // Publicly, "Published" is every card; only flag the exceptions. Brokers always see status.
   const showStatus = broker || item.status !== "published";
   return (
-    <li className="inventory-card min-w-0" onMouseEnter={() => onActive(item.id)} onFocus={() => onActive(item.id)} onClick={() => onActive(item.id)}>
+    <li className="inventory-card min-w-0" data-listing-id={item.id} onMouseEnter={() => onHover(item.id)} onFocus={() => onActive(item.id)} onClick={() => onActive(item.id)}>
       <Link to={!broker && item.status === "published" ? `/p/${item.id}` : `/listings/${item.id}`} className={`group grid grid-cols-1 max-md:grid-cols-[6rem_minmax(0,1fr)] max-md:items-center max-md:gap-4 ${list ? "md:grid-cols-[minmax(200px,38%)_minmax(0,1fr)] md:items-center md:gap-6" : ""}`}>
         <div className="inventory-image relative overflow-hidden rounded-lg transition duration-500 group-hover:shadow-[0_24px_60px_-28px_rgb(128_94_71/0.6)]">
           {item.cover ? <img src={media(item.cover)} alt="" loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]" /> : <div className="h-full w-full bg-sand" />}
@@ -102,15 +103,17 @@ export default function Inventory() {
   const [sort, setSort] = useState("recent");
   const [layout, setLayout] = useState<"grid" | "list">("grid");
   const [activeId, setActiveId] = useState("");
+  const [radar] = useState(() => createRadarSelection(setActiveId, () => document.querySelector<HTMLElement>(".inventory-card:hover")?.dataset.listingId));
   const [compact, setCompact] = useState(false);
   const [heroRef, heroH] = useHeight();
   useEffect(() => {
     // Hysteresis so the hero shrinking doesn't flip it straight back.
-    const onScroll = () => setCompact((c) => (c ? window.scrollY > 40 : window.scrollY > 140));
-    onScroll();
+    const updateCompact = () => setCompact((c) => (c ? window.scrollY > 40 : window.scrollY > 140));
+    const onScroll = () => { updateCompact(); radar.scroll(); };
+    updateCompact();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    return () => { window.removeEventListener("scroll", onScroll); radar.dispose(); };
+  }, [radar]);
   useEffect(() => { api.listings().then(setItems).catch((e: Error) => setError(e.message)); }, []);
   const walkthroughs = useMemo(() => (items ?? []).filter((item) => item.source === "upload" && !item.prototype_test), [items]);
   const cities = [...new Set(walkthroughs.map((item) => item.city).filter((value): value is string => !!value))].sort();
@@ -142,7 +145,7 @@ export default function Inventory() {
         </div>
         {error && <p role="alert" className="py-10 text-brick">{error}</p>}
         {items === null && !error && <p className="inventory-eyebrow py-10">Loading inventory</p>}
-        {items && (visible.length ? <ul className={layout === "grid" ? "inventory-grid grid grid-cols-1 gap-x-8 gap-y-12 max-md:gap-y-5 md:grid-cols-2 xl:grid-cols-3" : "inventory-list grid grid-cols-1 gap-y-10 max-md:gap-y-5"}>{visible.map((item) => <ListingCard key={item.id} item={item} broker={broker} list={layout === "list"} onActive={setActiveId} />)}</ul> : <div className="py-16"><p className="font-serif text-3xl">{city ? "No residences in this city." : "Your collection starts here."}</p><p className="mt-3 text-taupe">Start with a phone walkthrough to bring a space to life.</p><Link to="/new" className="mt-6 inline-flex min-h-11 items-center text-umber transition hover:text-ink">New stage →</Link></div>)}
+        {items && (visible.length ? <ul className={layout === "grid" ? "inventory-grid grid grid-cols-1 gap-x-8 gap-y-12 max-md:gap-y-5 md:grid-cols-2 xl:grid-cols-3" : "inventory-list grid grid-cols-1 gap-y-10 max-md:gap-y-5"}>{visible.map((item) => <ListingCard key={item.id} item={item} broker={broker} list={layout === "list"} onHover={radar.hover} onActive={setActiveId} />)}</ul> : <div className="py-16"><p className="font-serif text-3xl">{city ? "No residences in this city." : "Your collection starts here."}</p><p className="mt-3 text-taupe">Start with a phone walkthrough to bring a space to life.</p><Link to="/new" className="mt-6 inline-flex min-h-11 items-center text-umber transition hover:text-ink">New stage →</Link></div>)}
       </section>
     </div>
   );

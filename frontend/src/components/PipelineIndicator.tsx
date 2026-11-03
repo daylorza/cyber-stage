@@ -30,7 +30,7 @@ const LABEL: Record<StepState, string> = {
 };
 
 /** The pipeline read like a lift indicator: stages are floors, the current one is lit. */
-export default function PipelineIndicator({ job }: { job: Job | null }) {
+export default function PipelineIndicator({ job, image }: { job: Job | null; image?: string }) {
   const done = job?.status === "done";
   const failed = job?.status === "failed";
   const current = done ? STAGES.length - 1 : STAGES.findIndex((s) => s.id === job?.stage);
@@ -43,8 +43,15 @@ export default function PipelineIndicator({ job }: { job: Job | null }) {
   };
 
   return (
-    <div className="grid grid-cols-1 items-end gap-10 sm:grid-cols-[auto_1fr] sm:gap-12">
-      <div aria-live="polite">
+    <div className="grid grid-cols-1 items-end gap-10 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-12">
+      <div className={`relative isolate min-w-0 ${image ? "flex aspect-video flex-col justify-center overflow-hidden rounded-2xl p-6 sm:p-8" : ""}`} aria-live="polite">
+        {image && (
+          <div className="processing-scan" aria-hidden="true">
+            <img src={image} alt="" />
+            <div className="processing-scan-tint" />
+            <div className="spatial-scan processing-scan-effect"><div className="spatial-scan-grid" /><div className="spatial-scan-line" /></div>
+          </div>
+        )}
         <p className="eyebrow">{failed ? "Stopped at" : done ? "Arrived" : "Now on"}</p>
         <p className="mt-2 font-sans text-8xl leading-none font-[150] tracking-tighter tabular-nums text-ivory sm:text-[9rem]">
           {floor ? String(current + 1).padStart(2, "0") : "00"}

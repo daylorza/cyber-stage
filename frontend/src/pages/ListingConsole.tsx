@@ -47,6 +47,7 @@ function Header({ listing, onTestLabel }: { listing: Listing; onTestLabel?: (tes
 }
 
 function Processing({ listing, job }: { listing: Listing; job: Job | null }) {
+  const scanImage = listing.rooms.find((room) => room.before)?.before ?? listing.frames.find((frame) => frame.path)?.path;
   return (
     <section className="grid min-h-[60dvh] grid-cols-1 items-center gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
       <div className="grid content-center gap-14">
@@ -56,7 +57,7 @@ function Processing({ listing, job }: { listing: Listing; job: Job | null }) {
           </p>
           <p className="mt-3 text-ash">{listing.uploads.map((u) => u.name).join(", ")}</p>
         </div>
-        <PipelineIndicator job={job} />
+        <PipelineIndicator job={job} image={scanImage ? media(scanImage) : undefined} />
       </div>
       <ChecklistPanel listing={listing} live />
     </section>

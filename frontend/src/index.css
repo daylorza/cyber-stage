@@ -3,6 +3,37 @@
 @import "@fontsource/newsreader/400.css";
 @import "@fontsource/ibm-plex-mono/400.css";
 
+.processing-scan {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #0d0e10;
+}
+
+.processing-scan img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.processing-scan-tint {
+  position: absolute;
+  inset: 0;
+  background: rgb(8 49 51 / 0.65);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .processing-scan-effect .spatial-scan-grid { animation: scan-depth 3s cubic-bezier(.16, 1, .3, 1) infinite; }
+  .processing-scan-effect .spatial-scan-line { animation: processing-sweep 3s cubic-bezier(.3, 0, .3, 1) infinite; }
+}
+
+@keyframes processing-sweep {
+  from { left: 0; }
+  to { left: 100%; }
+}
+
 @theme {
   --color-night: #0d0e10;
   --color-smoke: #16181b;
@@ -146,7 +177,7 @@
     .inventory-hero[data-compact="true"] .inventory-title { margin-top: 8px; font-size: clamp(2.25rem, 3.5vw, 3rem); }
     .inventory-hero[data-compact="true"] .inventory-intro { display: none; }
     .inventory-hero[data-compact="true"] .inventory-new { bottom: 16px; }
-    .inventory-hero[data-compact="true"] .inventory-radar { width: 100px; height: 100px; top: 34px; right: 420px; }
+    .inventory-hero[data-compact="true"] .inventory-radar { width: 100px; height: 100px; top: 34px; left: 50%; right: auto; transform: translateX(-50%); }
     .inventory-hero[data-compact="true"] .inventory-radar::before { inset: 13px; }
     .inventory-hero[data-compact="true"] .inventory-radar::after { inset: 27px; }
     .inventory-hero[data-compact="true"] .inventory-radar .r-top { top: -28px; }

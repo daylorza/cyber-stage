@@ -116,7 +116,7 @@ export default function NewWalkthrough() {
         setFacts({ city: String(data.get("city") ?? ""), beds: String(data.get("beds") ?? "") });
       }}
     >
-      <h1 className="text-balance text-[clamp(3rem,11vw,6rem)] font-[200] leading-[0.95] tracking-tight">Bring the walkthrough.</h1>
+      <h1 className="text-balance text-[clamp(3rem,11vw,6rem)] font-[200] leading-[0.95] tracking-tight">Set the Stage</h1>
       <p className="mt-6 max-w-lg text-ash">
         One steady pass through the empty unit is enough. Add the facts you know; nothing else gets claimed.
       </p>
