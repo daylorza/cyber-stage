@@ -24,12 +24,6 @@ const router = createBrowserRouter([
   },
   { path: "p/:id", element: <PublishedPage /> },
   { path: "p/:id/live", element: <LiveInIt /> },
-  // Three.js only loads on this page.
-  ...(import.meta.env.DEV ? [{
-    path: "prototype-testing",
-    hydrateFallbackElement: <div className="fixed inset-0 bg-night" />,
-    lazy: () => import("./pages/PrototypeTesting").then((m) => ({ Component: m.default })),
-  }] : []),
 ]);
 
 createRoot(document.getElementById("root")!).render(

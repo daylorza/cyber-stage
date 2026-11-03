@@ -37,7 +37,7 @@ export function HoverNav() {
       >
         <span aria-hidden className="nav-tick" />
         <ul id="main-menu" className="mt-1 flex flex-col items-end gap-3 rounded-2xl bg-night/30 py-3 pl-5 pr-3 backdrop-blur-md pointer-coarse:gap-0 pointer-coarse:py-1">
-          {LINKS.filter((l) => pathname !== "/inventory" || l.to !== "/new").map((l) => (
+          {LINKS.filter((l) => pathname !== "/inventory" || (l.to !== "/new" && l.to !== "/inventory")).map((l) => (
             <li key={l.to}>
               <NavLink
                 to={l.to}
@@ -82,12 +82,29 @@ export function SiteHeader() {
 }
 
 export default function Shell() {
-  const inventory = useLocation().pathname === "/inventory";
+  const { pathname } = useLocation();
+  const inventory = pathname === "/inventory";
   return (
     <div className={inventory ? "inventory-shell min-h-dvh" : "min-h-dvh"}>
       <SiteHeader />
       <main className="page-x mx-auto max-w-7xl pb-[calc(10rem+env(safe-area-inset-bottom))] pt-28 sm:pt-32">
         <Outlet />
+        {(inventory || pathname === "/about" || pathname === "/new" || pathname.startsWith("/listings/")) && (
+          <footer className={`mt-16 flex min-h-[40vh] flex-col justify-between gap-12 border-t py-10 sm:mt-24 sm:flex-row sm:items-end ${inventory ? "border-linen" : "border-ivory/10"}`}>
+            <div>
+              <Link to="/" className={inventory ? "inventory-eyebrow inline-flex min-h-11 items-center" : "eyebrow inline-flex min-h-11 items-center"}><BrandMark /></Link>
+              <p className={`mt-4 max-w-md font-serif text-3xl ${inventory ? "text-umber" : "text-ivory"}`}>Every space has a story.</p>
+            </div>
+            <nav aria-label="Footer" className={`flex flex-wrap content-start gap-x-8 gap-y-2 text-sm sm:max-w-md sm:justify-end ${inventory ? "text-bark" : "text-ivory/75"}`}>
+              <Link to="/" className={`flex min-h-11 items-center ${inventory ? "hover:text-ink" : "hover:text-ivory"}`}>Home</Link>
+              <Link to="/about" className={`flex min-h-11 items-center ${inventory ? "hover:text-ink" : "hover:text-ivory"}`}>About</Link>
+              <Link to="/inventory" className={`flex min-h-11 items-center ${inventory ? "hover:text-ink" : "hover:text-ivory"}`}>Inventory</Link>
+              <a href="https://www.linkedin.com/in/dayanalorza/" className="flex min-h-11 items-center">LinkedIn</a>
+              <a href="https://x.com/day__bliss" className="flex min-h-11 items-center">X</a>
+              <a href="https://github.com/daylorza/cyber-stage" className="flex min-h-11 items-center">GitHub</a>
+            </nav>
+          </footer>
+        )}
       </main>
     </div>
   );

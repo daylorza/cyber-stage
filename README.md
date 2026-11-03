@@ -45,7 +45,7 @@ Going forward, brokers bring their own videos and their own listings. The primer
 - **It does not sell a room that does not exist.** If staging moves a wall, window, or door, the checker records it. Cyberpunk - 2142 is the only style allowed to reimagine the room, and only as a labeled concept.
 - **It does not do whole-home generation.** One room, done well, is the scope. A full-house pipeline, a Blender rebuild, and deeper broker-console features are out of scope for this submission.
 - **It does not take payment.** The hold/reserve action is simulated. No payment is taken, no deposit is taken.
-- **It does not use non-Meta AI models at runtime.** Every model called at runtime is a Meta model. Non-model tools — React, Vite, Tailwind, FastAPI, ffmpeg, Pillow, Three.js — are scaffolding, not models.
+- **It does not use non-Meta AI models at runtime.** Every model called at runtime is a Meta model. Non-model tools — React, Vite, Tailwind, FastAPI, ffmpeg, Pillow — are scaffolding, not models.
 - **It does not show a style with nothing to show.** A style with no detected sofa/table to stage cannot be shown as staged. Missing furniture disables a style; a failed glass check does not (see Disclaimer).
 - **It does not present an inconclusive check as a pass.** Where a check did not pass, the recorded result stands. It is not rewritten as a pass, even when it does not block the demo.
 
@@ -81,7 +81,6 @@ make backend    # API on http://127.0.0.1:8000
 make frontend   # UI on http://localhost:5173 (HTTPS=1 make frontend for https)
 make test       # backend tests + frontend typecheck
 make serve      # build the UI and serve everything from :8000
-make prototype  # local-only assets for /prototype-testing (needs the POC clip; nothing committed)
 ```
 
 Product AI runs on the Meta Model API. Copy `.env.example` to `.env` and fill in the values; `.env` is git-ignored.
@@ -116,7 +115,7 @@ Stage 1 data is never changed by Live-In-It preparation. Live-In-It only ever wr
 
 ## What was built during the event
 
-Repo history starts October 26, 2026, the start of the event. Built during the event: the entire pipeline, checker, broker approval, publish page, Live-In-It, style picker, prototype-testing page, and the Cyberpunk - 2142 concept work.
+Repo history starts October 26, 2026, the start of the event. Built during the event: the entire pipeline, checker, broker approval, publish page, Live-In-It, style picker, and the Cyberpunk - 2142 concept work.
 
 Pre-existing, before this week: a phone walkthrough video and listing facts. Test and placeholder facts only — no real client data, no real listing facts.
 

@@ -12,8 +12,8 @@ const RUBRIC = [
 ];
 
 const MODELS = [
-  { name: "Muse Spark 1.3", role: "Copy + AI Live-In Guide brain", where: "Writes the listing copy; runs the guide through LangChain tools on existing listing data.", why: "Reasoning model: turns evidence and facts into grounded claims and tool calls." },
-  { name: "Muse Wonder 1.0", role: "Sees and classifies rooms", where: "Room type, coverage and observations per frame; re-checks each copy claim independently.", why: "Multimodal understanding of what the camera actually saw." },
+  { name: "Muse Spark 1.3", role: "Copy + AI Live-In Guide brain", where: "Writes the listing copy. Runs the Live-In Guide with LangChain tools that read prepared listing data, change the displayed room or style, and simulate a deposit.", why: "Reasoning model: turns evidence and facts into grounded claims and tool calls." },
+  { name: "Muse Wonder 1.0", role: "Sees and classifies rooms", where: "Room type, coverage and observations per frame; re-checks visually supported claims. Fact-only and broker-attested claims follow different checks.", why: "Multimodal understanding of what the camera actually saw." },
   { name: "Muse Image 1.0", role: "Stages furniture and decor only", where: "One image per style from the room's best frame: Modern luxury, Coastal, Minimal, Cyberpunk (style ID 2142).", why: "Image generation that keeps the filmed room's walls, windows and doors." },
   { name: "SAM 3.1", role: "Segments the room", where: "Windows, doors and structure for the checker; furniture masks; faces and personal items for the privacy blur.", why: "Precise masks the checker and the blur can measure against." },
 ];
@@ -26,7 +26,7 @@ const STEPS: [string, string][] = [
   ["Best frame per room", "Code · Wonder coverage + sharpness"],
   ["Stage", "Image 1.0"],
   ["Grounded copy", "Spark 1.3"],
-  ["Independent check", "Checker · independent, not a model (own Wonder + SAM calls)"],
+  ["Independent check", "Separate verification code · own Wonder + SAM calls, not a separate model or third party"],
   ["Approve + publish", "Broker"],
 ];
 
@@ -137,7 +137,7 @@ export default function TechnicalDetails({ listing, children }: { listing: Listi
               </li>
             ))}
           </ul>
-          <p className="mt-5 text-sm text-ash">Meta models only at runtime. Scaffolding, not models: React, Vite, Tailwind, FastAPI, ffmpeg, Pillow, Three.js. No non-Meta model or embedder, no real payment.</p>
+          <p className="mt-5 text-sm text-ash">Meta models only at runtime. Scaffolding, not models: React, Vite, Tailwind, FastAPI, ffmpeg, Pillow. No non-Meta model or embedder, no real payment.</p>
         </Block>
 
         <Block eyebrow="Technical depth · 20%" title="The pipeline, in order">
@@ -145,12 +145,12 @@ export default function TechnicalDetails({ listing, children }: { listing: Listi
             {STEPS.map(([name, tag], i) => (
               <li key={name} className="relative flex gap-4 pb-6 lg:flex-col lg:gap-3 lg:pb-0">
                 <span className="relative flex flex-col items-center lg:flex-row">
-                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full font-mono text-micro ring-1 ${tag.startsWith("Checker") ? "text-champagne ring-champagne/50" : "text-ice ring-ice/40"}`}>{String(i + 1).padStart(2, "0")}</span>
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full font-mono text-micro ring-1 ${name === "Independent check" ? "text-champagne ring-champagne/50" : "text-ice ring-ice/40"}`}>{String(i + 1).padStart(2, "0")}</span>
                   {i < STEPS.length - 1 && <span aria-hidden className="mt-1 w-px flex-1 bg-ivory/15 lg:ml-1 lg:mt-0 lg:h-px lg:w-auto" />}
                 </span>
                 <span className="min-w-0 pt-1 lg:pt-0">
                   <span className="block text-sm text-ivory">{name}</span>
-                  <span className={`mt-0.5 block text-xs leading-snug ${tag.startsWith("Checker") ? "text-champagne/90" : "text-ash"}`}>{tag}</span>
+                  <span className={`mt-0.5 block text-xs leading-snug ${name === "Independent check" ? "text-champagne/90" : "text-ash"}`}>{tag}</span>
                 </span>
               </li>
             ))}

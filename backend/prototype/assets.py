@@ -28,7 +28,7 @@ from typing import Any
 
 from PIL import Image, ImageChops, ImageStat
 
-import cascade
+import image_alignment
 import config
 import meta_client
 from pipeline.frames import _packet_times
@@ -231,7 +231,7 @@ def coverage(records: list[dict[str, Any]], align: dict[str, float]) -> Image.Im
         layer = Image.new("L", size, 0)
         layer.paste(piece, (x1, y1))
         canvas = ImageChops.lighter(canvas, layer)
-    return cascade.warp(canvas, align, size) if align != cascade.IDENTITY else canvas
+    return image_alignment.warp(canvas, align, size) if align != image_alignment.IDENTITY else canvas
 
 
 def plan_style(style_id: str, label: str, live_style: dict[str, Any] | None, image: Path | None,
@@ -317,10 +317,10 @@ def build() -> dict[str, Any]:
         entry["source"] = ("Broker-approved Stage 1 staging (Meta Image)" if style_id == listing.get("style")
                            else "Live-In-It preset (Meta Image), prepared earlier; not broker-approved")
         if entry["available"]:
-            align = {k: (live_style.get("align") or cascade.IDENTITY)[k] for k in cascade.IDENTITY}
+            align = {k: (live_style.get("align") or image_alignment.IDENTITY)[k] for k in image_alignment.IDENTITY}
             with Image.open(path) as im:
                 size = im.size
-                aligned = cascade.warp(im.convert("RGB"), align, size)
+                aligned = image_alignment.warp(im.convert("RGB"), align, size)
             pieces = []
             for pid, concept, kind, name in PIECES:
                 records = meta.sam_masks(path, concept, trace=trace, purpose=SAM_MASK_PURPOSE,
@@ -328,14 +328,14 @@ def build() -> dict[str, Any]:
                 if records:
                     best = max(records, key=lambda b: (b["box"][2] - b["box"][0]) * (b["box"][3] - b["box"][1]))
                     pieces.append({"id": pid, "name": name, "concept": concept, "kind": kind,
-                                   "box": cascade.to_frame(norm_box(best["box"], size), align),
+                                   "box": image_alignment.to_frame(norm_box(best["box"], size), align),
                                    "mask": {"source": "SAM 3.1", "encoding": best["mask"]["encoding"],
                                             "raster": [best["mask"]["width"], best["mask"]["height"]]},
                                    "_records": [best]})
             for concept in RIDER_CONCEPTS:
                 for rec in meta.sam_masks(path, concept, trace=trace, purpose=SAM_MASK_PURPOSE,
                                           target={"style": style_id, "concept": concept}):
-                    box = cascade.to_frame(norm_box(rec["box"], size), align)
+                    box = image_alignment.to_frame(norm_box(rec["box"], size), align)
                     cx, cy = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
                     host = next((pc for pc in pieces if pc["kind"] == "upright"
                                  and pc["box"][0] <= cx <= pc["box"][2] and pc["box"][1] <= cy <= pc["box"][3]), None)
