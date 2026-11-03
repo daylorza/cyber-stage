@@ -1,8 +1,7 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { BRAND } from "../brand";
-
-const SHOWCASE = "/listings/lst_34d27df2a732#technical";
+import TechnicalDetails from "../components/TechnicalDetails";
 
 const LOOP = [
   ["Upload", "A phone walkthrough and the facts you know: beds, baths, size, address, price."],
@@ -40,7 +39,7 @@ export default function About() {
         Staging software for real estate and brokers. A phone walkthrough video in, a staged, broker-approved listing out.
       </p>
       <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-5">
-        <Link to={SHOWCASE} className="btn btn-halo group px-6 py-3 text-base font-medium">Technical details — for judges <span aria-hidden className="transition group-hover:translate-x-1">→</span></Link>
+        <a href="#technical" className="btn btn-halo group px-6 py-3 text-base font-medium">Technical details — for judges <span aria-hidden className="transition group-hover:translate-x-1">→</span></a>
         <Link to="/inventory" className="btn-ghost text-base text-ivory/80">See the inventory</Link>
       </div>
 
@@ -93,6 +92,7 @@ export default function About() {
       <p className="mt-16 border-t border-ivory/10 pt-8 text-sm text-ash">
         Built during the Meta Global AI Developer Hackathon, Oct 26 – Nov 4, 2026 · Solo · Indie track · Team Bliss.
       </p>
+      <TechnicalDetails />
     </article>
   );
 }
