@@ -12,8 +12,8 @@ const RUBRIC = [
 ];
 
 const MODELS = [
-  { name: "Muse Spark 1.3", role: "Copy + AI Live-In Guide brain", where: "Writes the listing copy; runs the guide through LangChain tools on existing listing data.", why: "Reasoning model: turns evidence and facts into grounded claims and tool calls." },
-  { name: "Muse Wonder 1.0", role: "Sees and classifies rooms", where: "Room type, coverage and observations per frame; re-checks each copy claim independently.", why: "Multimodal understanding of what the camera actually saw." },
+  { name: "Muse Spark 1.3", role: "Copy + AI Live-In Guide brain", where: "Writes the listing copy. Runs the Live-In Guide with LangChain tools that read prepared listing data, change the displayed room or style, and simulate a deposit.", why: "Reasoning model: turns evidence and facts into grounded claims and tool calls." },
+  { name: "Muse Wonder 1.0", role: "Sees and classifies rooms", where: "Room type, coverage and observations per frame; re-checks visually supported claims. Fact-only and broker-attested claims follow different checks.", why: "Multimodal understanding of what the camera actually saw." },
   { name: "Muse Image 1.0", role: "Stages furniture and decor only", where: "One image per style from the room's best frame: Modern luxury, Coastal, Minimal, Cyberpunk (style ID 2142).", why: "Image generation that keeps the filmed room's walls, windows and doors." },
   { name: "SAM 3.1", role: "Segments the room", where: "Windows, doors and structure for the checker; furniture masks; faces and personal items for the privacy blur.", why: "Precise masks the checker and the blur can measure against." },
 ];
@@ -26,7 +26,7 @@ const STEPS: [string, string][] = [
   ["Best frame per room", "Code · Wonder coverage + sharpness"],
   ["Stage", "Image 1.0"],
   ["Grounded copy", "Spark 1.3"],
-  ["Independent check", "Checker · independent, not a model (own Wonder + SAM calls)"],
+  ["Independent check", "Separate verification code · own Wonder + SAM calls, not a separate model or third party"],
   ["Approve + publish", "Broker"],
 ];
 
@@ -61,7 +61,7 @@ function Block({ eyebrow, title, children }: { eyebrow: string; title: string; c
 }
 
 /** Judges-facing: what Cyber Stage uses, how it is built, and how it meets the rubric. Real numbers for this listing only. */
-export default function TechnicalDetails({ listing, children }: { listing: Listing; children?: ReactNode }) {
+export default function TechnicalDetails({ listing, children }: { listing?: Listing; children?: ReactNode }) {
   const root = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
   useEffect(() => {
@@ -75,20 +75,20 @@ export default function TechnicalDetails({ listing, children }: { listing: Listi
     return () => observer.disconnect();
   }, []);
 
-  const trace = listing.trace ?? [];
+  const trace = listing?.trace ?? [];
   const byModel = ["Spark 1.3", "Wonder 1.0", "Image 1.0", "SAM 3.1"].map((m) => ({
     model: m,
     generator: trace.filter((t) => modelOf(t.purpose) === m && !t.purpose.startsWith("verify.")).length,
     checker: trace.filter((t) => modelOf(t.purpose) === m && t.purpose.startsWith("verify.")).length,
   }));
-  const checks = listing.verification?.checks ?? [];
+  const checks = listing?.verification?.checks ?? [];
   const passed = checks.filter((c) => c.status === "pass").length;
   const stats = [
     { label: "Meta calls", value: trace.length },
     { label: "Cached", value: trace.filter((t) => t.cached).length },
     { label: "Checks passed", value: checks.length ? `${passed} / ${checks.length}` : "—" },
-    { label: "Rooms", value: listing.rooms.length },
-    { label: "Frames", value: listing.frames.length },
+    { label: "Rooms", value: listing?.rooms.length ?? 0 },
+    { label: "Frames", value: listing?.frames.length ?? 0 },
   ];
   const toTop = () => window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
 
@@ -101,7 +101,7 @@ export default function TechnicalDetails({ listing, children }: { listing: Listi
           Built during the Meta Global AI Developer Hackathon, Oct 26 – Nov 4, 2026 · Solo · Indie track · Team Bliss.
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-          <Link to="/about" className="btn-ghost text-ivory/85">What is Cyber Stage? About →</Link>
+          {listing && <Link to="/about" className="btn-ghost text-ivory/85">What is Cyber Stage? About →</Link>}
           <a href={REPO} target="_blank" rel="noreferrer" className="btn-ghost text-ivory/85">Repository ↗</a>
           <span className="text-ash">Demo video — added Nov 4</span>
         </div>
@@ -137,7 +137,7 @@ export default function TechnicalDetails({ listing, children }: { listing: Listi
               </li>
             ))}
           </ul>
-          <p className="mt-5 text-sm text-ash">Meta models only at runtime. Scaffolding, not models: React, Vite, Tailwind, FastAPI, ffmpeg, Pillow, Three.js. No non-Meta model or embedder, no real payment.</p>
+          <p className="mt-5 text-sm text-ash">Meta models only at runtime. Scaffolding, not models: React, Vite, Tailwind, FastAPI, ffmpeg, Pillow. No non-Meta model or embedder, no real payment.</p>
         </Block>
 
         <Block eyebrow="Technical depth · 20%" title="The pipeline, in order">
@@ -145,12 +145,12 @@ export default function TechnicalDetails({ listing, children }: { listing: Listi
             {STEPS.map(([name, tag], i) => (
               <li key={name} className="relative flex gap-4 pb-6 lg:flex-col lg:gap-3 lg:pb-0">
                 <span className="relative flex flex-col items-center lg:flex-row">
-                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full font-mono text-micro ring-1 ${tag.startsWith("Checker") ? "text-champagne ring-champagne/50" : "text-ice ring-ice/40"}`}>{String(i + 1).padStart(2, "0")}</span>
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full font-mono text-micro ring-1 ${name === "Independent check" ? "text-champagne ring-champagne/50" : "text-ice ring-ice/40"}`}>{String(i + 1).padStart(2, "0")}</span>
                   {i < STEPS.length - 1 && <span aria-hidden className="mt-1 w-px flex-1 bg-ivory/15 lg:ml-1 lg:mt-0 lg:h-px lg:w-auto" />}
                 </span>
                 <span className="min-w-0 pt-1 lg:pt-0">
                   <span className="block text-sm text-ivory">{name}</span>
-                  <span className={`mt-0.5 block text-xs leading-snug ${tag.startsWith("Checker") ? "text-champagne/90" : "text-ash"}`}>{tag}</span>
+                  <span className={`mt-0.5 block text-xs leading-snug ${name === "Independent check" ? "text-champagne/90" : "text-ash"}`}>{tag}</span>
                 </span>
               </li>
             ))}
@@ -165,7 +165,7 @@ export default function TechnicalDetails({ listing, children }: { listing: Listi
           </ul>
         </Block>
 
-        <Block eyebrow="Live data" title="This listing, measured">
+        {listing && <Block eyebrow="Live data" title="This listing, measured">
           <dl className="grid grid-cols-2 gap-4 sm:grid-cols-5">
             {stats.map((s) => (
               <div key={s.label} className="glass p-4 sm:p-5">
@@ -185,7 +185,7 @@ export default function TechnicalDetails({ listing, children }: { listing: Listi
             ))}
           </div>
           <p className="mt-4 text-xs text-ash">Counted from this listing's recorded Meta call trace and verification results. Check calls come from the independent checker, never the call that generated the output.</p>
-        </Block>
+        </Block>}
 
         <Block eyebrow="Honesty" title="Limits we state plainly">
           <ul className="grid max-w-4xl grid-cols-1 gap-3">
@@ -217,7 +217,7 @@ export default function TechnicalDetails({ listing, children }: { listing: Listi
         className={`btn-glass hud-right fixed z-30 text-base transition duration-300 ${inView ? "visible translate-y-0 opacity-100" : "invisible -translate-y-1 opacity-0"}`}
         style={{ top: "calc(var(--gutter-top) + env(safe-area-inset-top) + 3.75rem)" }}
       >
-        ↑ Back to listing
+        ↑ {listing ? "Back to listing" : "Back to top"}
       </button>
     </section>
   );

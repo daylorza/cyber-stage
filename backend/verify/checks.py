@@ -10,7 +10,7 @@ from typing import Any
 
 from PIL import Image, ImageChops, ImageFilter, ImageStat
 
-import cascade
+import image_alignment
 import config
 
 GEOMETRY_MIN_CORR = 0.25
@@ -84,7 +84,7 @@ def edge_correlation(path_a: Path, path_b: Path) -> float:
 # Same rule as the door-based correction approved Oct 28, 18:12 EDT: a global stretch/shift of at
 # most 5% is corrected before comparing, it is stated in the check result, and it can only rescue a
 # comparison, never break one. When fewer than 3 doors match, the stretch/shift is measured from the
-# whole picture (cascade.align, edge maps) instead. Thresholds (edge 0.25, IoU 0.3) are unchanged.
+# whole picture (image_alignment.align, edge maps) instead. Thresholds (edge 0.25, IoU 0.3) are unchanged.
 
 def image_drift(a: dict[str, float]) -> float:
     return max(abs(a["sx"] - 1), abs(a["sy"] - 1), abs(a["bx"]), abs(a["by"]),
@@ -104,8 +104,8 @@ def aligned_correlation(src: Path, dst: Path, a: dict[str, float]) -> float:
     """Edge correlation after laying the staged image back over the source frame."""
     with Image.open(src) as si, Image.open(dst) as di:
         size = si.size
-        source, warped = si.convert("L"), cascade.warp(di.convert("L"), a, size)
-    box = cascade._valid_box(a, size, inset=4)
+        source, warped = si.convert("L"), image_alignment.warp(di.convert("L"), a, size)
+    box = image_alignment._valid_box(a, size, inset=4)
     return _pearson(_edges_of(source.crop(box)), _edges_of(warped.crop(box)))
 
 
@@ -121,7 +121,7 @@ def geometry(src: Path, dst: Path, align: dict[str, float] | None = None, min_co
     if corr >= min_corr:
         return {**out, "status": "pass",
                 "reason": f"Geometry preserved (correlation {corr:.2f}, aspect deviation {deviation:.1%})."}
-    a = align if align is not None else cascade.align(src, dst)
+    a = align if align is not None else image_alignment.align(src, dst)
     failed = f"Edge structure changed (correlation {corr:.3f} < {min_corr})."
     if _is_identity(a):
         return {**out, "status": "fail", "reason": failed}
@@ -495,7 +495,7 @@ def compare_structure(src_by: dict[str, list[list[float]]],
     correct = framing is not None and framing["drift"] <= FRAMING_MAX_DRIFT
     whole = (not correct and image_align is not None and not _is_identity(image_align)
              and image_drift(image_align) <= FRAMING_MAX_DRIFT)
-    moved_dst = ({k: [cascade.to_frame(b, image_align) for b in v] for k, v in dst_by.items()}
+    moved_dst = ({k: [image_alignment.to_frame(b, image_align) for b in v] for k, v in dst_by.items()}
                  if whole and image_align is not None else {})
     for concept in ("window", "door"):
         src_norm, dst_norm = src_by.get(concept, []), dst_by.get(concept, [])
@@ -556,7 +556,7 @@ def _structure_check(ctx, room: dict[str, Any], src: Path, dst: Path) -> tuple[s
         src, GLASS_DOOR, trace=ctx.trace, purpose="verify.sam.structure",
         target={"room": room["id"], "concept": GLASS_DOOR, "side": "before"})
     src_by[GLASS_DOOR] = [_normalized(b["box"], src_size) for b in glass]
-    result = compare_structure(src_by, dst_by, image_align=cascade.align(src, dst))
+    result = compare_structure(src_by, dst_by, image_align=image_alignment.align(src, dst))
     note = result["note"]
     if result["problems"]:
         return "fail", f"Staging changed structure: {'; '.join(result['problems'])}.{note}"

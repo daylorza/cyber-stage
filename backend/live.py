@@ -5,7 +5,7 @@ One gated job prepares everything the viewer needs for the rooms a buyer lives i
 living room first, then kitchen/bedrooms/...; bathrooms, laundry and other utility rooms are
 walked past on the video, never staged): an empty plate per room, every style preset staged
 per room, segmented furniture pieces, each generated image ALIGNED to the filmed frame with a
-clean furniture mask (cascade.py), window/size metadata, and the live-in moments (coffee / sit /
+clean furniture mask (image_alignment.py), window/size metadata, and the live-in moments (coffee / sit /
 view). It only ever writes listing["live"] — Stage 1 data (rooms, copy, comps, checklist,
 verification, trace, published) is untouched.
 
@@ -24,7 +24,7 @@ from typing import Any
 
 from PIL import Image
 
-import cascade
+import image_alignment
 import config
 import db
 import listings
@@ -272,7 +272,7 @@ def use_version(listing: dict[str, Any], room_id: str, style_id: str, version: i
 
 def _prepare_plate(room: dict[str, Any], before_path: Path, meta, trace: list,
                    raw_dir: Path, live_dir: Path, lid: str) -> dict[str, Any]:
-    """Empty plate for the cascade. If the frame already shows furniture, an
+    """Empty plate for the image_alignment. If the frame already shows furniture, an
     emptied render is generated and geometry-checked; otherwise the before
     image is the plate. Any failure falls back to the before image."""
     plate = {"plate": None, "plate_source": "before", "plate_check": None}
@@ -412,9 +412,9 @@ def _cascade_prep(room_id: str, style_id: str, lid: str, before_path: Path, plat
                   align: dict[str, float] | None = None) -> dict[str, Any]:
     """Align the style image to the filmed frame and cut its furniture mask (no model calls).
     `style_id` may carry the version (e.g. "coastal_v2") so each version keeps its own mask."""
-    align = align or cascade.align(before_path, style_path)
+    align = align or image_alignment.align(before_path, style_path)
     rel = f"live/{lid}/{room_id}_{style_id}_mask.png"
-    info = cascade.furniture_mask(before_path, plate_path, plate_align, style_path, align,
+    info = image_alignment.furniture_mask(before_path, plate_path, plate_align, style_path, align,
                                   config.settings.media_dir / rel)
     return {"align": align, "mask": rel if info["usable"] else None, "mask_changed": info["changed"]}
 
@@ -462,7 +462,7 @@ def _prepare_style(listing: dict[str, Any], room: dict[str, Any], style_id: str,
                               {"room": room["id"], "style": style_id})
                 entry["image"] = f"live/{lid}/{filename}"
             style_path = s.media_dir / entry["image"]
-            entry["align"] = cascade.align(before_path, style_path)
+            entry["align"] = image_alignment.align(before_path, style_path)
             entry["geometry"] = _geometry_check(before_path, style_path, entry["align"])
             entry["structure"], dst_boxes = _structure_check(room, frame, style_path, meta, trace,
                                                              style_id, before_path, entry["align"])
@@ -513,7 +513,7 @@ def _prepare_room(listing: dict[str, Any], room: dict[str, Any], meta, trace: li
         "plate_source": "before",
         "plate_check": None,
         "plate_furnished": False,
-        "plate_align": dict(cascade.IDENTITY),
+        "plate_align": dict(image_alignment.IDENTITY),
         "styles": {},
         "window": None,
         "size": None,
@@ -535,7 +535,7 @@ def _prepare_room(listing: dict[str, Any], room: dict[str, Any], meta, trace: li
     out["plate_furnished"] = plate["furnished"] and plate["plate_source"] == "before"
     plate_path = s.media_dir / out["plate"]
     if out["plate_source"] == "generated":
-        out["plate_align"] = cascade.align(before_path, plate_path)
+        out["plate_align"] = image_alignment.align(before_path, plate_path)
 
     # To-do 15: styles are independent, so prepare them concurrently; the wall time of a
     # room is now bounded by its slowest style instead of the sum of all styles. The Meta
@@ -1013,7 +1013,7 @@ def rerun_style(job: dict[str, Any]) -> None:
         data = meta.image_stage(before, prompt, trace=trace, purpose="live.image.stage",
                                 target={"room": room_id, "style": style_id, "job": job["id"]})
         _save_checked(data, raw_dir / f"{job['id']}_raw.jpg", candidate, meta, trace, {"room": room_id, "style": style_id})
-    align = cascade.align(before, candidate)
+    align = image_alignment.align(before, candidate)
     is_concept = style_id in checks.CONCEPT_STYLES
     geometry = _geometry_check(before, candidate, align)
     concept_geometry = (_geometry_check(before, candidate, align, min_corr=checks.GEOMETRY_MIN_CORR_CONCEPT)

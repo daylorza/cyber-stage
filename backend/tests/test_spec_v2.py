@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from PIL import Image, ImageDraw, ImageStat
 
-import cascade
+import image_alignment
 import config
 import listings
 from pipeline import PipelineError, frames
@@ -270,29 +270,29 @@ def test_alignment_recovers_drift_and_mask_keeps_furniture_not_edges(tmp_path):
     ref = _room_image()
     ref_path = tmp_path / "before.jpg"
     ref.save(ref_path, quality=95)
-    drift = cascade._params(1.0, 1.022, 0.0, -0.03)
+    drift = image_alignment._params(1.0, 1.022, 0.0, -0.03)
     inverse = {"sx": 1 / drift["sx"], "sy": 1 / drift["sy"],
                "bx": -drift["bx"] / drift["sx"], "by": -drift["by"] / drift["sy"]}
-    staged = cascade.warp(ref, inverse, ref.size).resize((576, 1024))
+    staged = image_alignment.warp(ref, inverse, ref.size).resize((576, 1024))
     ImageDraw.Draw(staged).rectangle([100, 700, 420, 860], fill=(60, 70, 90))     # the "sofa"
     staged_path = tmp_path / "staged.jpg"
     staged.save(staged_path, quality=95)
 
-    a = cascade.align(ref_path, staged_path)
+    a = image_alignment.align(ref_path, staged_path)
     assert a["sy"] == pytest.approx(1.022, abs=0.011) and a["by"] == pytest.approx(drift["by"], abs=0.01)
     assert a["score"] < a["identity_score"]
 
-    info = cascade.furniture_mask(ref_path, ref_path, cascade.IDENTITY, staged_path, a, tmp_path / "m.png")
+    info = image_alignment.furniture_mask(ref_path, ref_path, image_alignment.IDENTITY, staged_path, a, tmp_path / "m.png")
     assert info["usable"]
     alpha = Image.open(tmp_path / "m.png").split()[1]
-    sofa = cascade.to_frame([100 / 576, 700 / 1024, 420 / 576, 860 / 1024], a)
+    sofa = image_alignment.to_frame([100 / 576, 700 / 1024, 420 / 576, 860 / 1024], a)
     w, h = alpha.size
     inside = alpha.crop((int(sofa[0] * w) + 6, int(sofa[1] * h) + 6, int(sofa[2] * w) - 6, int(sofa[3] * h) - 6))
     top = alpha.crop((0, 0, w, int(h * 0.55)))
     assert ImageStat.Stat(inside).mean[0] > 230, "furniture is in the mask"
     assert ImageStat.Stat(top).mean[0] < 8, "walls/window edges are not (no halo)"
 
-    unaligned = cascade.furniture_mask(ref_path, ref_path, cascade.IDENTITY, staged_path, cascade.IDENTITY,
+    unaligned = image_alignment.furniture_mask(ref_path, ref_path, image_alignment.IDENTITY, staged_path, image_alignment.IDENTITY,
                                        tmp_path / "raw.png")
     assert unaligned["changed"] > info["changed"], "without alignment, edges leak into the mask"
 
@@ -303,10 +303,10 @@ def test_framing_correction_from_the_whole_picture_rescues_drift_only(tmp_path):
     ref = Image.open(io.BytesIO(make_photo(3, (360, 640)))).convert("RGB")
     ref_path = tmp_path / "before.jpg"
     ref.save(ref_path, quality=95)
-    drift = cascade._params(1.0, 1.02, 0.0, -0.035)                 # 3.5% shift, 2% stretch, no doors
+    drift = image_alignment._params(1.0, 1.02, 0.0, -0.035)                 # 3.5% shift, 2% stretch, no doors
     inverse = {"sx": 1 / drift["sx"], "sy": 1 / drift["sy"],
                "bx": -drift["bx"] / drift["sx"], "by": -drift["by"] / drift["sy"]}
-    staged = cascade.warp(ref, inverse, ref.size)
+    staged = image_alignment.warp(ref, inverse, ref.size)
     ImageDraw.Draw(staged).rectangle([60, 420, 260, 520], fill=(60, 70, 90))
     staged_path = tmp_path / "staged.jpg"
     staged.save(staged_path, quality=95)
@@ -323,7 +323,7 @@ def test_framing_correction_from_the_whole_picture_rescues_drift_only(tmp_path):
     mirrored = tmp_path / "mirrored.jpg"
     staged.transpose(Image.Transpose.FLIP_LEFT_RIGHT).save(mirrored, quality=95)
     assert checks.geometry(ref_path, mirrored)["status"] == "fail"
-    far = dict(cascade._params(1.0, 1.0, 0.0, -0.08))
+    far = dict(image_alignment._params(1.0, 1.0, 0.0, -0.08))
     failed = checks.geometry(ref_path, staged_path, align=far)
     assert failed["status"] == "fail" and "Framing drift 8.0% is over 5%; not corrected" in failed["reason"]
 

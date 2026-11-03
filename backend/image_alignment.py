@@ -1,4 +1,4 @@
-"""Cascade prep for Live-In-It: plain image maths, no model calls.
+"""Image alignment and masking for Live-In-It: plain image maths, no model calls.
 
 Muse Image re-frames every generation a little (measured 0.6-3% shift, ~2% stretch). Laid
 straight over the filmed frame, a staged image misaligns every wall, window and baseboard edge,
