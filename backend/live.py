@@ -1054,8 +1054,12 @@ def rerun_style(job: dict[str, Any]) -> None:
             src_boxes = [_norm(box["box"], _size(before)) for box in src_glass]
             dst_boxes = [_norm(box["box"], _size(candidate)) for box in dst_glass]
             result = checks.compare_structure({"window": src_boxes}, {"window": dst_boxes}, image_align=align)
-            if result["problems"] or result["compared"] == 0:
-                structure = {"status": "fail", "reason": "Glass wall comparison failed or was inconclusive." + result["note"]}
+            if result["problems"]:
+                structure = {"status": "fail", "reason": f"Glass wall changed: {'; '.join(result['problems'])}." + result["note"]}
+            elif result["compared"] == 0:
+                # Only edge-cut glass was found: same rule as preparation and the verifier,
+                # recorded as not checked rather than passed or failed.
+                structure = {"status": "not_checked", "reason": "Glass wall not compared." + result["note"]}
             else:
                 structure = {"status": "pass", "reason": "Glass wall compared at IoU 0.3." + result["note"]}
         else:

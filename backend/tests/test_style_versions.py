@@ -140,3 +140,28 @@ def test_rerun_accepts_unchecked_structure_like_preparation(client, monkeypatch)
     assert rerun(client, lid, "coastal")["status"] == "done"
     latest = versions(client, lid)["room_1:coastal"][-1]
     assert latest["is_current"] and latest["checker"]["structure"]["status"] == "not_checked"
+
+
+def test_rerun_treats_edge_only_glass_as_unchecked_not_failed(client, monkeypatch):
+    """Glass that touches the photo edge can't be compared (same rule as preparation and the
+    verifier). With nothing comparable the check is "not checked", not a failure."""
+    lid = publish_listing(client)
+    assert request_and_wait(client, lid)["status"] == "done"
+    listing = db.get_listing(lid)
+    for frame in listing["frames"]:
+        (frame.get("sam") or {}).pop("structure", None)
+    db.save_listing(listing)
+    segment = client.fake_meta.sam_segment
+
+    def edge_glass_only(image_path, concept, **kwargs):
+        if kwargs.get("purpose") in ("live.sam.source_structure", "live.sam.structure"):
+            if concept != "glass wall":
+                return []
+            w, h = client.fake_meta._size(image_path)
+            return [{"concept": concept, "score": 0.9, "box": [0, round(0.1 * h), round(0.3 * w), round(0.8 * h)]}]
+        return segment(image_path, concept, **kwargs)
+
+    monkeypatch.setattr(client.fake_meta, "sam_segment", edge_glass_only)
+    assert rerun(client, lid, "coastal")["status"] == "done"
+    structure = versions(client, lid)["room_1:coastal"][-1]["checker"]["structure"]
+    assert structure["status"] == "not_checked" and "cut off at the photo edge" in structure["reason"]
