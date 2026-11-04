@@ -242,6 +242,9 @@ ROOM_GUIDANCE = {
     "terrace": "Furnish as a terrace with appropriately scaled outdoor seating where space allows.",
 }
 
+# Terrace rooms only. On indoor rooms that merely see a balcony through glass, this note made
+# Muse Image open or widen the balcony door to stage the terrace (4 of 4 renders on
+# lst_bfff1cc3f672), which fails the structure check; without it the same renders passed.
 OUTDOOR_NOTE = (
     "If a balcony, terrace or patio floor is visible in the photo, furnish it too with a few "
     "appropriately scaled outdoor pieces in the same style, such as a pair of loungers or "
@@ -308,7 +311,7 @@ def prompt_for(style: str, room: dict[str, Any] | None = None, *,
         guidance = CYBERPUNK_ROOM_GUIDANCE.get(room.get("type"), guidance)
     rules = FANTASY_RULES if fantasy else GEOMETRY_RULES
     wet_note = "" if fantasy else _wet_room_note(room)
-    outdoor = "" if fantasy or room.get("type") in WET_ROOM_TYPES else OUTDOOR_NOTE
+    outdoor = OUTDOOR_NOTE if not fantasy and room.get("type") == "terrace" else ""
     return " ".join(part for part in (preset["description"], direction, guidance, outdoor, rules, wet_note) if part)
 
 
