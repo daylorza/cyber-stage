@@ -10,6 +10,8 @@ WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
+ARG VITE_HOME_LISTING_ID
+ENV VITE_HOME_LISTING_ID=$VITE_HOME_LISTING_ID
 RUN npm run build
 
 # Stage 2: backend

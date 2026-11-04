@@ -10,7 +10,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 import config
 import db
@@ -201,6 +201,8 @@ class ReviewBody(BaseModel):
     rejected_rooms: list[str] | None = None
     notes: str | None = None
     test_listing: bool | None = None
+    # Omit to leave the price alone; null clears it back to the comps guide.
+    price: int | None = Field(default=None, gt=0)
 
 
 @router.post("/listings/{listing_id}/review")
@@ -213,6 +215,7 @@ def review_listing(listing_id: str, body: ReviewBody) -> dict[str, Any]:
         rejected_rooms=body.rejected_rooms,
         notes=body.notes,
         test_listing=body.test_listing,
+        price=body.price if "price" in body.model_fields_set else listings.UNSET,
     )
 
 

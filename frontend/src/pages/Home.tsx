@@ -6,6 +6,7 @@ import BrandMark from "../components/BrandMark";
 import FloorPlan from "../components/FloorPlan";
 import { RESIDENCES } from "../residences";
 
+const HOME_LISTING_ID: string | undefined = import.meta.env.VITE_HOME_LISTING_ID;
 const REST_SCALE = 1.14;
 const LOOK_DEGREES = 35;
 const maxPan = (scale: number) => ((scale - 1) / 2) * 100 - 0.5;
@@ -42,7 +43,8 @@ export default function Home() {
   const navigate = useNavigate();
 
   const residence = RESIDENCES[0];
-  const summary = Object.values(listings).find((item) => item.city?.toLowerCase() === residence.city.toLowerCase() && item.status === "published")
+  const summary = (HOME_LISTING_ID ? listings[HOME_LISTING_ID] : undefined)
+    ?? Object.values(listings).find((item) => item.city?.toLowerCase() === residence.city.toLowerCase() && item.status === "published")
     ?? Object.values(listings).find((item) => item.city?.toLowerCase() === residence.city.toLowerCase() && item.source === "seed");
   const name = summary?.title || residence.city;
   const scale = REST_SCALE;
@@ -220,6 +222,10 @@ export default function Home() {
           <button
             type="button"
             onClick={async () => {
+              if (HOME_LISTING_ID) {
+                navigate(`/p/${HOME_LISTING_ID}`);
+                return;
+              }
               if (!summary) {
                 setEntryError("This residence is not available yet.");
                 return;
