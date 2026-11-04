@@ -415,7 +415,7 @@ export const api = {
   unpublish: (id: string) => request<Listing>(`/listings/${id}/unpublish`, { method: "POST" }),
   page: (id: string) => request<PublishedPage>(`/listings/${id}/page`),
   metaStatus: () => request<MetaStatus>("/meta/status"),
-  /** `variants` (design directions per style) is only set when the backend runs with VRE_DEV_TOOLS=1. */
+  /** `variants`: each style's design directions, pickable on a style rerun. */
   settings: () => request<{ blocking_checks: boolean; variants?: Record<string, string[]> }>("/settings"),
   reprocess: (id: string) => request<{ listing_id: string; job_id: string }>(`/listings/${id}/reprocess`, { method: "POST" }),
   live: (id: string) => request<LivePayload>(`/listings/${id}/live`),

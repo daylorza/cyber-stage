@@ -21,11 +21,11 @@ export default function LiveControl({ listing }: { listing: Listing }) {
   const [styleMessage, setStyleMessage] = useState("");
   const [versionsRefresh, setVersionsRefresh] = useState(0);
   const [selectedStyle, setSelectedStyle] = useState<{ room: string; roomName: string; style: string; label: string } | null>(null);
-  // Dev-only: pick a design direction instead of the rotation. Hidden in production builds.
-  const [devVariants, setDevVariants] = useState<Record<string, string[]> | null>(null);
+  // Optionally pick a design direction for a rerun instead of the rotation.
+  const [directions, setDirections] = useState<Record<string, string[]> | null>(null);
   const [variant, setVariant] = useState("");
   useEffect(() => {
-    if (import.meta.env.DEV) api.settings().then((s) => setDevVariants(s.variants ?? null)).catch(() => {});
+    api.settings().then((s) => setDirections(s.variants ?? null)).catch(() => {});
   }, []);
   const [s, setS] = useState<State>({ status: "unknown", error: "", progress: 0, jobId: null });
   // Terminal logs: the latest polled job and the console's own events, per kind of job.
@@ -154,11 +154,11 @@ export default function LiveControl({ listing }: { listing: Listing }) {
             {selectedStyle && <div className="my-3 rounded-lg bg-ivory/[0.05] p-3 ring-1 ring-ice/30">
               <p className="text-sm text-ivory">Generate {selectedStyle.label} for {selectedStyle.roomName}?</p>
               <p className="mt-2 text-xs leading-relaxed text-ivory/70">This uses Meta credits. The current image is replaced only if checks pass.</p>
-              {devVariants?.[selectedStyle.style] && <label className="mt-3 block">
-                <span className="eyebrow mb-1 block">Design direction · dev</span>
+              {directions?.[selectedStyle.style] && <label className="mt-3 block">
+                <span className="eyebrow mb-1 block">Design direction</span>
                 <select className="field" value={variant} onChange={(e) => setVariant(e.target.value)}>
                   <option value="">Rotate (default)</option>
-                  {devVariants[selectedStyle.style].map((name) => <option key={name} value={name}>{name}</option>)}
+                  {directions[selectedStyle.style].map((name) => <option key={name} value={name}>{name}</option>)}
                 </select>
               </label>}
               <div className="mt-3 flex gap-2">

@@ -82,10 +82,8 @@ def meta_status() -> dict[str, Any]:
 
 @router.get("/settings")
 def app_settings() -> dict[str, Any]:
-    body: dict[str, Any] = {"blocking_checks": config.settings.blocking_checks}
-    if config.settings.dev_tools:
-        body["variants"] = {style_id: list(preset["variants"]) for style_id, preset in stage.STYLE_PRESETS.items()}
-    return body
+    return {"blocking_checks": config.settings.blocking_checks,
+            "variants": {style_id: list(preset["variants"]) for style_id, preset in stage.STYLE_PRESETS.items()}}
 
 
 @router.post("/listings", status_code=202)
@@ -404,11 +402,8 @@ def request_live(listing_id: str, body: LiveRequest) -> dict[str, str]:
 def rerun_live_style(listing_id: str, room_id: str, style_id: str, variant: str | None = None) -> dict[str, str]:
     if style_id not in stage.STYLE_PRESETS:
         raise HTTPException(422, "Unknown style.")
-    if variant is not None:
-        if not config.settings.dev_tools:
-            raise HTTPException(403, "Picking a design direction is a local dev tool.")
-        if variant not in stage.STYLE_PRESETS[style_id]["variants"]:
-            raise HTTPException(422, "Unknown design direction for this style.")
+    if variant is not None and variant not in stage.STYLE_PRESETS[style_id]["variants"]:
+        raise HTTPException(422, "Unknown design direction for this style.")
     listing = db.get_listing(listing_id)
     if not listing:
         raise HTTPException(404, "Listing not found.")

@@ -108,20 +108,13 @@ def test_live_picker_passes_room_type_and_keeps_direction_on_retry(client, monke
             assert entry["variant"] in stage.STYLE_PRESETS[style_id]["variants"]
 
 
-def test_dev_variant_pick_is_gated_and_used_on_rerun(client, monkeypatch):
-    import dataclasses
-
-    import config
+def test_picked_direction_is_validated_and_used_on_rerun(client, monkeypatch):
     from tests.conftest import wait_for_job
     from tests.test_stage2 import publish_listing, request_and_wait
 
     lid = publish_listing(client)
     assert request_and_wait(client, lid)["status"] == "done"
     url = f"/api/listings/{lid}/live/rooms/room_1/styles/2142/rerun"
-    assert "variants" not in client.get("/api/settings").json()
-    assert client.post(url, params={"variant": "Glacier glass"}).status_code == 403
-
-    monkeypatch.setattr(config, "settings", dataclasses.replace(config.settings, dev_tools=True))
     assert client.get("/api/settings").json()["variants"]["2142"] == list(stage.STYLE_PRESETS["2142"]["variants"])
     assert client.post(url, params={"variant": "Warm sculptural"}).status_code == 422
 
