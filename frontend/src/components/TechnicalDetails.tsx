@@ -34,6 +34,7 @@ const ENGINEERING = [
   "Jobs run async with status polling; the UI never blocks on a model call.",
   "Meta calls are disk-cached by model + purpose + prompt + image hash, with a 400-call brake per listing (internal runs: ~47 for photos, ~87 for a video; not a benchmark).",
   "Checker thresholds: geometry 0.25, structure IoU 0.3, framing drift 0.05. Results are recorded, never rewritten.",
+  "Windows, doors or glass cut off at the photo edge are only partly in frame, so they aren't compared. Preparation, style renders and the verifier all record that as \"not checked\", never as a pass.",
   "Demo mode: a failed glass or geometry check doesn't hide a room; only missing furniture disables a style. SAM can miss floor-to-ceiling glass; that is recorded, not shown as a pass.",
   "AI Live-In Guide: Spark 1.3 via LangChain, server-side key, tools on existing data only, 12-turn memory per demo session. No new Image or SAM call on a style switch, no silent credit spend on load; Original is the before image, with no call.",
 ];
