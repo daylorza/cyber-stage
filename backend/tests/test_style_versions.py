@@ -102,12 +102,41 @@ def test_images_from_before_versioning_are_kept_as_a_version(client):
     assert records[1]["version"] == 2 and records[1]["is_current"]
 
 
-def test_use_version_refuses_unknown_and_unavailable_versions(client):
+def test_use_version_refuses_unknown_and_overrides_failed_versions(client):
     lid = publish_listing(client)
     assert request_and_wait(client, lid)["status"] == "done"
     assert client.post(f"/api/listings/{lid}/live/rooms/room_1/styles/coastal/versions/99/use").status_code == 404
+    assert rerun(client, lid, "coastal")["status"] == "done"
     listing = db.get_listing(lid)
     listing["live"]["versions"]["room_1:coastal"][0]["available"] = False
     db.save_listing(listing)
     res = client.post(f"/api/listings/{lid}/live/rooms/room_1/styles/coastal/versions/1/use")
-    assert res.status_code == 409 and "didn't pass" in res.json()["detail"]
+    assert res.status_code == 200, res.text
+    v1 = res.json()["versions"]["room_1:coastal"][0]
+    assert v1["is_current"] and v1["broker_override"] and not v1["available"]
+    style = client.get(f"/api/listings/{lid}/live").json()["rooms"][0]["styles"]["coastal"]
+    assert style["image"] == v1["image"] and style["available"] and style["broker_override"]
+    assert client.post(f"/api/listings/{lid}/live/rooms/room_1/styles/coastal/versions/2/use").status_code == 200
+    assert "broker_override" not in client.get(f"/api/listings/{lid}/live").json()["rooms"][0]["styles"]["coastal"]
+
+
+def test_rerun_accepts_unchecked_structure_like_preparation(client, monkeypatch):
+    """A room with no detectable windows, doors or glass wall can't have its structure compared;
+    full preparation shows such an image, so a single-style rerun must too."""
+    lid = publish_listing(client)
+    assert request_and_wait(client, lid)["status"] == "done"
+    listing = db.get_listing(lid)
+    for frame in listing["frames"]:
+        (frame.get("sam") or {}).pop("structure", None)
+    db.save_listing(listing)
+    segment = client.fake_meta.sam_segment
+
+    def nothing_structural(image_path, concept, **kwargs):
+        if kwargs.get("purpose") in ("live.sam.source_structure", "live.sam.structure"):
+            return []
+        return segment(image_path, concept, **kwargs)
+
+    monkeypatch.setattr(client.fake_meta, "sam_segment", nothing_structural)
+    assert rerun(client, lid, "coastal")["status"] == "done"
+    latest = versions(client, lid)["room_1:coastal"][-1]
+    assert latest["is_current"] and latest["checker"]["structure"]["status"] == "not_checked"

@@ -276,6 +276,8 @@ export type LiveStyle = {
   geometry: GeometryCheck | null;
   structure: StructureCheck | null;
   pieces: Piece[];
+  /** Design direction this image was rendered with, when known. */
+  variant?: string | null;
   /** Alignment of this image to the filmed frame, and its furniture mask (frame coordinates). */
   align?: Align;
   mask?: string | null;
@@ -381,6 +383,10 @@ export type StyleVersion = {
   checker: { geometry?: CheckRecord; structure?: CheckRecord; drift?: CheckRecord; concept_geometry?: CheckRecord };
   available: boolean;
   broker_approved: boolean;
+  /** Set when a broker made this version default even though it didn't pass the checks. */
+  broker_override?: boolean;
+  /** Design direction, for versions rendered after directions existed. */
+  variant?: string | null;
   objects_added_verified: number | null;
   is_current: boolean;
 };

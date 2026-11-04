@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import type { Listing } from "../api";
+import { api, type Listing } from "../api";
 
 const REPO = "https://github.com/daylorza/cyber-stage";
 
@@ -8,13 +8,13 @@ const RUBRIC = [
   { name: "Impact", weight: 30, how: "A real broker and buyer problem: empty rooms don't sell from a phone video. Broker approval is the trust gate; nothing publishes without it." },
   { name: "Use of Meta AI tooling", weight: 25, how: "Four Meta models chained end to end, each doing a job only it can do. The checker runs outside the generator, and the guide acts on the room instead of only chatting." },
   { name: "Demo", weight: 25, how: "Working loop: upload → staged → approve → publish → Live-In-It → AI Live-In Guide, plus a 3-minute video with sped-up runs labelled pre-existing vs built this week." },
-  { name: "Technical depth", weight: 20, how: "Async jobs, cached calls with a per-listing brake, geometry / structure / framing verification, a LangChain guide with tools and per-thread memory, before/after provenance, and a test suite run on every change." },
+  { name: "Technical depth", weight: 20, how: "Async jobs, cached calls with a per-listing brake, geometry / structure / framing verification, a LangChain guide with tools and per-thread memory, versioned style renders with a broker Style Selector, before/after provenance, and a test suite run on every change." },
 ];
 
 const MODELS = [
   { name: "Muse Spark 1.3", role: "Copy + AI Live-In Guide brain", where: "Writes the listing copy. Runs the Live-In Guide with LangChain tools that read prepared listing data, change the displayed room or style, and simulate a deposit.", why: "Reasoning model: turns evidence and facts into grounded claims and tool calls." },
   { name: "Muse Wonder 1.0", role: "Sees and classifies rooms", where: "Room type, coverage and observations per frame; re-checks visually supported claims. Fact-only and broker-attested claims follow different checks.", why: "Multimodal understanding of what the camera actually saw." },
-  { name: "Muse Image 1.0", role: "Stages furniture and decor only", where: "One image per style from the room's best frame: Modern luxury, Coastal, Minimal, Cyberpunk (style ID 2142).", why: "Image generation that keeps the filmed room's walls, windows and doors." },
+  { name: "Muse Image 1.0", role: "Stages furniture and decor only", where: "One image per style from the room's best frame: Modern luxury, Coastal, Minimal, Cyberpunk (style ID 2142), each with four design directions.", why: "Image generation that keeps the filmed room's walls, windows and doors." },
   { name: "SAM 3.1", role: "Segments the room", where: "Windows, doors and structure for the checker; furniture masks; faces and personal items for the privacy blur.", why: "Precise masks the checker and the blur can measure against." },
 ];
 
@@ -43,7 +43,25 @@ const LIMITS = [
   "The full loop takes minutes, not seconds; a timed hero run is still to be recorded.",
   "Comps are seeded demo data, not a live MLS feed. The deposit is simulated; no payment is taken.",
   "Cyberpunk (style ID 2142) is a labelled concept style, not a real interior style and not a verified depiction of this home.",
+  "A broker can make a style version the default even if it failed the checks. That choice is recorded on the version and labelled \"shown by broker choice\", never shown as a pass.",
 ];
+
+const STYLE_FLOW: [string, string][] = [
+  ["Pick", "Room, style and design direction, or Auto to rotate through every direction before repeating one."],
+  ["Render", "One Muse Image call with the direction written into the prompt. A retry keeps the same direction."],
+  ["Check", "Geometry, structure and framing drift on the new image, plus SAM furniture detection. The live image changes only if it passes."],
+  ["Keep", "Every render is saved as a numbered version (v1, v2, …) with its model, direction, timestamp and check results. Nothing is overwritten."],
+  ["Choose", "Make default switches which version buyers see: no Meta call, no regeneration. Choosing a version that failed is a recorded broker override."],
+];
+
+const EXTERIORS = [
+  ["Champagne halo", "Full 2142 skyline", "Blue hour", "One flying vehicle"],
+  ["Glacier glass", "Full 2142 skyline", "Daylight", "None"],
+  ["Liquid chrome", "Real view, buildings rebuilt as 2142", "Blue hour", "One flying vehicle"],
+  ["Pearl atrium", "Real view, buildings rebuilt as 2142", "Daylight", "None"],
+];
+
+const STYLE_LABELS: Record<string, string> = { "modern-luxury": "Modern luxury", coastal: "Coastal", minimal: "Minimal", "2142": "Cyberpunk · 2142" };
 
 const modelOf = (purpose: string) => {
   const p = purpose.replace(/^verify\./, "");
@@ -64,6 +82,10 @@ function Block({ eyebrow, title, children }: { eyebrow: string; title: string; c
 export default function TechnicalDetails({ listing, children }: { listing?: Listing; children?: ReactNode }) {
   const root = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
+  const [directions, setDirections] = useState<Record<string, string[]>>({});
+  useEffect(() => {
+    api.settings().then((s) => setDirections(s.variants ?? {})).catch(() => {});
+  }, []);
   useEffect(() => {
     if (window.location.hash === "#technical") root.current?.scrollIntoView({ block: "start" });
   }, []);
@@ -163,6 +185,54 @@ export default function TechnicalDetails({ listing, children }: { listing?: List
               </li>
             ))}
           </ul>
+        </Block>
+
+        <Block eyebrow="Technical depth · Style selector" title="Directed, versioned style renders">
+          <p className="max-w-3xl text-sm leading-relaxed text-ivory/75">Each style has four design directions, so two rooms in the same style don't come out looking identical. After publishing, the broker's Style Selector, right below Enter residence, lets them render a chosen direction for a room and pick which kept version buyers see.</p>
+          {Object.keys(directions).length > 0 && (
+            <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {Object.entries(directions).map(([id, names]) => (
+                <li key={id} className="glass p-5">
+                  <p className="eyebrow text-ice/80!">{STYLE_LABELS[id] ?? id}</p>
+                  <ul className="mt-3 space-y-1.5">
+                    {names.map((n) => <li key={n} className="font-serif text-lg leading-snug">{n}</li>)}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          )}
+          <ol className="mt-10 grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-5">
+            {STYLE_FLOW.map(([name, text], i) => (
+              <li key={name} className="flex gap-4 md:flex-col md:gap-3">
+                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full font-mono text-micro ring-1 ${name === "Check" ? "text-champagne ring-champagne/50" : "text-ice ring-ice/40"}`}>{String(i + 1).padStart(2, "0")}</span>
+                <span className="min-w-0">
+                  <span className="block text-sm text-ivory">{name}</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-ash">{text}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-10 max-w-4xl">
+            <p className="eyebrow">Cyberpunk · 2142 exteriors</p>
+            <p className="mt-2 text-sm text-ash">Pristine and high-tech: no noir, neon signage or grime. Each direction sets its own window view, so every combination is covered once.</p>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[34rem] text-left text-sm">
+                <thead className="data-label text-ash">
+                  <tr className="border-b border-ivory/10">{["Direction", "View", "Light", "Flying vehicle"].map((h) => <th key={h} scope="col" className="py-2 pr-4 font-normal">{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {EXTERIORS.map(([d, view, light, car]) => (
+                    <tr key={d} className="border-b border-ivory/5">
+                      <th scope="row" className="py-2.5 pr-4 font-normal text-ivory">{d}</th>
+                      <td className="py-2.5 pr-4 text-ivory/75">{view}</td>
+                      <td className="py-2.5 pr-4 text-ivory/75">{light}</td>
+                      <td className="py-2.5 text-ivory/75">{car}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </Block>
 
         {listing && <Block eyebrow="Live data" title="This listing, measured">
