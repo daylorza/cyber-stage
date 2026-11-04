@@ -4,7 +4,7 @@ import { api, type ListingSummary } from "../api";
 import { BRAND } from "../brand";
 import BrandMark from "../components/BrandMark";
 import FloorPlan from "../components/FloorPlan";
-import { RESIDENCES, UPCOMING_CITIES } from "../residences";
+import { RESIDENCES } from "../residences";
 
 const REST_SCALE = 1.14;
 const LOOK_DEGREES = 35;
@@ -177,16 +177,21 @@ export default function Home() {
               <li>
                 <span aria-current="true" className="eyebrow flex items-center gap-2 text-ivory! pointer-coarse:min-h-11">
                   <span className="ice-dot" />
-                  {residence.city}
+                  Home
                 </span>
               </li>
-              {UPCOMING_CITIES.map((city) => (
+              {/* {UPCOMING_CITIES.map((city) => (
                 <li key={city}>
                   <span aria-disabled="true" className="eyebrow flex cursor-not-allowed items-center text-ivory/35! pointer-coarse:min-h-11">
                     {city}
                   </span>
                 </li>
-              ))}
+              ))} */}
+              <li>
+                <Link to="/about" className="eyebrow flex items-center text-ivory/75! transition hover:text-ivory!">
+                  About
+                </Link>
+              </li>
               <li>
                 <Link to="/inventory" className="eyebrow flex items-center text-ivory/75! transition hover:text-ivory!">
                   Inventory
@@ -194,7 +199,7 @@ export default function Home() {
               </li>
               <li>
                 <Link to="/inventory?view=broker" className="eyebrow flex items-center text-ivory/75! transition hover:text-ivory!">
-                  Broker console
+                  Console
                 </Link>
               </li>
             </ul>

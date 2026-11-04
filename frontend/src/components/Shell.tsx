@@ -4,14 +4,15 @@ import BrandMark from "./BrandMark";
 
 const LINKS = [
   { to: "/", label: "Home", end: true },
-  { to: "/inventory", label: "Inventory", end: false },
-  { to: "/new", label: "New stage", end: false },
   { to: "/about", label: "About", end: false },
+  { to: "/inventory", label: "Inventory", end: false },
+  { to: "/inventory?view=broker", label: "Console", end: false },
+  { to: "/new", label: "New stage", end: false },
 ];
 
 export function HoverNav() {
   const [open, setOpen] = useState(false);
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   useEffect(() => setOpen(false), [pathname]);
 
   return (
@@ -42,7 +43,7 @@ export function HoverNav() {
               <NavLink
                 to={l.to}
                 end={l.end}
-                className={({ isActive }) => `font-serif text-ui transition hover:text-ivory pointer-coarse:flex pointer-coarse:min-h-11 pointer-coarse:items-center ${isActive ? "text-ivory" : "text-ivory/75"}`}
+                className={({ isActive }) => `font-serif text-ui transition hover:text-ivory pointer-coarse:flex pointer-coarse:min-h-11 pointer-coarse:items-center ${(l.label === "Console" ? pathname === "/inventory" && new URLSearchParams(search).get("view") === "broker" : isActive) ? "text-ivory" : "text-ivory/75"}`}
               >
                 {l.label}
               </NavLink>
