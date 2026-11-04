@@ -107,6 +107,12 @@ ROOM_GUIDANCE = {
     "terrace": "Furnish as a terrace with appropriately scaled outdoor seating where space allows.",
 }
 
+OUTDOOR_NOTE = (
+    "If a balcony, terrace or patio floor is visible in the photo, furnish it too with a few "
+    "appropriately scaled outdoor pieces in the same style, such as a pair of loungers or "
+    "outdoor seating; keep railings, glass and the view unobstructed."
+)
+
 MAX_RESTAGE_LEVEL = 2
 
 STRICT_FRAMING = (
@@ -133,9 +139,11 @@ def prompt_for(style: str, room: dict[str, Any] | None = None) -> str:
     guidance = ROOM_GUIDANCE.get(room.get("type"),
         "Choose furnishings appropriate to the room's apparent function; if uncertain, "
         "keep the staging neutral and do not impose a new function.")
-    rules = FANTASY_RULES if style == "2142" else GEOMETRY_RULES
-    wet_note = "" if style == "2142" else _wet_room_note(room)
-    return " ".join(part for part in (preset["description"], guidance, rules, wet_note) if part)
+    fantasy = style == "2142"
+    rules = FANTASY_RULES if fantasy else GEOMETRY_RULES
+    wet_note = "" if fantasy else _wet_room_note(room)
+    outdoor = "" if fantasy or room.get("type") in WET_ROOM_TYPES else OUTDOOR_NOTE
+    return " ".join(part for part in (preset["description"], guidance, outdoor, rules, wet_note) if part)
 
 
 def _structure_counts(frame: dict[str, Any] | None) -> str:

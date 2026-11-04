@@ -183,10 +183,13 @@ def run(listing: dict[str, Any]) -> dict[str, Any]:
 
     # Frames are in video order, so first appearance gives walkthrough order.
     position = {f["id"]: i for i, f in enumerate(usable)}
+    # Video frames of one room merge into one room. Each uploaded photo is a deliberate shot,
+    # so it stays its own room and gets staged, even when Wonder says it shows the same room.
     groups: dict[str, list[dict[str, Any]]] = {}
     for frame in usable:
         if frame.get("wonder"):
-            groups.setdefault(frame["wonder"]["room_key"], []).append(frame)
+            key = frame["id"] if frame.get("t") is None else frame["wonder"]["room_key"]
+            groups.setdefault(key, []).append(frame)
 
     candidates: list[dict[str, Any]] = []
     for members in groups.values():
