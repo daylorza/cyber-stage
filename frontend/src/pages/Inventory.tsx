@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, factLine, media, money, type ListingSummary } from "../api";
 import StatusMark from "../components/StatusMark";
-import { useHeight } from "../components/live/hooks";
 import { createRadarSelection } from "./inventoryRadar";
 
 const GridIcon = () => (
@@ -118,10 +117,10 @@ export default function Inventory() {
   const [activeId, setActiveId] = useState("");
   const [radar] = useState(() => createRadarSelection(setActiveId, () => document.querySelector<HTMLElement>(".inventory-card:hover")?.dataset.listingId));
   const [compact, setCompact] = useState(false);
-  const [heroRef, heroH] = useHeight();
   useEffect(() => {
-    // Hysteresis so the hero shrinking doesn't flip it straight back.
-    const updateCompact = () => setCompact((c) => (c ? window.scrollY > 40 : window.scrollY > 140));
+    // Fallback for browsers without scroll-driven CSS animations; the hero's height is fixed,
+    // so toggling this never changes the page length.
+    const updateCompact = () => setCompact(window.scrollY > 120);
     const onScroll = () => { updateCompact(); radar.scroll(); };
     updateCompact();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -133,8 +132,8 @@ export default function Inventory() {
   const visible = walkthroughs.filter((item) => !city || item.city === city).sort((a, b) => sort === "name" ? a.title.localeCompare(b.title) : b.updated_at.localeCompare(a.updated_at));
   const active = visible.find((item) => item.id === activeId) ?? visible[0];
   return (
-    <div className="inventory-page" style={{ "--inventory-hero-h": `${heroH}px` } as CSSProperties}>
-      <section ref={heroRef} data-compact={compact} className="inventory-hero">
+    <div className="inventory-page">
+      <section data-compact={compact} className="inventory-hero">
         <p className="inventory-eyebrow">The collection / Inventory</p>
         <h1 className="inventory-title">Spaces with<br /><span>possibility.</span></h1>
         <p className="inventory-intro">Cinematic walkthroughs of exceptional properties.{" "}<br />Review, organize, and publish when it's right.</p>

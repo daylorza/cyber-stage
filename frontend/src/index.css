@@ -138,8 +138,8 @@
   .inventory-title span { color: var(--color-umber); font-family: var(--font-serif); font-style: italic; font-weight: 400; }
   .inventory-intro { margin-top: 20px; color: var(--color-taupe); font-size: 1rem; line-height: 1.5; }
   .inventory-radar { position: absolute; width: 180px; height: 180px; right: 300px; top: 40px; border: 1px solid #c5a997; border-radius: 50%; background: conic-gradient(from 90deg, rgb(157 119 91 / .25), transparent 24deg, transparent); }
-  .inventory-radar::before, .inventory-radar::after, .inventory-radar span { content: ""; position: absolute; border: 1px solid #d8c7bc; border-radius: 50%; inset: 23px; }
-  .inventory-radar::after { inset: 48px; }
+  .inventory-radar::before, .inventory-radar::after, .inventory-radar span { content: ""; position: absolute; border: 1px solid #d8c7bc; border-radius: 50%; inset: 12.8%; }
+  .inventory-radar::after { inset: 26.7%; }
   .inventory-radar span { inset: 50% -14px auto; border: 0; border-top: 1px solid #a98c79; border-radius: 0; }
   .inventory-radar i { position: absolute; top: -14px; bottom: -14px; left: 50%; border-left: 1px solid #a98c79; }
   .inventory-radar small { position: absolute; font: var(--text-micro) var(--font-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--color-bark); white-space: nowrap; }
@@ -169,20 +169,47 @@
   .inventory-page [data-status="failed"] > span, .inventory-page [data-status="rejected"] > span { background: var(--color-brick); }
   @media (min-width: 768px) {
     .inventory-controls > label { padding-left: 24px; border-left: 1px solid var(--color-linen); }
-    /* The whole top (hero, radar, toolbar) stays pinned under the header; the hero compacts once scrolled. */
+    /* The whole top (hero, radar, toolbar) stays pinned under the header. The hero keeps one fixed
+       height so scrolling never changes the page length (a shrinking in-flow hero made the page
+       jump and flip between states). It pins with a negative top, so only its bottom
+       --hero-min stays visible, and its content is bottom-aligned and shrinks with the scroll. */
+    .inventory-page {
+      --header-h: calc(var(--gutter-top) + env(safe-area-inset-top) + 3.25rem);
+      --hero-h: clamp(260px, 14vw + 140px, 340px);
+      --hero-min: 172px;
+      --hero-shrink: calc(var(--hero-h) - var(--hero-min));
+    }
     .inventory-hero, .inventory-toolbar { position: sticky; background: var(--color-parchment); box-shadow: 0 0 0 100vmax var(--color-parchment); clip-path: inset(-1.5rem -100vmax 0); }
-    .inventory-hero { top: calc(var(--gutter-top) + env(safe-area-inset-top) + 3.25rem); z-index: 21; }
-    .inventory-toolbar { top: calc(var(--gutter-top) + env(safe-area-inset-top) + 3.25rem + var(--inventory-hero-h, 0px)); z-index: 20; border-bottom: 1px solid var(--color-linen); }
-    .inventory-hero[data-compact="true"] { min-height: 172px; padding-bottom: 16px; }
-    .inventory-hero[data-compact="true"] .inventory-title { margin-top: 8px; font-size: clamp(2.25rem, 3.5vw, 3rem); }
-    .inventory-hero[data-compact="true"] .inventory-intro { display: none; }
-    .inventory-hero[data-compact="true"] .inventory-new { bottom: 16px; }
-    .inventory-hero[data-compact="true"] .inventory-radar { width: 100px; height: 100px; top: 34px; left: 50%; right: auto; transform: translateX(-50%); }
-    .inventory-hero[data-compact="true"] .inventory-radar::before { inset: 13px; }
-    .inventory-hero[data-compact="true"] .inventory-radar::after { inset: 27px; }
-    .inventory-hero[data-compact="true"] .inventory-radar .r-top { top: -28px; }
-    .inventory-hero[data-compact="true"] .inventory-radar .r-bottom { bottom: -28px; }
-    .inventory-hero[data-compact="true"] .inventory-radar-caption { display: none; }
+    .inventory-hero { display: flex; flex-direction: column; justify-content: flex-end; height: var(--hero-h); min-height: 0; padding-bottom: 24px; top: calc(var(--header-h) - var(--hero-shrink)); z-index: 21; overflow-anchor: none; }
+    .inventory-toolbar { top: calc(var(--header-h) + var(--hero-min)); z-index: 20; border-bottom: 1px solid var(--color-linen); }
+    .inventory-title { transform-origin: left bottom; }
+    .inventory-intro { overflow: hidden; max-height: 4.5rem; }
+    .inventory-new { bottom: 24px; }
+    .inventory-radar { top: auto; bottom: calc(var(--hero-h) - 220px); }
+
+    @supports (animation-timeline: scroll()) {
+      .inventory-title, .inventory-intro, .inventory-radar, .inventory-radar-caption {
+        animation-duration: auto;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: scroll(root block);
+        animation-range: 0 var(--hero-shrink);
+      }
+      .inventory-title { animation-name: inventory-title-shrink; }
+      .inventory-intro { animation-name: inventory-intro-hide; }
+      .inventory-radar { animation-name: inventory-radar-shrink; }
+      .inventory-radar-caption { animation-name: inventory-fade-out; animation-range: 0 calc(var(--hero-shrink) / 2); }
+    }
+    @supports not (animation-timeline: scroll()) {
+      .inventory-title, .inventory-intro, .inventory-radar, .inventory-radar-caption { transition: transform .45s cubic-bezier(.2, .7, .2, 1), max-height .45s cubic-bezier(.2, .7, .2, 1), margin .45s cubic-bezier(.2, .7, .2, 1), opacity .3s, width .45s, height .45s, right .45s, bottom .45s; }
+      .inventory-hero[data-compact="true"] .inventory-title { transform: scale(.45); margin-top: calc(8px - .95em); }
+      .inventory-hero[data-compact="true"] .inventory-intro { max-height: 0; margin-top: 0; opacity: 0; }
+      .inventory-hero[data-compact="true"] .inventory-radar { width: 92px; height: 92px; right: calc(50% - 46px); bottom: 40px; }
+      .inventory-hero[data-compact="true"] .inventory-radar-caption { opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .inventory-title, .inventory-intro, .inventory-radar, .inventory-radar-caption { transition: none; }
+    }
   }
   .inventory-radar svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
   .inventory-radar polygon { fill: rgb(128 94 71 / .16); stroke: var(--color-umber); stroke-width: 1; stroke-linejoin: round; }
@@ -576,3 +603,10 @@
 @media (prefers-reduced-motion: reduce) {
   .btn-halo::before { animation: none; opacity: 0.5; transform: none; }
 }
+
+/* Inventory hero, driven by page scroll (see .inventory-hero). Transforms and max-height only:
+   the hero's own height never changes, so the page length stays put. */
+@keyframes inventory-title-shrink { to { transform: scale(.45); margin-top: calc(8px - .95em); } }
+@keyframes inventory-intro-hide { to { max-height: 0; margin-top: 0; opacity: 0; } }
+@keyframes inventory-radar-shrink { to { width: 92px; height: 92px; right: calc(50% - 46px); bottom: 40px; } }
+@keyframes inventory-fade-out { to { opacity: 0; } }
