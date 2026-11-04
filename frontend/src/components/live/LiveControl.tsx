@@ -34,6 +34,7 @@ export default function LiveControl({ listing }: { listing: Listing }) {
   const [styleRun, setStyleRun] = useState<{ title: string; job: Job | null; events: JobEvent[] } | null>(null);
   const lastPrep = useRef<Job | null>(null);
   const lastStyle = useRef<Job | null>(null);
+  const styleTarget = useRef({ room: "", roomName: "", style: "", label: "" });
   const observe = (last: { current: Job | null }, job: Job) => {
     const events: JobEvent[] = [];
     trackJob(last.current, job, (e) => events.push(e));
@@ -108,9 +109,14 @@ export default function LiveControl({ listing }: { listing: Listing }) {
         const fresh = observe(lastStyle, job);
         setStyleRun((prev) => prev && { ...prev, job, events: [...prev.events, ...fresh] });
         if (job.status === "done" || job.status === "failed") {
-          setStyleMessage(job.status === "done" ? "Style updated." : (job.error ?? "Style rerun failed; previous image retained."));
+          const t = styleTarget.current;
           setStyleJob(null);
-          if (job.status === "done") { setPayload(await api.live(listingId)); setVersionsRefresh((n) => n + 1); }
+          if (job.status !== "done") return setStyleMessage(`${t.roomName} · ${t.label}: ${job.error ?? "rerun failed; previous image retained."}`);
+          const p = await api.live(listingId);
+          const direction = p.rooms.find((r) => r.id === t.room)?.styles[t.style]?.variant;
+          setStyleMessage(`Updated ${t.roomName} · ${t.label}${direction ? ` · ${direction}` : ""}`);
+          setPayload(p);
+          setVersionsRefresh((n) => n + 1);
         } else timer = window.setTimeout(tick, 1000);
       } catch (e) {
         if (!stopped) { setStyleMessage((e as Error).message); setStyleJob(null); }
@@ -124,6 +130,7 @@ export default function LiveControl({ listing }: { listing: Listing }) {
     const picked = selectedStyle;
     const label = `${picked?.label ?? style}${variant ? ` (${variant})` : ""}`;
     lastStyle.current = null;
+    styleTarget.current = { room, roomName: picked?.roomName ?? room, style, label: picked?.label ?? style };
     setStyleRun({ title: `Style · ${label} · ${picked?.roomName ?? room}`, job: null, events: [{ at: new Date().toISOString(), text: `Requesting ${label} for ${picked?.roomName ?? room}` }] });
     setSelectedStyle(null);
     setVariant("");

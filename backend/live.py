@@ -121,7 +121,8 @@ def _save_checked(data: bytes, pre_path: Path, dest_path: Path, meta, trace: lis
 # version per key is current: the one the live room shows.
 
 VERSION_FIELDS = ("label", "image", "source", "available", "concept", "error", "attempts", "geometry",
-                  "concept_geometry", "structure", "drift", "pieces", "align", "mask", "mask_changed")
+                  "concept_geometry", "structure", "drift", "pieces", "align", "mask", "mask_changed",
+                  "variant")
 
 
 def _versions(listing: dict[str, Any], room_id: str, style_id: str) -> list[dict[str, Any]]:
@@ -245,13 +246,15 @@ def _capture_legacy(listing: dict[str, Any]) -> None:
 
 
 def public_versions(listing: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
-    return {key: [{k: v for k, v in record.items() if k != "entry"} for record in records]
+    return {key: [{**{k: v for k, v in record.items() if k != "entry"},
+                   "variant": (record.get("entry") or {}).get("variant")} for record in records]
             for key, records in ((listing.get("live") or {}).get("versions") or {}).items()}
 
 
 def use_version(listing: dict[str, Any], room_id: str, style_id: str, version: int) -> dict[str, Any]:
     """Make an earlier (or later) version the one the residence shows. Selection only: no Meta
-    calls, nothing regenerated, every other version kept."""
+    calls, nothing regenerated, every other version kept. Choosing a version that failed the
+    checks is an explicit broker override: it is shown, and recorded as such."""
     block = listing.get("live") or {}
     if listing.get("status") != "published" or block.get("status") != "ready":
         raise listings.ReviewError(409, "A published, prepared residence is required.")
@@ -259,11 +262,15 @@ def use_version(listing: dict[str, Any], room_id: str, style_id: str, version: i
     record = next((v for v in _versions(listing, room_id, style_id) if v["version"] == version), None)
     if room is None or record is None:
         raise listings.ReviewError(404, "Version not found.")
-    if not record["available"]:
-        raise listings.ReviewError(409, "This version didn't pass the checks, so it can't be shown.")
     if not record["image"] or not (config.settings.media_dir / record["image"]).is_file():
         raise listings.ReviewError(409, "This version's image is missing.")
-    room.setdefault("styles", {})[style_id] = {**room["styles"].get(style_id, {}), **record["entry"]}
+    entry = {**room.get("styles", {}).get(style_id, {}), **record["entry"]}
+    entry.pop("broker_override", None)
+    entry["variant"] = record["entry"].get("variant")
+    if not record["available"]:
+        record["broker_override"] = True
+        entry.update(available=True, error=None, broker_override=True)
+    room.setdefault("styles", {})[style_id] = entry
     _set_current(listing, room_id, style_id, record["image"])
     return db.save_listing(listing)
 

@@ -58,14 +58,15 @@ export default function StyleVersions({ listingId, payload, refresh, disabled, o
                     <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="font-mono text-ivory">v{v.version}</span>
                       <span className="text-ash">{stamp(v.created_at)}</span>
+                      {v.variant && <span className="text-ivory/80">{v.variant}</span>}
                       {v.is_current && <span className="rounded-full bg-ice/15 px-2 py-0.5 text-ice">Current</span>}
                       {v.broker_approved && <span className="rounded-full bg-champagne/15 px-2 py-0.5 text-champagne">Broker approved</span>}
                     </p>
-                    <p className={`mt-1 ${v.available ? "text-ivory/65" : "text-rose"}`}>{checkerLine(v)}{v.available ? "" : " · not shown"}</p>
+                    <p className={`mt-1 ${v.available ? "text-ivory/65" : v.broker_override ? "text-champagne" : "text-rose"}`}>{checkerLine(v)}{v.available ? "" : v.broker_override ? " · shown by broker choice" : " · not shown"}</p>
                     <p className="mt-0.5 truncate text-ash" title={v.created_by}>{v.created_by}{v.model ? ` · ${v.model}` : ""}</p>
                     <p className="mt-1.5 flex gap-4">
                       {v.image && <a href={media(v.image)} target="_blank" rel="noreferrer" className="btn-ghost text-ivory/80">View</a>}
-                      {!v.is_current && v.available && <button type="button" disabled={disabled || !!busy} onClick={() => void use(room.id, style.id, v.version)} className="btn-ghost text-ice/90">{busy === `${room.id}:${style.id}:${v.version}` ? "Switching…" : "Use this version"}</button>}
+                      {!v.is_current && v.image && <button type="button" disabled={disabled || !!busy} title={v.available ? undefined : "This version didn't pass the checks; it will be shown anyway."} onClick={() => void use(room.id, style.id, v.version)} className="btn-ghost text-ice/90">{busy === `${room.id}:${style.id}:${v.version}` ? "Switching…" : "Make default"}</button>}
                     </p>
                   </div>
                 </li>
