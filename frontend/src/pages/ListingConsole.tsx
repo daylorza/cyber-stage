@@ -10,6 +10,7 @@ import CompsTable from "../components/CompsTable";
 import DecisionPanel from "../components/DecisionPanel";
 import PipelineIndicator from "../components/PipelineIndicator";
 import LiveControl from "../components/live/LiveControl";
+import StyleSelector from "../components/live/StyleSelector";
 import SourcePanel from "../components/SourcePanel";
 import StatusMark from "../components/StatusMark";
 import { ClaimTrust, claimResult, EvidenceBlock, ITEM_SHORT, ResultLine, roomIssues } from "../components/trust";
@@ -90,6 +91,7 @@ function Review({
   const [rejected, setRejected] = useState<string[]>([]);
   const [selected, setSelected] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
+  const [liveReady, setLiveReady] = useState(0);
   const [confirmation, setConfirmation] = useState<"restage" | "unpublish" | null>(null);
   const [retype, setRetype] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -329,7 +331,7 @@ function Review({
             <div className="glass fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 flex flex-wrap items-center justify-center gap-1.5 rounded-3xl! p-1.5 max-sm:[&_:is(.btn,.btn-glass,.btn-primary)]:px-4 sm:inset-x-auto sm:bottom-6 sm:right-[max(1.5rem,calc((100vw-80rem)/2+2.5rem))] sm:rounded-full! lg:relative lg:inset-auto lg:z-30 lg:mt-8 lg:w-fit lg:justify-start">
             {locked ? (
               <>
-                <LiveControl listing={listing} />
+                <LiveControl listing={listing} onReady={() => setLiveReady((n) => n + 1)} />
                 <Link to={`/p/${listing.id}`} className="btn-primary">
                   View published page
                 </Link>
@@ -374,6 +376,7 @@ function Review({
               </>
             )}
           </div>
+          {locked && <StyleSelector listingId={listing.id} refresh={liveReady} />}
           </section>
 
           {listing.comps && <CompsTable comps={listing.comps} />}
