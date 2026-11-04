@@ -14,18 +14,6 @@ A buyer cannot feel an empty room from a phone video. An agent already has the o
 
 Right now, Cyber Stage just does staging — one room, done convincingly, end to end. Not a whole virtual world, not a full-house pipeline.
 
-## Initial primer — the initial build
-
-Keep these three generated listings as the initial primer, the initial build:
-
-1. **Miami** — the original hero residence.
-2. **Los Angeles** — a second residence, with its own rooms, separated out of the Miami listing.
-3. **London** — a third residence, with its own page.
-
-These three are generated / placeholder listings, not real listings, not real client properties. They are the primer that shows what the software does, so a broker can see it working before uploading anything of their own.
-
-Going forward, brokers bring their own videos and their own listings. The primer stays as the starting example. It does not replace a broker's own work, and it must never be presented as a real listing.
-
 ## What Cyber Stage DOES
 
 - **Takes a broker's own phone walkthrough video (or photos) + listing facts, and stages it.** This is the core product, and the future direction: your videos, your listings, staged by Cyber Stage.
@@ -35,8 +23,9 @@ Going forward, brokers bring their own videos and their own listings. The primer
 - **Checks its own work independently.** A separate checker, with its own model calls, re-checks geometry, doors/windows, and furniture presence before publish. Results are recorded, even when they do not block (see Disclaimer).
 - **Puts a broker in control.** A broker reviews, edits, approves, unpublishes, and publishes. Nothing publishes without broker approval. Title and copy edits on a published listing trigger unpublish, so a changed listing is not left live as if it were still approved.
 - **Lets a buyer enter the residence.** First-person staged walk, style picker, and a simulated hold — no payment taken.
+- **Answers questions with the AI Live-In Guide.** The guide uses prepared listing data to answer questions and help buyers explore the residence.
 - **Shows a separate concept style, Cyberpunk - 2142.** The same room reimagined 120 years in the future: retractable translucent laser-gate doors with no doorknobs (door frames still visible), a levitating halo climate ring instead of a ceiling fan, exactly one flying car in the skyline view, and a 2142 skyline outside the same window frames. Clearly labeled as a concept, not as a broker-verified staged photo.
-- **Blurs what should not be shown.** Faces and personal items are blurred into publishable frames. Raw frames are never served. Published walkthrough audio is removed.
+- **Applies a privacy pass.** Detected faces and personal items are blurred in publishable frames; raw frames are not served. Walkthrough audio is removed, and video blur follows sampled frames, so brief appearances between samples may be missed.
 
 ## What Cyber Stage does NOT do
 
@@ -50,6 +39,8 @@ Going forward, brokers bring their own videos and their own listings. The primer
 - **It does not present an inconclusive check as a pass.** Where a check did not pass, the recorded result stands. It is not rewritten as a pass, even when it does not block the demo.
 
 ## Demo — 3 minutes
+
+[Watch the demo on YouTube](https://youtu.be/e4h0FqXTF5A).
 
 1. **0:00–0:15 — Problem + raw phone footage.** An empty room on a phone video.
 2. **0:15–0:50 — Generated listing + before/after.** The same room, staged.
@@ -95,6 +86,8 @@ META_API_BASE_URL=https://api.meta.ai/v1
 # META_SAM_MODEL=sam-3.1
 # Max Meta Model API calls per listing job:
 # VRE_META_MAX_CALLS=400
+# Optionally prepare Live-In-It when a listing is published (off by default):
+# VRE_AUTO_PREPARE_LIVE=1
 ```
 
 ## Layout
@@ -106,6 +99,7 @@ backend/    FastAPI, SQLite jobs table, async pipeline worker
   verify/            independent checker, with its own model calls
   live.py            Live-In-It preparation: staged styles per lived-in room, aligned images, furniture masks, moments
   cascade.py         furniture masks and alignment for the staged images
+  guide.py           session-only AI Live-In Guide grounded in listing data
 frontend/   React + Vite + Tailwind
 ```
 
@@ -125,7 +119,7 @@ Pre-existing, before this week: a phone walkthrough video and listing facts. Tes
 - Styles are only shown when there is furniture to show. A style with no detected sofa/table to stage cannot be shown as staged.
 - SAM does not reliably segment floor-to-ceiling glass. Glass-wall comparisons can come back inconclusive even when the room itself is preserved — see the disclaimer below.
 - The hold/reserve action is simulated. No payment is taken.
-- Any audio in a published walkthrough video is removed, and privacy regions are blurred at the frame where they were found.
+- Any audio in a published walkthrough video is removed. Privacy blur follows sampled frames; brief appearances between samples may be missed.
 
 ---
 
