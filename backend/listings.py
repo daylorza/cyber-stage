@@ -20,6 +20,7 @@ STYLES = {"modern-luxury", "coastal", "minimal"}
 DEFAULT_STYLE = "modern-luxury"
 # Shown on the console, the published page and inside Live-In-It for test uploads.
 TEST_NOTE = "Test upload · Not a real listing. Placeholder facts."
+UNSET: Any = object()
 
 
 class ReviewError(Exception):
@@ -120,6 +121,7 @@ def summary(listing: dict[str, Any]) -> dict[str, Any]:
         "city": facts.get("city"),
         "facts": {k: v for k, v in facts.items() if k != "estimate_price"},
         "price_display": copy.format_price(facts.get("price"), facts.get("currency")),
+        "price_guide": (listing.get("comps") or {}).get("suggested_range"),
         "cover": (rooms[0].get("after") or rooms[0]["before"]) if rooms else None,
         "rooms": len(rooms),
         "note": listing.get("note"),
@@ -162,6 +164,15 @@ def _edit_rooms(listing: dict[str, Any], rejected: list[str]) -> list[str]:
     return ["rooms"] if changed else []
 
 
+def _edit_price(listing: dict[str, Any], price: int | None) -> list[str]:
+    facts = listing["facts"]
+    if facts.get("price") == price:
+        return []
+    facts["price"] = price
+    facts["estimate_price"] = price is None
+    return ["price"]
+
+
 def set_test_label(listing: dict[str, Any], test: bool) -> None:
     """Label (or unlabel) an upload as a test: "Not a real listing" everywhere it shows.
     A label, not content: it never clears an approval."""
@@ -175,7 +186,7 @@ def set_test_label(listing: dict[str, Any], test: bool) -> None:
 
 def apply_review(listing: dict[str, Any], *, action: str, copy_edit: dict[str, Any] | None = None,
                  rejected_rooms: list[str] | None = None, notes: str | None = None,
-                 test_listing: bool | None = None) -> dict[str, Any]:
+                 test_listing: bool | None = None, price: Any = UNSET) -> dict[str, Any]:
     normalize(listing)
     if listing["status"] not in REVIEWABLE:
         message = {
@@ -188,7 +199,7 @@ def apply_review(listing: dict[str, Any], *, action: str, copy_edit: dict[str, A
     review = listing["review"]
     edited = (_edit_copy(listing, copy_edit) if copy_edit is not None else []) + (
         _edit_rooms(listing, rejected_rooms) if rejected_rooms is not None else []
-    )
+    ) + (_edit_price(listing, price) if price is not UNSET else [])
     review["edited_fields"] = sorted(set(review["edited_fields"]) | set(edited))
     if notes is not None:
         review["notes"] = notes.strip()

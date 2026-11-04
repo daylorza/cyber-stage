@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, factLine, media, money, type Facts, type ListingSummary } from "../api";
+import { api, factLine, media, money, type ListingSummary } from "../api";
 import StatusMark from "../components/StatusMark";
 import { useHeight } from "../components/live/hooks";
 import { createRadarSelection } from "./inventoryRadar";
@@ -17,20 +17,32 @@ const ListIcon = () => (
   </svg>
 );
 
-type Axis = { label: string; value: (f: Facts) => number | null; show: (v: number, f: Facts) => string };
-/** Radar axes, clockwise from the top. Every value is a real listing fact, scaled against the collection's largest. */
+/** Asking price, or the midpoint of the comps guide when the broker hasn't set one. */
+function priceOf(item: ListingSummary): { value: number; currency: string; estimate: boolean } | null {
+  if (item.facts.price) return { value: item.facts.price, currency: item.facts.currency, estimate: false };
+  const guide = item.price_guide;
+  return guide ? { value: (guide.low + guide.high) / 2, currency: guide.currency, estimate: true } : null;
+}
+
+function priceLabel(item: ListingSummary): string | null {
+  const price = priceOf(item);
+  return price && `${price.estimate ? "est. " : ""}${money(price.value, price.currency)}`;
+}
+
+type Axis = { label: string; value: (i: ListingSummary) => number | null; show: (v: number, i: ListingSummary) => string };
+/** Radar axes, clockwise from the top. Real listing facts (price falls back to the comps guide), scaled against the collection's largest. */
 const AXES: Axis[] = [
-  { label: "Space", value: (f) => f.sqft, show: (v) => `${v.toLocaleString("en-US")} sq ft` },
-  { label: "Bedrooms", value: (f) => f.beds, show: (v) => `${v} bed` },
-  { label: "Baths", value: (f) => f.baths, show: (v) => `${v} bath` },
-  { label: "Price", value: (f) => f.price, show: (v, f) => money(v, f.currency) },
+  { label: "Space", value: (i) => i.facts.sqft, show: (v) => `${v.toLocaleString("en-US")} sq ft` },
+  { label: "Bedrooms", value: (i) => i.facts.beds, show: (v) => `${v} bed` },
+  { label: "Baths", value: (i) => i.facts.baths, show: (v) => `${v} bath` },
+  { label: "Price", value: (i) => priceOf(i)?.value ?? null, show: (_, i) => priceLabel(i) ?? "" },
 ];
 const AXIS_CLASS = ["r-top", "r-right", "r-bottom", "r-left"];
 
 function Radar({ item, pool }: { item: ListingSummary | undefined; pool: ListingSummary[] }) {
-  const values = AXES.map((a) => (item ? a.value(item.facts) : null));
+  const values = AXES.map((a) => (item ? a.value(item) : null));
   const scaled = AXES.map((a, i) => {
-    const max = Math.max(0, ...pool.map((p) => a.value(p.facts) ?? 0));
+    const max = Math.max(0, ...pool.map((p) => a.value(p) ?? 0));
     const v = values[i];
     return v != null && max > 0 ? v / max : 0;
   });
@@ -38,7 +50,7 @@ function Radar({ item, pool }: { item: ListingSummary | undefined; pool: Listing
     const angle = (i * Math.PI) / 2;
     return `${90 + Math.sin(angle) * r * 90},${90 - Math.cos(angle) * r * 90}`;
   };
-  const summary = item ? `${item.title}: ${AXES.map((a, i) => (values[i] != null ? a.show(values[i]!, item.facts) : `${a.label.toLowerCase()} not set`)).join(", ")}. Scaled to the largest in the collection.` : "No residence selected.";
+  const summary = item ? `${item.title}: ${AXES.map((a, i) => (values[i] != null ? a.show(values[i]!, item) : `${a.label.toLowerCase()} not set`)).join(", ")}. Scaled to the largest in the collection.` : "No residence selected.";
   return (
     <div className="inventory-radar" role="img" aria-label={summary}>
       <span /><i />
@@ -52,7 +64,7 @@ function Radar({ item, pool }: { item: ListingSummary | undefined; pool: Listing
       {AXES.map((a, i) => (
         <small key={a.label} className={AXIS_CLASS[i]}>
           {a.label}
-          {item && <em>{values[i] != null ? a.show(values[i]!, item.facts) : "—"}</em>}
+          {item && <em>{values[i] != null ? a.show(values[i]!, item) : "—"}</em>}
         </small>
       ))}
       {item && <p className="inventory-radar-caption">{item.title}</p>}
@@ -62,6 +74,7 @@ function Radar({ item, pool }: { item: ListingSummary | undefined; pool: Listing
 
 function ListingCard({ item, broker, list, onHover, onActive }: { item: ListingSummary; broker: boolean; list: boolean; onHover: (id: string) => void; onActive: (id: string) => void }) {
   const facts = factLine(item.facts);
+  const price = priceLabel(item);
   const details = [item.city || "City not set", facts].filter(Boolean).join(" · ");
   const note = item.note && !/test upload/i.test(item.note) ? item.note : "";
   // Publicly, "Published" is every card; only flag the exceptions. Brokers always see status.
@@ -78,9 +91,9 @@ function ListingCard({ item, broker, list, onHover, onActive }: { item: ListingS
         <div className="inventory-card-body min-w-0">
           <div className="flex items-baseline justify-between gap-4">
             <h3 className="min-w-0 truncate font-serif text-2xl leading-tight transition-colors group-hover:text-umber max-md:line-clamp-2 max-md:whitespace-normal max-md:text-lg">{item.title || "Untitled residence"}</h3>
-            {item.price_display && <span className="shrink-0 font-mono text-xs text-clay max-md:hidden">{item.price_display}</span>}
+            {price && <span className="shrink-0 font-mono text-xs text-clay max-md:hidden">{price}</span>}
           </div>
-          {item.price_display && <p className="mt-0.5 font-mono text-xs text-clay md:hidden">{item.price_display}</p>}
+          {price && <p className="mt-0.5 font-mono text-xs text-clay md:hidden">{price}</p>}
           <p className="mt-1 truncate text-sm text-taupe">{details}</p>
           {(showStatus || note) && (
             <p className="inventory-status-inline mt-1.5 flex min-w-0 items-center gap-3 md:hidden">

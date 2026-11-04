@@ -152,11 +152,13 @@ export type Comp = {
   date: string;
 };
 
+export type PriceGuide = { low: number; high: number; median_per_sqft: number; currency: string; basis: string };
+
 export type Comps = {
   source: string;
   label: string;
   items: Comp[];
-  suggested_range: { low: number; high: number; median_per_sqft: number; currency: string; basis: string } | null;
+  suggested_range: PriceGuide | null;
 };
 
 export type Copy = {
@@ -250,6 +252,8 @@ export type ListingSummary = {
   city: string | null;
   facts: Facts;
   price_display: string | null;
+  /** Comps guide range, for listings without an asking price. */
+  price_guide?: PriceGuide | null;
   cover: string | null;
   rooms: number;
   note: string | null;
@@ -345,6 +349,8 @@ export type ReviewBody = {
   copy_edit?: { title: string; description: string; highlights: string[] };
   rejected_rooms?: string[];
   test_listing?: boolean;
+  /** Omit to leave unchanged; null clears it back to the comps guide. */
+  price?: number | null;
 };
 
 function errorMessage(status: number, body: unknown): string {

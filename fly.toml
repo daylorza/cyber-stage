@@ -10,6 +10,9 @@ primary_region = "dfw"
 [build]
   dockerfile = "Dockerfile"
 
+[build.args]
+  VITE_HOME_LISTING_ID = "lst_8c01f992609d"
+
 [[vm]]
   memory = "1gb"
   cpu_kind = "shared"

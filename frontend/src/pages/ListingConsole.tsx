@@ -16,6 +16,8 @@ import { ClaimTrust, claimResult, EvidenceBlock, ITEM_SHORT, ResultLine, roomIss
 import TechnicalDetails from "../components/TechnicalDetails";
 
 const clean = (lines: string[]) => lines.map((l) => l.trim()).filter(Boolean);
+const digits = (value: string) => value.replace(/\D/g, "");
+const grouped = (value: string) => (digits(value) ? Number(digits(value)).toLocaleString("en-US") : "");
 
 function Header({ listing, onTestLabel }: { listing: Listing; onTestLabel?: (test: boolean) => void }) {
   const { facts, copy, comps } = listing;
@@ -79,6 +81,8 @@ function Review({
   const [title, setTitle] = useState(copy.title);
   const [description, setDescription] = useState(copy.description);
   const [highlights, setHighlights] = useState(copy.highlights.map((h) => h.text));
+  const savedPrice = listing.facts.price ? String(listing.facts.price) : "";
+  const [price, setPrice] = useState(grouped(savedPrice));
   const [rejected, setRejected] = useState<string[]>([]);
   const [selected, setSelected] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
@@ -89,12 +93,16 @@ function Review({
     setTitle(copy.title);
     setDescription(copy.description);
     setHighlights(copy.highlights.map((h) => h.text));
+    setPrice(grouped(savedPrice));
     setRejected(listing.rooms.filter((r) => r.rejected).map((r) => r.id));
   }, [listing.updated_at]);
 
   const locked = listing.status === "published";
   const savedRejected = listing.rooms.filter((r) => r.rejected).map((r) => r.id);
+  const priceDirty = digits(price) !== savedPrice;
+  const guide = listing.comps?.suggested_range;
   const dirty =
+    priceDirty ||
     title.trim() !== copy.title ||
     description.trim() !== copy.description ||
     clean(highlights).join("\n") !== copy.highlights.map((h) => h.text).join("\n") ||
@@ -136,7 +144,12 @@ function Review({
 
   const review = (action: "save" | "approve" | "reject") =>
     run(action, () =>
-      api.review(listing.id, { action, copy_edit: { title, description, highlights: clean(highlights) }, rejected_rooms: rejected }),
+      api.review(listing.id, {
+        action,
+        copy_edit: { title, description, highlights: clean(highlights) },
+        rejected_rooms: rejected,
+        ...(priceDirty && { price: digits(price) ? Number(digits(price)) : null }),
+      }),
     );
 
   const restage = async () => {
@@ -353,6 +366,20 @@ function Review({
               ) : (
                 <ClaimTrust claim={undefined} listing={listing} className="mt-2 pl-1" />
               )}
+            </label>
+            <label className="block">
+              <span className="eyebrow mb-2 block">Asking price ({listing.facts.currency})</span>
+              <input
+                className="field font-mono"
+                inputMode="numeric"
+                value={price}
+                disabled={locked}
+                placeholder={guide ? `Guide ${money(guide.low, guide.currency)} – ${money(guide.high, guide.currency)}` : "Not set"}
+                onChange={(e) => setPrice(grouped(e.target.value))}
+              />
+              <span className="mt-2 block pl-1 text-xs text-ash">
+                {locked ? "Unpublish for edits to change the price." : "Leave blank to show the comps guide as an estimate."}
+              </span>
             </label>
             <div>
               <label className="block">
