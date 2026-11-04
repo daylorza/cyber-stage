@@ -980,7 +980,7 @@ def for_residence(residence_id: str) -> dict[str, Any] | None:
 
 def rerun_style(job: dict[str, Any]) -> None:
     """Regenerate one style; retain its existing image unless all checks succeed."""
-    _, room_id, style_id = job["kind"].split(":", 2)
+    _, room_id, style_id, *picked = job["kind"].split(":", 3)
     listing = db.get_listing(job["listing_id"])
     if not listing or listing.get("status") != "published":
         raise ValueError("Listing is no longer published.")
@@ -1000,7 +1000,7 @@ def rerun_style(job: dict[str, Any]) -> None:
     required = {"living": ("sofa", "table"), "bedroom": ("bed",), "dining": ("table", "chair")}.get(room.get("type"))
     if not required:
         raise ValueError("Targeted furniture rerun is available for living rooms, bedrooms and dining rooms.")
-    variant = stage.select_variant(style_id)
+    variant = picked[0] if picked else stage.select_variant(style_id)
     prompt = (stage.prompt_for(style_id, room, variant=variant) + " " + stage.STRICT_FRAMING + " " + stage.STRICT_STRUCTURE
               + f" Furnish this {room.get('type')} room with clearly visible " + " and ".join(required) + ". "
               + f"Render variation {job['id']}.")

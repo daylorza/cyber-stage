@@ -415,13 +415,15 @@ export const api = {
   unpublish: (id: string) => request<Listing>(`/listings/${id}/unpublish`, { method: "POST" }),
   page: (id: string) => request<PublishedPage>(`/listings/${id}/page`),
   metaStatus: () => request<MetaStatus>("/meta/status"),
-  settings: () => request<{ blocking_checks: boolean }>("/settings"),
+  /** `variants` (design directions per style) is only set when the backend runs with VRE_DEV_TOOLS=1. */
+  settings: () => request<{ blocking_checks: boolean; variants?: Record<string, string[]> }>("/settings"),
   reprocess: (id: string) => request<{ listing_id: string; job_id: string }>(`/listings/${id}/reprocess`, { method: "POST" }),
   live: (id: string) => request<LivePayload>(`/listings/${id}/live`),
   liveVersions: (id: string) => request<{ versions: Record<string, StyleVersion[]> }>(`/listings/${id}/live/versions`),
   useLiveVersion: (id: string, room: string, style: string, version: number) =>
     request<{ versions: Record<string, StyleVersion[]> }>(`/listings/${id}/live/rooms/${encodeURIComponent(room)}/styles/${encodeURIComponent(style)}/versions/${version}/use`, { method: "POST" }),
-  rerunLiveStyle: (id: string, room: string, style: string) => request<{ job_id: string }>(`/listings/${id}/live/rooms/${encodeURIComponent(room)}/styles/${encodeURIComponent(style)}/rerun`, { method: "POST" }),
+  rerunLiveStyle: (id: string, room: string, style: string, variant?: string) =>
+    request<{ job_id: string }>(`/listings/${id}/live/rooms/${encodeURIComponent(room)}/styles/${encodeURIComponent(style)}/rerun${variant ? `?variant=${encodeURIComponent(variant)}` : ""}`, { method: "POST" }),
   /** `residence` only links a Miami listing to the seeded home-page residence; any listing can be prepared. */
   prepareLive: (id: string, residence: string | null = null) =>
     request<{ listing_id: string; job_id: string }>(`/listings/${id}/live`, json({ residence })),

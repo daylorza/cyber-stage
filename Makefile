@@ -7,7 +7,7 @@ install:
 	cd frontend && npm ci
 
 backend:
-	cd backend && uv run uvicorn main:create_app --factory --reload --port 8000 $(ENV_FILE)
+	cd backend && VRE_DEV_TOOLS=1 uv run uvicorn main:create_app --factory --reload --port 8000 $(ENV_FILE)
 
 frontend:
 	cd frontend && npm run dev

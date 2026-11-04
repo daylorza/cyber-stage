@@ -106,3 +106,36 @@ def test_live_picker_passes_room_type_and_keeps_direction_on_retry(client, monke
             assert "sofa" not in first.lower()
         for style_id, entry in room["styles"].items():
             assert entry["variant"] in stage.STYLE_PRESETS[style_id]["variants"]
+
+
+def test_dev_variant_pick_is_gated_and_used_on_rerun(client, monkeypatch):
+    import dataclasses
+
+    import config
+    from tests.conftest import wait_for_job
+    from tests.test_stage2 import publish_listing, request_and_wait
+
+    lid = publish_listing(client)
+    assert request_and_wait(client, lid)["status"] == "done"
+    url = f"/api/listings/{lid}/live/rooms/room_1/styles/2142/rerun"
+    assert "variants" not in client.get("/api/settings").json()
+    assert client.post(url, params={"variant": "Glacier glass"}).status_code == 403
+
+    monkeypatch.setattr(config, "settings", dataclasses.replace(config.settings, dev_tools=True))
+    assert client.get("/api/settings").json()["variants"]["2142"] == list(stage.STYLE_PRESETS["2142"]["variants"])
+    assert client.post(url, params={"variant": "Warm sculptural"}).status_code == 422
+
+    prompts = []
+    generate = client.fake_meta.image_stage
+
+    def capture(image_path, prompt, **kwargs):
+        prompts.append(prompt)
+        return generate(image_path, prompt, **kwargs)
+
+    monkeypatch.setattr(client.fake_meta, "image_stage", capture)
+    res = client.post(url, params={"variant": "Glacier glass"})
+    assert res.status_code == 202, res.text
+    assert wait_for_job(client, res.json()["job_id"])["status"] == "done"
+    assert "Design direction: Glacier glass." in prompts[-1]
+    body = client.get(f"/api/listings/{lid}/live").json()
+    assert body["rooms"][0]["styles"]["2142"]["variant"] == "Glacier glass"

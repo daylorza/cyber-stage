@@ -21,6 +21,8 @@ class Settings:
     # Queue Live-In-It preparation the moment a listing is published. Off by default: each run
     # spends Meta calls (~33 per room), so it stays off until credits are confirmed.
     auto_prepare_live: bool = field(default_factory=lambda: _env("VRE_AUTO_PREPARE_LIVE", "0") == "1")
+    # Local-only tools, such as picking a style's design direction on a rerun. Off in production.
+    dev_tools: bool = field(default_factory=lambda: _env("VRE_DEV_TOOLS", "0") == "1")
     # Videos are sampled over their WHOLE length (max_video_seconds bounds the count);
     # this caps photo uploads only.
     max_photos: int = 40
