@@ -33,6 +33,26 @@ STAGED_FURNITURE_LABEL = "staged furniture in this room"
 PRICE_MISSING_LINE = "The supplied listing facts do not include a price."
 
 
+CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "EUR": "€"}
+
+
+def short_money(amount: float, currency: str | None = "USD") -> str:
+    """$3.2M / $750k. Under 10,000 keeps full digits (e.g. $1,782 per sq ft)."""
+    symbol = CURRENCY_SYMBOLS.get(currency or "USD", "")
+    for size, unit in ((1_000_000, "M"), (1_000, "k")):
+        if amount >= max(size, 10_000):
+            return f"{symbol}{f'{amount / size:.2f}'.rstrip('0').rstrip('.')}{unit}"
+    return f"{symbol}{amount:,.0f}"
+
+
+def _shorten_prices(text: str) -> str:
+    def repl(m: re.Match) -> str:
+        code = next(k for k, v in CURRENCY_SYMBOLS.items() if v == m[1])
+        amount = float(m[2].replace(",", ""))
+        return short_money(amount, code) if amount >= 10_000 else m[0]
+    return re.sub(r"([$£€])\s?(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d{5,}(?:\.\d+)?)(?![\d,]*\s?[MmKk]\b)", repl, text)
+
+
 def _clean_chat_text(text: str) -> str:
     """Strip Markdown, evidence tags, and URLs from chat text (evidence stays in its own field)."""
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)  # [label](url) -> label
@@ -43,7 +63,7 @@ def _clean_chat_text(text: str) -> str:
     text = re.sub(r"[*_`#]+", "", text)
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n\s*\n+", "\n", text)
-    return text.strip()
+    return _shorten_prices(text).strip()
 SYSTEM = """You are the AI Live-In Guide for this residence only. Use tools for facts and actions.
 Answer only from listing facts and stored observations; cite fact or observation ids for claims.
 Demo comps are demo data, not a live MLS feed. Cyberpunk is a concept, AI-imagined,
@@ -57,7 +77,7 @@ means Modern luxury. Call switch_style with the requested name or ID. Never reco
 To-do 16 selected content (sections 1, 3, 6, 7, 9 only; sections 2, 4, 5, 8, 10 are not in this round):
 - Listing facts: report only facts the listing actually supplies — title, address, city, type,
   beds, baths, square feet, lot, year or renovation, and listing status, plus price and currency
-  only if supplied. For any fact not supplied, say it is not listed for this residence; never
+  only if supplied; say the price as price_display (e.g. $3.2M, $750k). For any fact not supplied, say it is not listed for this residence; never
   infer it. If no price is supplied, say exactly: "The supplied listing facts do not include a price."
 - Staged furniture: use the staged_furniture part of the room tool. Every time you describe
   furniture in a room, label it "staged furniture in this room". Never call it an amenity, a
@@ -165,6 +185,8 @@ def _tools(listing: dict, session: dict, result: dict):
             data["fact:status"] = listing["status"]
         if facts.get("price") is None:
             data["price_missing"] = PRICE_MISSING_LINE
+        else:
+            data["price_display"] = short_money(facts["price"], facts.get("currency"))
         result["evidence"].extend(k for k in data if k.startswith("fact:"))
         return record("get_listing_facts", data)
 

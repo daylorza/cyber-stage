@@ -156,6 +156,23 @@ def test_facts_report_only_supplied_fields_and_price_missing_line():
     assert "fact:lot" not in data and "fact:year_built" not in data
 
 
+def test_price_is_abbreviated_in_facts_and_reply():
+    import json
+
+    import guide
+
+    listing = {"status": "published", "published": {"facts": {"price": 3200000, "currency": "USD"}},
+               "live": {"rooms": []}}
+    result = {"actions_taken": [], "evidence": [], "staged_image_url": None, "deposit": None}
+    facts = next(t for t in guide._tools(listing, {}, result) if t.name == "get_listing_facts")
+    assert json.loads(facts.invoke({}))["price_display"] == "$3.2M"
+    assert guide.short_money(750000) == "$750k"
+    assert guide.short_money(4535000) == "$4.54M"
+    assert guide.short_money(2500000, "GBP") == "£2.5M"
+    text = "Asking $3200000, comps $4,400,000 to $4,670,000.00, $750,000 or $1,782 per sq ft; already $3.2M."
+    assert guide._clean_chat_text(text) == "Asking $3.2M, comps $4.4M to $4.67M, $750k or $1,782 per sq ft; already $3.2M."
+
+
 def test_room_reports_staged_furniture_labelled_not_included():
     import json
 
