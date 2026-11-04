@@ -107,6 +107,12 @@ ROOM_GUIDANCE = {
     "terrace": "Furnish as a terrace with appropriately scaled outdoor seating where space allows.",
 }
 
+OUTDOOR_NOTE = (
+    "If a balcony, terrace or patio floor is visible in the photo, furnish it too with a few "
+    "appropriately scaled outdoor pieces in the same style, such as a pair of loungers or "
+    "outdoor seating; keep railings, glass and the view unobstructed."
+)
+
 MAX_RESTAGE_LEVEL = 2
 
 STRICT_FRAMING = (
@@ -133,9 +139,11 @@ def prompt_for(style: str, room: dict[str, Any] | None = None) -> str:
     guidance = ROOM_GUIDANCE.get(room.get("type"),
         "Choose furnishings appropriate to the room's apparent function; if uncertain, "
         "keep the staging neutral and do not impose a new function.")
-    rules = FANTASY_RULES if style == "2142" else GEOMETRY_RULES
-    wet_note = "" if style == "2142" else _wet_room_note(room)
-    return " ".join(part for part in (preset["description"], guidance, rules, wet_note) if part)
+    fantasy = style == "2142"
+    rules = FANTASY_RULES if fantasy else GEOMETRY_RULES
+    wet_note = "" if fantasy else _wet_room_note(room)
+    outdoor = "" if fantasy or room.get("type") in WET_ROOM_TYPES else OUTDOOR_NOTE
+    return " ".join(part for part in (preset["description"], guidance, outdoor, rules, wet_note) if part)
 
 
 def _structure_counts(frame: dict[str, Any] | None) -> str:
@@ -292,7 +300,8 @@ def stage_rooms(listing: dict[str, Any]) -> dict[str, Any]:
 
 def restage_room(listing: dict[str, Any], room_id: str, level: int) -> str | None:
     """Re-stage ONE flagged room with a stricter prompt. Returns None on success,
-    else a short error message; the room keeps its current staging on failure."""
+    else a short error message; the room keeps its current staging on failure.
+    Level 0 is a broker room-type change: the normal prompt for the new type."""
     room = next((r for r in listing.get("rooms") or [] if r.get("id") == room_id), None)
     if room is None:
         return f"Room {room_id} not found."
@@ -303,13 +312,14 @@ def restage_room(listing: dict[str, Any], room_id: str, level: int) -> str | Non
         (f for f in listing.get("frames") or [] if f.get("id") == room.get("source_frame")),
         None,
     )
-    prompt = restage_prompt(style, room, frame, level)
+    prompt = restage_prompt(style, room, frame, level) if level else prompt_for(style, room)
+    filename = f"{room_id}_{style}_strict{level}.jpg" if level else f"{room_id}_{style}_{room['type']}.jpg"
     meta = meta_client.get_client()
     previous_staging = room.get("staging")
     previous_after = room.get("after")
     try:
         _staged_image(
-            listing, room, prompt, f"{room_id}_{style}_strict{level}.jpg",
+            listing, room, prompt, filename,
             style=style, purpose="image.restage",
             target={"room": room_id, "level": level},
         )

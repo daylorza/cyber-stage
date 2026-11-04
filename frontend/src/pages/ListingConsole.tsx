@@ -16,6 +16,10 @@ import { ClaimTrust, claimResult, EvidenceBlock, ITEM_SHORT, ResultLine, roomIss
 import TechnicalDetails from "../components/TechnicalDetails";
 
 const clean = (lines: string[]) => lines.map((l) => l.trim()).filter(Boolean);
+const ROOM_TYPES: [string, string][] = [
+  ["living", "Living room"], ["bedroom", "Bedroom"], ["dining", "Dining room"], ["kitchen", "Kitchen"],
+  ["bathroom", "Bathroom"], ["office", "Office"], ["terrace", "Terrace"], ["other", "Other space"],
+];
 const digits = (value: string) => value.replace(/\D/g, "");
 const grouped = (value: string) => (digits(value) ? Number(digits(value)).toLocaleString("en-US") : "");
 
@@ -87,6 +91,7 @@ function Review({
   const [selected, setSelected] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<"restage" | "unpublish" | null>(null);
+  const [retype, setRetype] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -152,12 +157,12 @@ function Review({
       }),
     );
 
-  const restage = async () => {
+  const restage = async (type?: string) => {
     if (!room) return;
     setBusy("restage");
     setError("");
     try {
-      await api.restage(listing.id, room.id);
+      await (type ? api.retypeRoom(listing.id, room.id, type) : api.restage(listing.id, room.id));
       reload();
     } catch (e) {
       setError((e as Error).message);
@@ -185,6 +190,11 @@ function Review({
         message={confirmation === "restage" ? `Re-stage ${room?.name} with a stricter prompt? Only this room changes. This clears approval and makes a new Meta Image call.` : "Unpublish for edits? The published page stays live until you publish again."}
         onCancel={() => setConfirmation(null)}
         onConfirm={() => { const action = confirmation; setConfirmation(null); if (action === "restage") void restage(); else void run("unpublish", () => api.unpublish(listing.id)); }}
+      />}
+      {retype && <ConfirmDialog
+        message={`Change ${room?.name} to ${ROOM_TYPES.find(([t]) => t === retype)?.[1]} and re-stage it? Only this room changes. This clears approval and makes a new Meta Image call.`}
+        onCancel={() => setRetype(null)}
+        onConfirm={() => { const type = retype; setRetype(null); void restage(type); }}
       />}
       <div>
         <div className="space-y-10">
@@ -221,6 +231,22 @@ function Review({
                     </p>
                   </div>
                   {!locked && (
+                    <div className="flex flex-wrap items-center gap-2">
+                    {room.before && !rejected.includes(room.id) && (
+                      <label>
+                        <span className="sr-only">Room type</span>
+                        <select
+                          className="field w-auto py-2 pointer-coarse:min-h-11"
+                          value={room.type}
+                          disabled={!!busy || dirty}
+                          title={dirty ? "Save your edits first" : "Change the room type and re-stage this room"}
+                          onChange={(e) => setRetype(e.target.value)}
+                        >
+                          {!ROOM_TYPES.some(([t]) => t === room.type) && <option value={room.type}>{room.type}</option>}
+                          {ROOM_TYPES.map(([t, label]) => <option key={t} value={t}>{label}</option>)}
+                        </select>
+                      </label>
+                    )}
                     <button
                       type="button"
                       className="btn-glass"
@@ -231,6 +257,7 @@ function Review({
                     >
                       {rejected.includes(room.id) ? "Include in listing" : "Exclude from listing"}
                     </button>
+                    </div>
                   )}
                 </div>
                 {(roomIssues(checks, room.id).length > 0 || room.staging?.error || room.restage_error) && (

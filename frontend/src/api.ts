@@ -429,6 +429,11 @@ export const api = {
     request<{ listing_id: string; status: "preparing" | "ready" | "failed" }>(`/residences/${residenceId}/live`),
   reserve: (id: string) => request<Reservation>(`/listings/${id}/reserve`, { method: "POST" }),
   verify: (id: string) => request<{ listing_id: string; job_id: string }>(`/listings/${id}/verify`, { method: "POST" }),
+  retypeRoom: (id: string, roomId: string, type: string) =>
+    request<{ listing_id: string; job_id: string; room_id: string; type: string }>(
+      `/listings/${id}/rooms/${roomId}/type`,
+      json({ type }),
+    ),
   restage: (id: string, roomId: string) =>
     request<{ listing_id: string; job_id: string; room_id: string; level: number }>(
       `/listings/${id}/rooms/${roomId}/restage`,

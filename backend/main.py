@@ -20,7 +20,7 @@ import listings
 import live
 import meta_client
 from jobs import Worker
-from pipeline import runner, stage
+from pipeline import classify, runner, stage
 
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".webm"}
 PHOTO_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -312,6 +312,43 @@ def restage_room(listing_id: str, room_id: str) -> dict[str, Any]:
     with db.connect() as conn:
         db.insert_job(conn, job_id, listing_id, "restage")
     return {"listing_id": listing_id, "job_id": job_id, "room_id": room_id, "level": level}
+
+
+class RoomTypeBody(BaseModel):
+    type: Literal["living", "kitchen", "dining", "bedroom", "bathroom", "office", "terrace", "other"]
+
+
+@router.post("/listings/{listing_id}/rooms/{room_id}/type", status_code=202)
+def retype_room(listing_id: str, room_id: str, body: RoomTypeBody) -> dict[str, Any]:
+    """Broker corrects a room's type (Wonder can't tell an empty bedroom from a living room),
+    then that room re-stages with the new type's prompt. Clears approval like any edit."""
+    listing = _listing_or_404(listing_id)
+    room = next((r for r in listing.get("rooms") or [] if r.get("id") == room_id), None)
+    if room is None:
+        raise HTTPException(404, "Room not found.")
+    if listing["source"] != "upload" or listing["status"] not in {"draft", "approved", "rejected"}:
+        raise HTTPException(409, "This listing can't be re-staged right now.")
+    if room.get("rejected"):
+        raise HTTPException(409, "This room is excluded from the listing.")
+    if not room.get("before"):
+        raise HTTPException(409, "This room has no source photo to stage.")
+    if room["type"] == body.type:
+        raise HTTPException(409, f"{room['name']} is already that type.")
+    job_id = db.new_id("job")
+    listing["restage_request"] = {
+        "job_id": job_id, "room": room_id, "level": 0, "prior_status": listing["status"],
+        "prior_type": room["type"],
+    }
+    room["type"] = body.type
+    classify.name_rooms(listing["rooms"])
+    review = listing["review"]
+    review["edited_fields"] = sorted(set(review["edited_fields"]) | {"rooms"})
+    listing["status"] = "processing"
+    listing["job_id"] = job_id
+    db.save_listing(listing)
+    with db.connect() as conn:
+        db.insert_job(conn, job_id, listing_id, "restage")
+    return {"listing_id": listing_id, "job_id": job_id, "room_id": room_id, "type": body.type}
 
 
 @router.get("/listings/{listing_id}/export")
