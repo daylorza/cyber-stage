@@ -9,7 +9,7 @@ import pytest
 from pipeline import stage
 
 
-@pytest.mark.parametrize("style,count", [("modern-luxury", 4), ("coastal", 4), ("minimal", 4), ("2142", 6)])
+@pytest.mark.parametrize("style,count", [("modern-luxury", 4), ("coastal", 4), ("minimal", 4), ("2142", 4)])
 def test_each_style_uses_every_direction_before_repeating(style, count, monkeypatch):
     monkeypatch.setattr(stage, "_VARIANT_BAGS", {}, raising=False)
     monkeypatch.setattr(stage, "_LAST_VARIANTS", {}, raising=False)
@@ -36,6 +36,22 @@ def test_bedroom_guidance_does_not_force_a_sofa(style):
     assert "sofa" not in prompt
     assert json.dumps(room) == before
     assert "sofa" in stage.prompt_for(style, {"type": "living"}).lower()
+
+
+@pytest.mark.parametrize("variant", list(stage.STYLE_PRESETS["2142"]["variants"]))
+def test_2142_prompts_stay_pristine(variant):
+    prompt = stage.prompt_for("2142", {"type": "living"}, variant=variant).lower()
+    assert "noir" not in prompt and "cyberpunk" not in prompt
+    assert "2142 sofa" in prompt
+
+
+def test_2142_directions_cover_each_view_and_vehicle_combination():
+    combos = set()
+    for text in stage.STYLE_PRESETS["2142"]["variants"].values():
+        view = text.split("Exterior view:")[1]
+        combos.add((view.strip().startswith("replace the view"), "exactly one sleek" in view))
+        assert ("No flying vehicles." in view) != ("exactly one sleek" in view)
+    assert combos == {(True, True), (True, False), (False, True), (False, False)}
 
 
 def test_saved_direction_survives_serialization_and_stricter_retries():

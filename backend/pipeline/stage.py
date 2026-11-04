@@ -27,160 +27,163 @@ STYLE_PRESETS = {
     "modern-luxury": {
         "label": "Modern luxury",
         "description": (
-            "Restyle this room as a gallery-grade modern luxury interior, staged to the "
-            "standard of a five-star residence. Use a few large architectural furnishings "
-            "appropriate to the room's function, with exceptional proportions, tactile "
-            "upholstery and carefully finished materials. Follow the selected design "
-            "direction for furniture silhouettes, materials and colors. Ground the main "
-            "arrangement with one large tonal rug where appropriate. Include at most one "
-            "supporting accent chair or sculptural floor lamp where space allows. "
-            "Use the source lighting direction with realistic layered shadows and depth. "
-            "No small decor: no vases, books, throws, plants, dried stems or countertop "
-            "ornaments. Preserve generous open floor and long sightlines."
+            "Restyle this room as an ultra-luxury modern interior, staged to the standard "
+            "of a landmark penthouse or a five-star private residence. Use a few large, "
+            "bespoke, atelier-made furnishings suited to the room's function, with "
+            "exceptional proportions, hand-finished joinery, couture-grade upholstery "
+            "and museum-quality materials. Every surface should read as rare and "
+            "expensive: book-matched stone, hand-rubbed metal, dense natural fibres and "
+            "flawless tailoring. Follow the selected design direction for silhouettes, "
+            "materials and colors. Ground the main arrangement with one large hand-knotted "
+            "tonal rug where appropriate. Include at most one sculptural accent chair or "
+            "statement floor lamp where space allows. Use the source lighting direction "
+            "with soft, layered, gallery-like light and realistic shadows that give the "
+            "furniture weight. No small decor: no vases, books, throws, plants, dried "
+            "stems or countertop ornaments. Preserve generous open floor and long "
+            "sightlines; the result should feel calm, rare and effortlessly expensive."
         ),
         "variants": {
-            "Warm sculptural": "Warm ivory boucle, honed travertine and champagne metal; generous rounded upholstered forms and softly carved stone profiles.",
-            "Walnut atelier": "Dark walnut, saddle leather and brushed bronze with warm neutral textiles; tailored rectilinear upholstery and slender timber frames.",
-            "Pale stone gallery": "Pale limestone, soft gray sculpted wool and satin nickel; broad monolithic profiles balanced with precisely curved upholstery.",
-            "Smoked glass salon": "Smoked glass, charcoal velvet and champagne metal; sleek low horizontal forms with slender metallic supports and one restrained deep-blue textile accent.",
+            "Travertine and boucle": "Warm ivory boucle, book-matched honed travertine and hand-polished champagne bronze; generous rounded upholstery with plump sculpted cushions and softly carved monolithic stone profiles.",
+            "Walnut atelier": "Book-matched figured walnut, hand-stitched cognac saddle leather and brushed bronze with cashmere-soft neutral textiles; precisely tailored low rectilinear upholstery on slender, hand-finished timber frames.",
+            "Calacatta gallery": "Calacatta marble with soft gold veining, dove-gray sculpted mohair and satin nickel; broad monolithic stone profiles balanced with precisely curved, deeply cushioned upholstery.",
+            "Smoked bronze salon": "Smoked bronze glass, ivory silk-velvet and champagne metal; sleek low horizontal forms on slender polished supports, with one restrained deep sapphire textile accent.",
         },
     },
     "coastal": {
         "label": "Coastal",
         "description": (
-            "Restyle this room as an elegant coastal luxury interior in a refined "
-            "oceanfront residence. Use a few generous comfortable furnishings suited to "
-            "the room's function. Follow the selected design direction for silhouettes, "
-            "wood tones, textiles and stone. Favor tactile natural materials, relaxed "
-            "tailoring and breathable woven textures. Use a large natural-fiber or tonal "
-            "rug where appropriate. Work with the source daylight and existing light "
-            "direction for an airy, serene photographic result. Keep floor space generous "
-            "and sightlines long. Avoid nautical motifs, beach-themed decor, clutter and "
-            "small decorative objects."
+            "Restyle this room as an ultra-luxury coastal interior in an exclusive "
+            "oceanfront estate, the standard of a private clifftop villa on the Riviera "
+            "or in Malibu. Use a few generous, bespoke furnishings suited to the room's "
+            "function, with relaxed but impeccable tailoring and hand-finished detail. "
+            "Follow the selected design direction for silhouettes, wood tones, textiles "
+            "and stone. Favor rare natural materials: heavyweight Belgian linen, "
+            "hand-woven fibres, oiled hardwoods and honed natural stone. Use one large "
+            "hand-loomed natural-fibre or tonal rug where appropriate. Work with the "
+            "source daylight and existing light direction for a luminous, sun-washed, "
+            "serene photographic result. Keep floor space generous and sightlines long. "
+            "Avoid nautical motifs, beach-themed decor, rustic or distressed finishes, "
+            "clutter and small decorative objects."
         ),
         "variants": {
-            "Mediterranean calm": "Chalk-white linen, pale oak and cream limestone; softly rounded upholstery, carved stone profiles and quiet woven textures. Echo plaster tones in furnishings without changing existing walls.",
-            "Contemporary shoreline": "Tailored ivory linen, bleached ash and pale honed stone; crisp low horizontal furnishings with slim open frames and a restrained muted ocean-blue accent.",
-            "Weathered timber retreat": "Weathered light timber, oatmeal linen and warm sand woven fiber; generous relaxed forms and open woven accent frames, refined rather than rustic.",
-            "Sea glass residence": "Cool off-white cotton, light natural oak, pale coastal stone and restrained sea-glass green; gently curved upholstery and transparent glass details, no literal shells or seaside ornaments.",
+            "Riviera villa": "Chalk-white Belgian linen, pale oiled oak and cream limestone; softly rounded deep-seated upholstery, carved stone tables and fine hand-woven textures. Echo plaster tones in the furnishings without changing existing walls.",
+            "Malibu glass house": "Tailored ivory linen, bleached ash and pale honed quartzite; crisp low horizontal furnishings with slim open frames and one restrained muted ocean-blue accent.",
+            "Sun-bleached teak estate": "Sun-bleached plantation teak, oatmeal linen and warm sand hand-woven fibre; generous relaxed forms with precise joinery and open woven accent frames, polished and refined, never rustic.",
+            "Sea glass residence": "Cool off-white cotton-silk, light natural oak, pale coastal stone and restrained sea-glass green; gently curved upholstery and hand-blown glass details, no literal shells or seaside ornaments.",
         },
     },
     "minimal": {
         "label": "Minimal",
         "description": (
-            "Restyle this room as a museum-quiet minimal interior where every piece earns "
-            "its place. Use only the essential functional furnishings for this room, "
-            "with purposeful sculptural forms, subtle texture and precise proportions. "
-            "Minimal does not mean unfurnished: include the main furniture required by "
-            "the room-specific guidance. Follow the selected design direction rather "
-            "than defaulting every room to ivory. Use one understated tonal rug where "
-            "appropriate. Preserve the source lighting direction with soft realistic "
-            "shadows revealing form. Maintain generous negative space and clean sightlines. "
+            "Restyle this room as an ultra-luxury, museum-quiet minimal interior, the "
+            "kind of serene private residence where every piece is a bespoke object and "
+            "earns its place. Use only the essential functional furnishings for this room, "
+            "with purposeful sculptural forms, rare materials, invisible joinery and "
+            "precise proportions. Minimal does not mean unfurnished: include the main "
+            "furniture required by the room-specific guidance. Follow the selected design "
+            "direction rather than defaulting every room to ivory. Use one understated "
+            "hand-loomed tonal rug where appropriate. Preserve the source lighting "
+            "direction with soft, diffused light and realistic shadows revealing form. "
+            "Maintain generous negative space, clean sightlines and a sense of stillness. "
             "Avoid busy patterns, clutter and small decorative objects."
         ),
         "variants": {
-            "Warm oak quiet": "Natural warm oak, oatmeal linen and ivory textiles; low clean-lined forms with softly eased corners and visible natural grain.",
-            "Monolithic stone": "Pale honed stone, chalk-white wool and soft gray textiles; block-like grounded profiles paired with simple generous upholstery.",
-            "Dark timber stillness": "Dark-stained timber, charcoal fabric and warm gray wool; precise rectilinear furniture with slim profiles and quiet matte surfaces. Keep the room clearly exposed.",
-            "Soft plaster forms": "Plaster-toned matte furniture, cream upholstery and a restrained light-wood accent; simple rounded volumes and continuous softly curved profiles. Leave existing wall finishes unchanged.",
+            "Warm oak sanctuary": "Quarter-sawn warm oak, oatmeal linen and ivory wool; low clean-lined forms with softly eased corners and flawless natural grain.",
+            "Monolithic stone": "Pale honed limestone, chalk-white boucle and soft gray cashmere-weight wool; block-like grounded stone profiles paired with simple, generous upholstery.",
+            "Smoked oak stillness": "Smoked oak, warm graphite linen and soft gray wool; precise rectilinear furniture with slim profiles and quiet matte surfaces. Keep the room bright and clearly exposed.",
+            "Soft plaster forms": "Hand-troweled plaster-toned furniture, cream upholstery and a single pale ash accent; simple rounded volumes and continuous softly curved profiles. Leave existing wall finishes unchanged.",
         },
     },
     "2142": {
         "label": "Cyberpunk",
         "description": (
-            "Restyle this exact room as a believable luxury cyberpunk residence in 2142. "
-            "Let the selected design direction determine the degree of futurism in the "
-            "furniture's construction, silhouette and materials. Softer luxury directions "
-            "use generous upholstered forms, refined metal trim and discreet integrated "
-            "technology; more technical directions use sculptural engineered outer shells, "
-            "precision metal chassis, layered structural bases and purposeful panel seams. "
-            "Apply the selected cyberpunk design direction consistently to furniture forms, "
-            "dominant materials, upholstery, lighting colors and architectural details. "
-            "Integrate technology into selected wall panels, furnishings and existing "
-            "architectural edges. Where called for by the selected direction, use a few "
-            "purposeful interface surfaces displaying abstract graphics without readable "
-            "text. Otherwise keep technology discreet, with localized luminous details. "
+            "Restyle this exact room as a pristine ultra-luxury residence in the year "
+            "2142: immaculate, high-tech and unmistakably far-future, never retro and "
+            "never contemporary. Furniture must look designed in 2142, not 2026: "
+            "seamless monocoque forms with no visible legs, screws or seams, grown "
+            "or printed as single sculptural pieces; programmable smart-knit and "
+            "self-healing upholstery; liquid-metal and pearl-ceramic shells; "
+            "photochromic glass; and slim magnetic plinths so key pieces appear to hover "
+            "a few centimetres above the floor on a soft halo of light while still "
+            "casting a grounded contact shadow. Apply the selected design direction "
+            "consistently to furniture forms, materials, upholstery, lighting colors and "
+            "architectural details. Integrate technology invisibly into selected wall "
+            "panels, furnishings and existing architectural edges: flush light seams, "
+            "touch-reactive surfaces and, where the direction calls for it, one "
+            "translucent interface surface with abstract graphics and no readable text. "
+            "Every surface is spotless, precise and flawlessly finished. "
             "Keep any door opening and frame exactly in place; futuristic sliding privacy "
             "panels must remain recognizable as doors. Any redesigned ceiling fixture "
             "must occupy the existing fixture's position. Preserve comfortable usable "
             "space and clear circulation paths. "
-            "Through existing windows, retain the exterior view's composition, horizon, "
-            "terrain, recognizable setting and perspective. Keep existing buildings' "
-            "recognizable silhouettes, heights, spacing and apparent distance. Preserve "
-            "the source exterior's time of day, weather and overall exposure. Add only "
-            "subtle near-future refinements to buildings already visible: fine facade "
-            "detailing, a few softly illuminated windows and sparse faint architectural "
-            "light accents. Keep any ocean or landscape visible. The city is a quiet "
-            "secondary backdrop; the interior remains the focal point. No replacement "
-            "skyline, oversized new towers, megastructures, new skybridges, elevated transit "
-            "bands, giant billboards, flying vehicles or neon-saturated cityscape. "
-            "Use believable scale and atmospheric depth, with interior reflections and "
-            "exposure consistent with the preserved exterior light. "
+            "Through the existing windows, show the exterior view described by the "
+            "selected design direction, keeping window frames and the view's perspective "
+            "intact; the city is breathtaking but the interior remains the focal point. "
             "Render as a high-end architectural photograph with physically plausible "
-            "reflections, material texture, upholstery stitching, subtle surface "
-            "imperfections, grounded furnishings and controlled exposure. Balance luminous "
-            "accents with ambient and task lighting so materials remain readable. "
-            "Avoid excessive bloom, uniformly glowing outlines, floating furniture, "
-            "oversized holograms, dystopian grime, exposed wire clutter, robots, weapons, "
-            "plastic CGI surfaces and changes to the room's structural layout."
+            "reflections, rich material texture, precise upholstery detail and controlled "
+            "exposure. Balance luminous accents with bright ambient light so materials "
+            "remain readable. The mood is bright, clean, optimistic and serene. Avoid "
+            "dark, moody or gritty atmospheres, rain-soaked streets, neon signage, "
+            "billboards, grime, graffiti, exposed wiring, carbon fiber, industrial "
+            "hardware, robots, weapons, oversized holograms, excessive bloom, plastic CGI "
+            "surfaces and changes to the room's structural layout."
         ),
         "variants": {
+            "Champagne halo": (
+                "Warm ivory, cream, champagne and soft pearl-taupe. Main upholstered "
+                "pieces are single seamless crescent-curved monocoques in ivory "
+                "smart-knit, with deep self-shaping cushions flowing out of one "
+                "continuous shell, hovering on polished champagne-metal halo plinths "
+                "with warm light beneath. Tables are low liquid-champagne forms that "
+                "rise like polished droplets from the floor. Backlit translucent white onyx panels and a "
+                "floating cantilevered console on an existing feature wall where space "
+                "allows. Warm golden cove light dominates, with hairline ice-blue and "
+                "soft violet light seams along existing ceiling edges. Exterior view: "
+                "replace the view with a pristine 2142 megacity at blue hour, with "
+                "slender luminous white and glass supertall towers, sky gardens and "
+                "softly glowing skybridges under a deep sapphire sky, and exactly one "
+                "sleek silent flying vehicle gliding in the distance."
+            ),
+            "Pearl atrium": (
+                "Luminous pearl-white, opal and brushed platinum with a few deep "
+                "emerald and amethyst textile accents. Furnishings are flowing "
+                "pearl-ceramic shells wrapped around plush pearl smart-knit upholstery, "
+                "with platinum hairline seams and softly rounded edges; tables are "
+                "single pieces of milky photochromic glass on slim levitating plinths. "
+                "Glossy pearl wall panels fitted to existing surfaces, with sparse "
+                "hairline cyan light channels and, where clear wall space exists, one "
+                "flush translucent interface panel with faint abstract graphics that "
+                "never covers a window, door or mirror. Bright, airy, gallery-white "
+                "interior. Exterior view: keep the real view's horizon, terrain, water "
+                "and the layout, spacing and scale of its buildings, but rebuild every "
+                "visible building as an immaculate 2142 version with white ceramic and "
+                "glass facades, vertical gardens and fine light lines, in bright clear "
+                "daylight under a crisp blue sky. No flying vehicles."
+            ),
             "Liquid chrome": (
-                "Continuous fluid polished-chrome outer shells wrap around deeply inset "
-                "ivory upholstery; use capsule-like curves and substantial sculpted "
-                "pedestal bases with narrow recessed luminous seams. Smoked glass and "
-                "soft rose and cyan reflections complete the interior palette."
+                "Mirror-polished liquid chrome, white silk-velvet and ice-blue light. "
+                "Furnishings are continuous fluid chrome shells that look poured rather "
+                "than built, cradling deeply inset white silk-velvet upholstery, with "
+                "capsule-like curves and narrow recessed ice-blue luminous seams; key "
+                "pieces hover on mirrored plinths with cool light beneath. Smoked-glass "
+                "and pale silver surfaces reflect soft ice-blue and rose highlights. "
+                "Interior stays bright and clean, never dark. Exterior view: keep the "
+                "real view's horizon, terrain, water and the layout, spacing and scale "
+                "of its buildings, but rebuild every visible building as a gleaming 2142 "
+                "tower of mirrored glass and white light ribbons at blue hour, with "
+                "exactly one sleek silent flying vehicle gliding in the distance."
             ),
-            "Integrated tech luxury": (
-                "Broad low profiles in pearl composite, brushed aluminum and smoked "
-                "glass, with recessed upholstery, layered plinth bases and integrated "
-                "touch surfaces. Architectural amber light channels meet ice-blue "
-                "interface accents. Keep the interior relatively bright and open."
-            ),
-            "Industrial penthouse": (
-                "Layered brushed-titanium frames, charcoal upholstery, substantial "
-                "platform bases, visible precision joints and ribbed metal detailing. "
-                "Coral and turquoise light is recessed into structural channels. "
-                "Moody but readable interior shadows, tactile fabric and credible "
-                "machined surfaces."
-            ),
-            "Angular future noir": (
-                "Faceted black-chrome chassis, tailored silver-gray upholstery, "
-                "cantilevered surfaces with visible structural support, and sharply "
-                "folded metallic profiles. Restrained violet and cool-white lighting "
-                "reveals material edges while preserving comfortable ambient exposure."
-            ),
-            "Original warm luxury": (
-                "Return to the original soft, warm futuristic penthouse look: ivory, "
-                "cream, champagne, taupe and warm gray; generously rounded plush "
-                "upholstery, softly curved low profiles and plump tailored cushions. "
-                "Use polished white marble with subtle gray veining, reflective stone, "
-                "smoked or mirrored glass and polished chrome in room-appropriate "
-                "furnishings. Keep metal trim slender and the upholstered forms soft, "
-                "without heavy exoskeleton shells or industrial chassis. On an existing "
-                "feature wall, use elegant backlit marble panels, slim mirrored shelving "
-                "and a low floating console only where space and the room's function "
-                "allow. Warm golden cove and shelf lighting dominates, with thin "
-                "controlled cyan and violet accents beneath selected furnishings and "
-                "along existing ceiling edges. A concentric-ring light may replace an "
-                "existing ceiling fixture only if it fits the existing ceiling shape "
-                "and fixture position. Keep any decor sparse and coordinated, with at "
-                "most one understated plant or branch arrangement. Inviting, polished "
-                "and subtly futuristic, with no large display walls."
-            ),
-            "Pearl and jewel chrome": (
-                "Pearl-ivory upholstered forms wrapped in slender polished-chrome or "
-                "champagne-metal frames, with softly rounded corners and comfortable "
-                "tailored cushions. Add a few deep emerald and amethyst textile accents "
-                "appropriate to the room, plus one quiet geometric rug where suitable. "
-                "Use glossy pearl wall panels fitted to existing surfaces, precise "
-                "metallic seams and sparse hairline cyan and violet light channels. "
-                "A slim metal-framed stone or glass table and chrome-edged supporting "
-                "pieces carry the design. Where suitable clear wall space exists, "
-                "include one flush smoked-glass interface panel with faint abstract "
-                "graphics; it must not cover or replace a window, door or mirror. "
-                "Existing ceiling geometry may receive restrained angular light "
-                "details. Keep the room luminous, refined and residential."
+            "Glacier glass": (
+                "Arctic white, frosted crystal, brushed aluminum and pale ice-blue with "
+                "warm amber light channels. Furnishings are low, broad sculptural forms "
+                "in frosted crystal-ceramic and soft white smart-knit, with integrated "
+                "touch surfaces and edges that glow faintly when touched; tables are "
+                "slabs of clear glacier glass with light suspended inside. Flush white "
+                "wall panels with precise light seams. Brilliant, crisp, high-key "
+                "interior. Exterior view: replace the view with a pristine 2142 "
+                "megacity in bright clear daylight, with elegant white and glass "
+                "supertall towers, terraced sky gardens, silent maglev lines and "
+                "luminous clean air. No flying vehicles."
             ),
         },
     },
@@ -226,9 +229,9 @@ FANTASY_RULES = (
     "This is futuristic concept art, not listing-accurate staging. Preserve the original "
     "camera position, framing, room proportions, structural layout, and the position and "
     "size of all window and door openings. Futuristic door panels, ceiling fixtures, "
-    "surface treatments and subtle facade-lighting refinements are intentional; retain "
-    "the recognizable existing skyline and keep its changes understated. Keep openings "
-    "recognizable and walkways clear. No people, text, logos or personal photographs."
+    "surface treatments and the exterior view described in the design direction are "
+    "intentional. Keep window frames and openings recognizable and walkways clear. "
+    "No people, text, logos or personal photographs."
 )
 
 ROOM_GUIDANCE = {
@@ -247,26 +250,23 @@ OUTDOOR_NOTE = (
 
 CYBERPUNK_ROOM_GUIDANCE = {
     "living": (
-        "Furnish as a living room with a comfortable sofa whose silhouette and "
-        "construction follow the selected direction: plush rounded upholstered forms "
-        "for the softer luxury directions, or sculpted shells around recessed "
-        "upholstery for the more technical directions. Use carefully controlled "
-        "integrated light only where the direction calls for it. Coordinate a low coffee table "
-        "and any accent chair with this design, giving each its own silhouette."
+        "Furnish as a living room with a comfortable 2142 sofa as the primary seating, "
+        "built as one seamless sculptural form following the selected direction, with "
+        "no conventional legs, frame or visible hardware. Coordinate a low coffee "
+        "table and any accent chair with this design, giving each its own silhouette."
     ),
     "bedroom": (
-        "Furnish as a bedroom with a bed and headboard following the selected direction: "
-        "a softly upholstered low platform and padded headboard for the softer luxury "
-        "directions, or a layered engineered frame and architectural headboard for the "
-        "more technical directions. Use discreet bedside controls and restrained light. "
-        "Keep bedding soft, tactile and believable. Add bedside units only "
-        "where space allows."
+        "Furnish as a bedroom with a 2142 bed following the selected direction: a "
+        "seamless low platform that appears to hover on a soft halo of light, with an "
+        "integrated sculptural headboard and discreet touch controls. Keep bedding "
+        "soft, tactile and immaculate. Add floating bedside units only where space "
+        "allows."
     ),
-    "dining": "Furnish as a dining room with a dining table and comfortable chairs whose frames, upholstery and silhouettes follow the selected cyberpunk direction.",
-    "office": "Furnish as an office with a desk and ergonomic task chair whose construction follows the selected cyberpunk direction, with discreet integrated controls.",
-    "terrace": "Furnish as a terrace with weather-resistant engineered outdoor seating and a grounded sculptural table in the selected cyberpunk direction.",
-    "kitchen": "Keep this a functional kitchen. Preserve the count, positions and sizes of cabinets, appliances, sinks and openings. Apply futuristic materials, flush controls and task lighting to existing surfaces without blocking access or adding unrelated furniture.",
-    "bathroom": "Keep this a functional bathroom. Preserve the positions and sizes of the vanity, basin, toilet, bath or shower, mirrors and openings. Apply futuristic materials, discreet controls and integrated light to existing fixtures without adding unrelated furniture.",
+    "dining": "Furnish as a dining room with a seamless sculptural dining table and comfortable chairs whose shells, upholstery and silhouettes follow the selected 2142 direction.",
+    "office": "Furnish as an office with a seamless sculptural desk and ergonomic task chair following the selected 2142 direction, with invisible integrated controls.",
+    "terrace": "Furnish as a terrace with immaculate weather-proof 2142 outdoor seating and a sculptural table in the selected direction.",
+    "kitchen": "Keep this a functional kitchen. Preserve the count, positions and sizes of cabinets, appliances, sinks and openings. Apply pristine 2142 materials, flush touch controls and integrated task lighting to existing surfaces without blocking access or adding unrelated furniture.",
+    "bathroom": "Keep this a functional bathroom. Preserve the positions and sizes of the vanity, basin, toilet, bath or shower, mirrors and openings. Apply pristine 2142 materials, discreet touch controls and integrated light to existing fixtures without adding unrelated furniture.",
 }
 
 MAX_RESTAGE_LEVEL = 2
