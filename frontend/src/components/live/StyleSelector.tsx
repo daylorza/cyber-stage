@@ -190,21 +190,26 @@ export default function StyleSelector({ listingId, refresh }: { listingId: strin
               const c = checks(v);
               return (
                 <li key={v.version} className="w-52 shrink-0 snap-start">
-                  <a href={v.image ? media(v.image) : undefined} target="_blank" rel="noreferrer" aria-label={`Open ${style.label} version ${v.version}`} className={`relative block aspect-[4/3] overflow-hidden rounded-xl ring-1 ${v.is_current ? "ring-2 ring-ice/70" : "ring-ivory/10 hover:ring-ivory/35"}`}>
-                    {v.image ? <img src={media(v.image)} alt="" loading="lazy" className="h-full w-full object-cover" /> : <span className="block h-full w-full bg-ivory/5" />}
+                  <div className={`group relative aspect-[4/3] overflow-hidden rounded-xl ring-1 transition ${v.is_current ? "ring-2 ring-ice/70" : "ring-ivory/10 hover:ring-ivory/35"}`}>
+                    {v.image ? <img src={media(v.image)} alt={`${style.label}, version ${v.version}`} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]" /> : <span className="block h-full w-full bg-ivory/5" />}
                     {v.is_current && <span className="data-label absolute left-2 top-2 rounded-full bg-night/75 px-2 py-0.5 text-ice backdrop-blur">Default</span>}
-                  </a>
+                    {v.image && (
+                      <div className="absolute inset-0 flex items-end gap-1.5 bg-gradient-to-t from-night/90 via-night/40 to-transparent p-2 opacity-0 transition duration-200 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100">
+                        <a href={media(v.image)} target="_blank" rel="noreferrer" aria-label={`View ${style.label} version ${v.version}`} className={`btn-glass px-3 py-1.5 text-xs ${v.is_current ? "flex-1" : ""}`}>View</a>
+                        {!v.is_current && (
+                          <button type="button" className="btn-primary flex-1 px-3 py-1.5 text-xs" disabled={!!jobId || switching !== null} aria-label={`Make version ${v.version} the default`} title={v.available ? undefined : "This version didn't pass the checks; it will be shown anyway."} onClick={() => void makeDefault(v)}>
+                            {switching === v.version ? "Switching…" : "Make default"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <p className="mt-2 flex items-baseline gap-2 text-sm">
                     <span className="font-mono text-ivory">v{v.version}</span>
                     <span className="truncate text-ivory/80">{v.variant ?? (v.broker_approved ? "Broker approved" : "")}</span>
                   </p>
                   <p className="data-label mt-0.5 text-ash">{stamp(v.created_at)}</p>
                   <p className={`mt-1 flex items-center gap-1.5 text-xs ${c.tone}`}><span aria-hidden className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />{c.text}</p>
-                  {!v.is_current && v.image && (
-                    <button type="button" className="btn-glass mt-3 w-full" disabled={!!jobId || switching !== null} title={v.available ? undefined : "This version didn't pass the checks; it will be shown anyway."} onClick={() => void makeDefault(v)}>
-                      {switching === v.version ? "Switching…" : "Make default"}
-                    </button>
-                  )}
                 </li>
               );
             })}
