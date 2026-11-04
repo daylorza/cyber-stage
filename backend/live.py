@@ -1071,7 +1071,9 @@ def rerun_style(job: dict[str, Any]) -> None:
         # Recorded, not hidden: still not broker-verified as the same room.
         drift_record = {"status": "concept-pass", "value": drift,
                         "reason": f"Concept style {style_id} — framing drift {drift:.3f} exceeds 5% cap, not broker-verified as the same room."}
-    if concept_geometry["status"] != "pass" or (not is_concept and structure["status"] != "pass"):
+    # Same bar as full preparation: structure must not fail. "not_checked" (nothing structural
+    # detected to compare) is recorded on the version, not treated as a failure.
+    if concept_geometry["status"] != "pass" or (not is_concept and structure["status"] == "fail"):
         raise ValueError(f"Verification did not pass: {geometry['reason']} {structure['reason']}")
     pieces = _pieces(candidate, meta, trace, room_id, style_id)
     primary = {"living": ("sofa",), "bedroom": ("bed",), "dining": ("table",)}[room["type"]]
