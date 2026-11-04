@@ -85,6 +85,16 @@ def _fallback(listing: dict[str, Any]) -> None:
     listing["main_room"] = _main_summary(None)
 
 
+def name_rooms(rooms: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Name rooms by type in order: Living room, Living room 2, Bedroom ..."""
+    counts: dict[str, int] = {}
+    for room in rooms:
+        counts[room["type"]] = counts.get(room["type"], 0) + 1
+        base = ROOM_NAMES.get(room["type"], "Space")
+        room["name"] = base if counts[room["type"]] == 1 else f"{base} {counts[room['type']]}"
+    return rooms
+
+
 def _batches(frames: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
     if not frames:
         return [[]]  # still one call, so an unconfigured client fails loudly as before
@@ -237,13 +247,7 @@ def run(listing: dict[str, Any]) -> dict[str, Any]:
         keep = {id(r) for r in sorted(candidates, key=lambda r: rank[id(r)])[:s.max_rooms]}
         candidates = [r for r in candidates if id(r) in keep]
 
-    name_counts: dict[str, int] = {}
-    rooms: list[dict[str, Any]] = []
-    for room in candidates:
-        name_counts[room["type"]] = name_counts.get(room["type"], 0) + 1
-        base = ROOM_NAMES.get(room["type"], "Space")
-        name = base if name_counts[room["type"]] == 1 else f"{base} {name_counts[room['type']]}"
-        rooms.append({"id": f"room_{len(rooms) + 1}", **room, "name": name})
+    rooms = name_rooms([{"id": f"room_{i}", **room} for i, room in enumerate(candidates, start=1)])
 
     listing["rooms"] = rooms
     listing["main_room"] = _main_summary(next((r for r in rooms if r["main"]), None))

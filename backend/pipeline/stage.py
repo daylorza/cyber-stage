@@ -300,7 +300,8 @@ def stage_rooms(listing: dict[str, Any]) -> dict[str, Any]:
 
 def restage_room(listing: dict[str, Any], room_id: str, level: int) -> str | None:
     """Re-stage ONE flagged room with a stricter prompt. Returns None on success,
-    else a short error message; the room keeps its current staging on failure."""
+    else a short error message; the room keeps its current staging on failure.
+    Level 0 is a broker room-type change: the normal prompt for the new type."""
     room = next((r for r in listing.get("rooms") or [] if r.get("id") == room_id), None)
     if room is None:
         return f"Room {room_id} not found."
@@ -311,13 +312,14 @@ def restage_room(listing: dict[str, Any], room_id: str, level: int) -> str | Non
         (f for f in listing.get("frames") or [] if f.get("id") == room.get("source_frame")),
         None,
     )
-    prompt = restage_prompt(style, room, frame, level)
+    prompt = restage_prompt(style, room, frame, level) if level else prompt_for(style, room)
+    filename = f"{room_id}_{style}_strict{level}.jpg" if level else f"{room_id}_{style}_{room['type']}.jpg"
     meta = meta_client.get_client()
     previous_staging = room.get("staging")
     previous_after = room.get("after")
     try:
         _staged_image(
-            listing, room, prompt, f"{room_id}_{style}_strict{level}.jpg",
+            listing, room, prompt, filename,
             style=style, purpose="image.restage",
             target={"room": room_id, "level": level},
         )

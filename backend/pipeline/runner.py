@@ -80,6 +80,10 @@ def _run_restage(job: dict[str, Any]) -> None:
         db.update_job(job["id"], stage="staging", progress=30)
         error = stage.restage_room(listing, room_id, level)
         if error:
+            if request.get("prior_type"):
+                room = next(r for r in listing["rooms"] if r["id"] == room_id)
+                room["type"] = request["prior_type"]
+                classify.name_rooms(listing["rooms"])
             listing["status"] = prior_status
             db.save_listing(listing)
             db.update_job(job["id"], status="failed", error=error)
