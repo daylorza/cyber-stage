@@ -142,8 +142,8 @@ export default function LiveControl({ listing }: { listing: Listing }) {
         <Link to={`/p/${listingId}/live`} className="btn-glass">Enter residence</Link>
         <details className="group max-sm:static sm:relative lg:static">
           <summary className="btn-glass cursor-pointer list-none [&::-webkit-details-marker]:hidden">More <span aria-hidden className="inline-block text-ivory/60 transition group-open:rotate-180">⌃</span></summary>
-          <div className={`absolute bottom-full mb-3 grid max-h-[min(32rem,75dvh)] grid-cols-1 gap-4 overflow-auto rounded-2xl bg-night/95 p-4 shadow-xl ring-1 ring-ivory/20 backdrop-blur-xl max-sm:inset-x-0 sm:right-0 lg:left-0 lg:right-auto ${styleRun ? "sm:w-[min(48rem,calc(100vw-3rem))] sm:grid-cols-[18rem_minmax(0,1fr)] sm:overflow-hidden" : "sm:w-80"}`}>
-            <div className="min-w-0 sm:overflow-y-auto">
+          <div className={`absolute bottom-full mb-3 grid max-h-[min(46rem,calc(100dvh-8rem))] grid-cols-1 gap-4 overflow-y-auto overscroll-contain rounded-2xl bg-night/95 p-4 shadow-xl ring-1 ring-ivory/20 backdrop-blur-xl max-sm:inset-x-0 sm:right-0 lg:left-0 lg:right-auto ${styleRun ? "sm:h-[min(46rem,calc(100dvh-8rem))] sm:w-[min(54rem,calc(100vw-3rem))] sm:grid-cols-[22rem_minmax(0,1fr)] sm:grid-rows-[minmax(0,1fr)] sm:overflow-hidden" : "sm:w-96"}`}>
+            <div className="min-h-0 min-w-0 sm:overflow-y-auto sm:overscroll-contain sm:pr-1">
             <button type="button" onClick={() => setConfirmPrepare(true)} className="block w-full rounded-lg px-2 py-2 text-left text-sm text-ivory/85 transition hover:bg-ivory/[0.05] hover:text-ivory pointer-coarse:py-3">
               Re-run preparation
               <span className="block text-xs text-ash">Rebuilds Live-In-It; may use Meta credits</span>
@@ -171,7 +171,7 @@ export default function LiveControl({ listing }: { listing: Listing }) {
             <p className="eyebrow mb-2 px-2">Style versions</p>
             {payload && <StyleVersions listingId={listingId} payload={payload} refresh={versionsRefresh} disabled={!!styleJob} onChanged={() => void api.live(listingId).then(setPayload)} />}
             </div>
-            {styleRun && <JobTerminal title={styleRun.title} job={styleRun.job} events={styleRun.events} onClose={styleJob ? undefined : () => setStyleRun(null)} className="h-72 sm:h-auto sm:min-h-[22rem]" />}
+            {styleRun && <JobTerminal title={styleRun.title} job={styleRun.job} events={styleRun.events} onClose={styleJob ? undefined : () => setStyleRun(null)} className="h-72 sm:h-full" />}
           </div>
         </details>
       </span>
