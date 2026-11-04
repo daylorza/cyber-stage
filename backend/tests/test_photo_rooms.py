@@ -1,4 +1,4 @@
-"""Each uploaded photo is staged as its own room; terraces in frame get outdoor furniture."""
+"""Each uploaded photo is staged as its own room; terrace rooms get outdoor furniture."""
 
 import pytest
 
@@ -29,9 +29,12 @@ def test_video_frames_of_one_room_still_merge(client, walkthrough_video):
     assert len(listing["rooms"]) == 1 and len(listing["rooms"][0]["frames"]) > 1
 
 
-def test_outdoor_note_only_for_dry_rooms_in_listing_styles():
-    assert stage.OUTDOOR_NOTE in stage.prompt_for("modern-luxury", {"type": "living"})
-    assert stage.OUTDOOR_NOTE in stage.prompt_for("coastal", {"type": "bedroom"})
+def test_outdoor_note_only_for_terrace_rooms_in_listing_styles():
+    assert stage.OUTDOOR_NOTE in stage.prompt_for("modern-luxury", {"type": "terrace"})
+    assert stage.OUTDOOR_NOTE in stage.prompt_for("coastal", {"type": "terrace"})
+    # Indoor rooms that only see a balcony through glass: the note made the model open the door.
+    assert stage.OUTDOOR_NOTE not in stage.prompt_for("modern-luxury", {"type": "living"})
+    assert stage.OUTDOOR_NOTE not in stage.prompt_for("coastal", {"type": "bedroom"})
     assert stage.OUTDOOR_NOTE not in stage.prompt_for("modern-luxury", {"type": "kitchen"})
     assert stage.OUTDOOR_NOTE not in stage.prompt_for("2142", {"type": "living"})
     # The empty-plate prompt reuses GEOMETRY_RULES and must never add furniture.

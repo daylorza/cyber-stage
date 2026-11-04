@@ -165,3 +165,54 @@ def test_rerun_treats_edge_only_glass_as_unchecked_not_failed(client, monkeypatc
     assert rerun(client, lid, "coastal")["status"] == "done"
     structure = versions(client, lid)["room_1:coastal"][-1]["checker"]["structure"]
     assert structure["status"] == "not_checked" and "cut off at the photo edge" in structure["reason"]
+
+
+def test_inventory_cover_and_published_page_follow_the_default_version(client):
+    """Make default on the listing's style (Modern luxury) changes what buyers see on the
+    inventory card and the published page, not just inside Live-In-It."""
+    lid = publish_listing(client)
+    assert request_and_wait(client, lid)["status"] == "done"
+    stage1 = client.get(f"/api/listings/{lid}/page").json()["rooms"][0]["after"]
+    cover = lambda: next(i["cover"] for i in client.get("/api/listings").json() if i["id"] == lid)
+    assert cover() == stage1
+
+    assert rerun(client, lid, "modern-luxury")["status"] == "done"
+    v2 = versions(client, lid)["room_1:modern-luxury"][-1]
+    assert v2["is_current"] and v2["image"] != stage1
+    assert cover() == v2["image"]
+    assert client.get(f"/api/listings/{lid}/page").json()["rooms"][0]["after"] == v2["image"]
+
+    res = client.post(f"/api/listings/{lid}/live/rooms/room_1/styles/modern-luxury/versions/1/use")
+    assert res.status_code == 200, res.text
+    assert cover() == stage1
+    assert client.get(f"/api/listings/{lid}/page").json()["rooms"][0]["after"] == stage1
+    # Another style's default never changes the cover.
+    assert rerun(client, lid, "coastal")["status"] == "done"
+    assert cover() == stage1
+
+
+def test_shown_after_falls_back_to_stage1_for_old_or_partial_data(tmp_path, monkeypatch):
+    import dataclasses
+
+    import listings
+
+    monkeypatch.setattr(config, "settings", dataclasses.replace(config.settings, data_dir=tmp_path))
+    config.settings.media_dir.mkdir(parents=True)
+    (config.settings.media_dir / "v2.jpg").write_bytes(b"x")
+    room = {"id": "room_1", "after": "stage1.jpg"}
+    ok = {"live": {"versions": {"room_1:modern-luxury": [{"image": "v2.jpg", "is_current": True}]}}}
+    assert listings.shown_after(ok, room) == "v2.jpg"
+    for listing in (
+        {},                                                     # never prepared
+        {"live": None},                                         # cleared block
+        {"live": {"status": "ready"}},                          # before versioning
+        {"live": {"versions": []}},                             # malformed versions
+        {"live": {"versions": {"room_1:modern-luxury": None}}},
+        {"live": {"versions": {"room_1:modern-luxury": ["bad", {"is_current": True}]}}},
+        {"live": {"versions": {"room_1:modern-luxury": [{"image": "gone.jpg", "is_current": True}]}}},
+        {"live": {"versions": {"room_1:coastal": [{"image": "v2.jpg", "is_current": True}]}}},
+    ):
+        assert listings.shown_after(listing, room) == "stage1.jpg", listing
+    assert listings.shown_after(ok, {"after": "stage1.jpg"}) == "stage1.jpg"   # legacy room, no id
+    assert listings.shown_after(ok, {"id": "room_1"}) == "v2.jpg"
+    assert listings.shown_after({}, {"id": "room_1"}) is None

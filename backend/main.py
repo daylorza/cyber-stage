@@ -379,7 +379,9 @@ def published_page(listing_id: str) -> dict[str, Any]:
     listing = _listing_or_404(listing_id)
     if listing["status"] != "published":
         raise HTTPException(404, "This listing isn't published.")
-    return {**listing["published"], "video": listing["published"].get("video"),
+    published = listing["published"]
+    rooms = [{**room, "after": listings.shown_after(listing, room)} for room in published.get("rooms") or []]
+    return {**published, "rooms": rooms, "video": published.get("video"),
             "note": listing.get("note"), "live": live.eligibility(listing)}
 
 

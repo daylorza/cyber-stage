@@ -109,6 +109,26 @@ def seed_inventory() -> None:
                 db.insert_listing(conn, listing)
 
 
+def shown_after(listing: dict[str, Any], room: dict[str, Any]) -> str | None:
+    """The staged image buyers see for a room: the broker's default version of the listing's
+    style (Modern luxury unless chosen otherwise) when one is set, else the Stage 1 image."""
+    fallback = room.get("after")
+    live = listing.get("live")
+    versions = live.get("versions") if isinstance(live, dict) else None
+    if not room.get("id") or not isinstance(versions, dict):
+        return fallback  # Listings from before versioning, or never prepared.
+    style = room.get("style") or listing.get("style") or DEFAULT_STYLE
+    records = versions.get(f"{room['id']}:{style}")
+    if not isinstance(records, list):
+        return fallback
+    current = next((v for v in records if isinstance(v, dict) and v.get("is_current")
+                    and isinstance(v.get("image"), str) and v["image"]), None)
+    # A record whose file is gone (cleaned media, partial restore) must never blank the image.
+    if current is None or not (config.settings.media_dir / current["image"]).is_file():
+        return fallback
+    return current["image"]
+
+
 def summary(listing: dict[str, Any]) -> dict[str, Any]:
     facts = listing["facts"]
     rooms = listing.get("rooms", [])
@@ -122,7 +142,7 @@ def summary(listing: dict[str, Any]) -> dict[str, Any]:
         "facts": {k: v for k, v in facts.items() if k != "estimate_price"},
         "price_display": copy.format_price(facts.get("price"), facts.get("currency")),
         "price_guide": (listing.get("comps") or {}).get("suggested_range"),
-        "cover": (rooms[0].get("after") or rooms[0]["before"]) if rooms else None,
+        "cover": (shown_after(listing, rooms[0]) or rooms[0]["before"]) if rooms else None,
         "rooms": len(rooms),
         "note": listing.get("note"),
         "updated_at": listing["updated_at"],
