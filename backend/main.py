@@ -82,7 +82,8 @@ def meta_status() -> dict[str, Any]:
 
 @router.get("/settings")
 def app_settings() -> dict[str, Any]:
-    return {"blocking_checks": config.settings.blocking_checks}
+    return {"blocking_checks": config.settings.blocking_checks,
+            "variants": {style_id: list(preset["variants"]) for style_id, preset in stage.STYLE_PRESETS.items()}}
 
 
 @router.post("/listings", status_code=202)
@@ -398,9 +399,11 @@ def request_live(listing_id: str, body: LiveRequest) -> dict[str, str]:
 
 
 @router.post("/listings/{listing_id}/live/rooms/{room_id}/styles/{style_id}/rerun", status_code=202)
-def rerun_live_style(listing_id: str, room_id: str, style_id: str) -> dict[str, str]:
+def rerun_live_style(listing_id: str, room_id: str, style_id: str, variant: str | None = None) -> dict[str, str]:
     if style_id not in stage.STYLE_PRESETS:
         raise HTTPException(422, "Unknown style.")
+    if variant is not None and variant not in stage.STYLE_PRESETS[style_id]["variants"]:
+        raise HTTPException(422, "Unknown design direction for this style.")
     listing = db.get_listing(listing_id)
     if not listing:
         raise HTTPException(404, "Listing not found.")
@@ -415,7 +418,8 @@ def rerun_live_style(listing_id: str, room_id: str, style_id: str) -> dict[str, 
         conn.execute("BEGIN IMMEDIATE")
         if conn.execute("SELECT 1 FROM jobs WHERE listing_id = ? AND status IN ('queued', 'running')", (listing_id,)).fetchone():
             raise HTTPException(409, "Wait for the current job to finish.")
-        db.insert_job(conn, job_id, listing_id, f"live_style:{room_id}:{style_id}")
+        db.insert_job(conn, job_id, listing_id,
+                      f"live_style:{room_id}:{style_id}" + (f":{variant}" if variant else ""))
     return {"listing_id": listing_id, "job_id": job_id}
 
 

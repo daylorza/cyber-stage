@@ -19,7 +19,7 @@ def _flagged_upload(client):
 
 @pytest.mark.parametrize("client", [DEMO], indirect=True)
 def test_demo_mode_approves_and_publishes_with_open_flags(client):
-    assert client.get("/api/settings").json() == {"blocking_checks": False}
+    assert client.get("/api/settings").json()["blocking_checks"] is False
     listing = _flagged_upload(client)
     lid = listing["id"]
     assert not any("cannot publish" in f["resolution"] for f in listing["verification"]["flags"])
@@ -51,7 +51,7 @@ def test_removed_seeds_stay_gone(client):
 
 @pytest.mark.parametrize("client", [{"bad_claim": True}], indirect=True)
 def test_blocking_mode_still_blocks(client):
-    assert client.get("/api/settings").json() == {"blocking_checks": True}
+    assert client.get("/api/settings").json()["blocking_checks"] is True
     listing = _flagged_upload(client)
     assert client.post(f"/api/listings/{listing['id']}/review", json={"action": "approve"}).status_code == 409
     assert client.post(f"/api/listings/{listing['id']}/publish").status_code == 409

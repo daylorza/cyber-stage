@@ -10,7 +10,9 @@ stricter wording is what actually changes the picture.
 """
 
 import io
+import random
 from datetime import UTC, datetime
+from threading import Lock
 from typing import Any
 
 from PIL import Image
@@ -24,57 +26,189 @@ from pipeline.classify import is_utility
 STYLE_PRESETS = {
     "modern-luxury": {
         "label": "Modern luxury",
-        "description": "Restyle this room as a gallery-grade modern luxury interior, staged to the standard of a five-star residence, with a few large, architectural pieces only, low and clean-lined: one large sofa in warm-ivory bouclé with a tailored, low profile and plump, sculptural cushions; one low sculptural coffee table in honed travertine or veined stone with a soft, matte finish; one large warm-neutral rug in a plush, tonal weave grounding the entire set; and exactly one accent piece — either a charcoal armchair in a rich, textured wool or a champagne-brass floor lamp with a slender, sculptural stem, never both. Palette: warm ivory upholstery, soft champagne metal, charcoal, and warm stone, with at most one small muted-cyan cushion or artwork as a single quiet accent. Lighting: warm, directional, and layered, with soft shadows that give the furniture weight and the room depth — never flat daylight. No small decor: no vases, books, throws, plants, dried stems, or objects on counters and shelves. Light and space first — generous open floor, long sightlines, and a sense of calm, expensive restraint. Do not fill empty floor.",
+        "description": (
+            "Restyle this room as an ultra-luxury modern interior, staged to the standard "
+            "of a landmark penthouse or a five-star private residence. Use a few large, "
+            "bespoke, atelier-made furnishings suited to the room's function, with "
+            "exceptional proportions, hand-finished joinery, couture-grade upholstery "
+            "and museum-quality materials. Every surface should read as rare and "
+            "expensive: book-matched stone, hand-rubbed metal, dense natural fibres and "
+            "flawless tailoring. Follow the selected design direction for silhouettes, "
+            "materials and colors. Ground the main arrangement with one large hand-knotted "
+            "tonal rug where appropriate. Include at most one sculptural accent chair or "
+            "statement floor lamp where space allows. Use the source lighting direction "
+            "with soft, layered, gallery-like light and realistic shadows that give the "
+            "furniture weight. No small decor: no vases, books, throws, plants, dried "
+            "stems or countertop ornaments. Preserve generous open floor and long "
+            "sightlines; the result should feel calm, rare and effortlessly expensive."
+        ),
+        "variants": {
+            "Travertine and boucle": "Warm ivory boucle, book-matched honed travertine and hand-polished champagne bronze; generous rounded upholstery with plump sculpted cushions and softly carved monolithic stone profiles.",
+            "Walnut atelier": "Book-matched figured walnut, hand-stitched cognac saddle leather and brushed bronze with cashmere-soft neutral textiles; precisely tailored low rectilinear upholstery on slender, hand-finished timber frames.",
+            "Calacatta gallery": "Calacatta marble with soft gold veining, dove-gray sculpted mohair and satin nickel; broad monolithic stone profiles balanced with precisely curved, deeply cushioned upholstery.",
+            "Smoked bronze salon": "Smoked bronze glass, ivory silk-velvet and champagne metal; sleek low horizontal forms on slender polished supports, with one restrained deep sapphire textile accent.",
+        },
     },
     "coastal": {
         "label": "Coastal",
-        "description": "Restyle this room as an elegant coastal luxury interior, the kind found in a refined oceanfront residence, with a few generous, comfortable pieces: one soft ivory linen sofa with a relaxed, tailored silhouette and deep, inviting cushions; one low light-oak coffee table with a clean, hand-finished edge; one large natural woven rug in a soft sand tone with a tactile, organic weave; and one sculptural accent chair in rattan or light oak with a woven, open frame. Palette: soft whites, warm sand, weathered light wood, and a restrained muted ocean-blue accent used sparingly, never as a theme. Textures: natural and tactile — linen, woven fibre, pale wood, and stone. Lighting: warm, airy, and sun-washed, with soft daylight that makes the room feel open and serene. Keep floor space generous and sightlines long. Avoid nautical motifs, beach-themed decor, clutter, and small decorative objects.",
+        "description": (
+            "Restyle this room as an ultra-luxury coastal interior in an exclusive "
+            "oceanfront estate, the standard of a private clifftop villa on the Riviera "
+            "or in Malibu. Use a few generous, bespoke furnishings suited to the room's "
+            "function, with relaxed but impeccable tailoring and hand-finished detail. "
+            "Follow the selected design direction for silhouettes, wood tones, textiles "
+            "and stone. Favor rare natural materials: heavyweight Belgian linen, "
+            "hand-woven fibres, oiled hardwoods and honed natural stone. Use one large "
+            "hand-loomed natural-fibre or tonal rug where appropriate. Work with the "
+            "source daylight and existing light direction for a luminous, sun-washed, "
+            "serene photographic result. Keep floor space generous and sightlines long. "
+            "Avoid nautical motifs, beach-themed decor, rustic or distressed finishes, "
+            "clutter and small decorative objects."
+        ),
+        "variants": {
+            "Riviera villa": "Chalk-white Belgian linen, pale oiled oak and cream limestone; softly rounded deep-seated upholstery, carved stone tables and fine hand-woven textures. Echo plaster tones in the furnishings without changing existing walls.",
+            "Malibu glass house": "Tailored ivory linen, bleached ash and pale honed quartzite; crisp low horizontal furnishings with slim open frames and one restrained muted ocean-blue accent.",
+            "Sun-bleached teak estate": "Sun-bleached plantation teak, oatmeal linen and warm sand hand-woven fibre; generous relaxed forms with precise joinery and open woven accent frames, polished and refined, never rustic.",
+            "Sea glass residence": "Cool off-white cotton-silk, light natural oak, pale coastal stone and restrained sea-glass green; gently curved upholstery and hand-blown glass details, no literal shells or seaside ornaments.",
+        },
     },
     "minimal": {
         "label": "Minimal",
-        "description": "Restyle this room as a warm, museum-quiet minimal interior, where every piece earns its place, with a few purposeful, sculptural pieces — and at minimum the room MUST contain a sofa: one low clean-lined sofa in warm ivory with a soft, tailored finish; one simple coffee table in pale honed stone or light wood with a quiet, monolithic form; and one large understated neutral rug in a soft, tonal weave that anchors the room without pattern. Minimal does NOT mean empty: never stage a room with no sofa, and never substitute a bench, chair, or ottoman for the sofa — if only one seating piece fits, it must be the sofa. Palette: ivory, pale plaster, and warm wood, with subtle texture and a single warm material accent at most. Lighting: soft, natural, and diffused, with gentle shadows that reveal form and proportion. Preserve generous negative space, long clean sightlines, and a sense of stillness. Avoid busy patterns, clutter, and small decorative objects.",
+        "description": (
+            "Restyle this room as an ultra-luxury, museum-quiet minimal interior, the "
+            "kind of serene private residence where every piece is a bespoke object and "
+            "earns its place. Use only the essential functional furnishings for this room, "
+            "with purposeful sculptural forms, rare materials, invisible joinery and "
+            "precise proportions. Minimal does not mean unfurnished: include the main "
+            "furniture required by the room-specific guidance. Follow the selected design "
+            "direction rather than defaulting every room to ivory. Use one understated "
+            "hand-loomed tonal rug where appropriate. Preserve the source lighting "
+            "direction with soft, diffused light and realistic shadows revealing form. "
+            "Maintain generous negative space, clean sightlines and a sense of stillness. "
+            "Avoid busy patterns, clutter and small decorative objects."
+        ),
+        "variants": {
+            "Warm oak sanctuary": "Quarter-sawn warm oak, oatmeal linen and ivory wool; low clean-lined forms with softly eased corners and flawless natural grain.",
+            "Monolithic stone": "Pale honed limestone, chalk-white boucle and soft gray cashmere-weight wool; block-like grounded stone profiles paired with simple, generous upholstery.",
+            "Smoked oak stillness": "Smoked oak, warm graphite linen and soft gray wool; precise rectilinear furniture with slim profiles and quiet matte surfaces. Keep the room bright and clearly exposed.",
+            "Soft plaster forms": "Hand-troweled plaster-toned furniture, cream upholstery and a single pale ash accent; simple rounded volumes and continuous softly curved profiles. Leave existing wall finishes unchanged.",
+        },
     },
     "2142": {
         "label": "Cyberpunk",
         "description": (
-            "Virtually stage this exact room as a luxurious futuristic penthouse in 2142. "
-            "Preserve the original camera position, perspective, room proportions, walls, "
-            "ceiling shape, floor, windows, door openings and architectural layout. "
-            "Keep all windows and doors in their existing positions and retain their frames. "
-            "Adapt the furniture arrangement to the available space without blocking openings "
-            "or walkways. "
-            "Create a warm, sophisticated interior with a palette of ivory, cream, champagne, "
-            "soft taupe and warm gray. Use polished white marble with subtle gray veining, "
-            "reflective stone, smoked or mirrored glass, and polished chrome. "
-            "Add a low, generously proportioned curved ivory sectional sofa with soft rounded "
-            "corners and plush cushions, paired with a matching rounded chaise or ottoman if "
-            "space allows. Place a sculptural, low coffee table in polished chrome or reflective "
-            "stone on a large, textured taupe-gray rug. Keep the arrangement open and balanced. "
-            "Enhance an existing feature wall with elegant backlit marble panels, slim mirrored "
-            "display shelving and a low floating console, while preserving the wall's shape and "
-            "any existing openings. Use only a few carefully placed decorative objects and "
-            "one understated plant or branch arrangement. "
-            "Light the room with a warm golden glow from recessed ceiling coves, concealed "
-            "shelf lighting and slim vertical wall lights. Add thin, controlled cyan and violet "
-            "light accents along existing ceiling curves, beneath the sofa or console, and "
-            "around architectural edges. Include a sculptural concentric-ring ceiling light "
-            "only where the existing ceiling and fixtures allow it. "
-            "Doors: keep every door opening in exactly the same place and size, but make the "
-            "doors retractable translucent panels with no doorknobs — a laser-gate privacy "
-            "shimmer that frosts on touch, with the door frame still clearly visible so every "
-            "door still reads as a door. Replace any ceiling fan with a levitating halo climate "
-            "ring, no blades, in the same ceiling position. "
-            "Through the existing windows, show a believable futuristic city skyline at blue "
-            "hour or night, with distant illuminated skyscrapers, and at most one flying "
-            "vehicle — randomised: sometimes include exactly one flying vehicle, sometimes "
-            "include none, never more than one. Preserve the window frames "
-            "and the view's perspective. The finished image should look like a photorealistic "
-            "high-end real estate photograph: inviting, polished and subtly futuristic. "
-            "Avoid garish neon, dark dystopian interiors, carbon fiber, exposed wires, robots, "
-            "weapons, excessive clutter and changes to the room's structure."
+            "Restyle this exact room as a pristine ultra-luxury residence in the year "
+            "2142: immaculate, high-tech and unmistakably far-future, never retro and "
+            "never contemporary. Furniture must look designed in 2142, not 2026: "
+            "seamless monocoque forms with no visible legs, screws or seams, grown "
+            "or printed as single sculptural pieces; programmable smart-knit and "
+            "self-healing upholstery; liquid-metal and pearl-ceramic shells; "
+            "photochromic glass; and slim magnetic plinths so key pieces appear to hover "
+            "a few centimetres above the floor on a soft halo of light while still "
+            "casting a grounded contact shadow. Apply the selected design direction "
+            "consistently to furniture forms, materials, upholstery, lighting colors and "
+            "architectural details. Integrate technology invisibly into selected wall "
+            "panels, furnishings and existing architectural edges: flush light seams, "
+            "touch-reactive surfaces and, where the direction calls for it, one "
+            "translucent interface surface with abstract graphics and no readable text. "
+            "Every surface is spotless, precise and flawlessly finished. "
+            "Keep any door opening and frame exactly in place; futuristic sliding privacy "
+            "panels must remain recognizable as doors. Any redesigned ceiling fixture "
+            "must occupy the existing fixture's position. Preserve comfortable usable "
+            "space and clear circulation paths. "
+            "Through the existing windows, show the exterior view described by the "
+            "selected design direction, keeping window frames and the view's perspective "
+            "intact; the city is breathtaking but the interior remains the focal point. "
+            "Render as a high-end architectural photograph with physically plausible "
+            "reflections, rich material texture, precise upholstery detail and controlled "
+            "exposure. Balance luminous accents with bright ambient light so materials "
+            "remain readable. The mood is bright, clean, optimistic and serene. Avoid "
+            "dark, moody or gritty atmospheres, rain-soaked streets, neon signage, "
+            "billboards, grime, graffiti, exposed wiring, carbon fiber, industrial "
+            "hardware, robots, weapons, oversized holograms, excessive bloom, plastic CGI "
+            "surfaces and changes to the room's structural layout."
         ),
+        "variants": {
+            "Champagne halo": (
+                "Warm ivory, cream, champagne and soft pearl-taupe. Main upholstered "
+                "pieces are single seamless crescent-curved monocoques in ivory "
+                "smart-knit, with deep self-shaping cushions flowing out of one "
+                "continuous shell, hovering on polished champagne-metal halo plinths "
+                "with warm light beneath. Tables are low liquid-champagne forms that "
+                "rise like polished droplets from the floor. Backlit translucent white onyx panels and a "
+                "floating cantilevered console on an existing feature wall where space "
+                "allows. Warm golden cove light dominates, with hairline ice-blue and "
+                "soft violet light seams along existing ceiling edges. Exterior view: "
+                "replace the view with a pristine 2142 megacity at blue hour, with "
+                "slender luminous white and glass supertall towers, sky gardens and "
+                "softly glowing skybridges under a deep sapphire sky, and exactly one "
+                "sleek silent flying vehicle gliding in the distance."
+            ),
+            "Pearl atrium": (
+                "Luminous pearl-white, opal and brushed platinum with a few deep "
+                "emerald and amethyst textile accents. Furnishings are flowing "
+                "pearl-ceramic shells wrapped around plush pearl smart-knit upholstery, "
+                "with platinum hairline seams and softly rounded edges; tables are "
+                "single pieces of milky photochromic glass on slim levitating plinths. "
+                "Glossy pearl wall panels fitted to existing surfaces, with sparse "
+                "hairline cyan light channels and, where clear wall space exists, one "
+                "flush translucent interface panel with faint abstract graphics that "
+                "never covers a window, door or mirror. Bright, airy, gallery-white "
+                "interior. Exterior view: keep the real view's horizon, terrain, water "
+                "and the layout, spacing and scale of its buildings, but rebuild every "
+                "visible building as an immaculate 2142 version with white ceramic and "
+                "glass facades, vertical gardens and fine light lines, in bright clear "
+                "daylight under a crisp blue sky. No flying vehicles."
+            ),
+            "Liquid chrome": (
+                "Mirror-polished liquid chrome, white silk-velvet and ice-blue light. "
+                "Furnishings are continuous fluid chrome shells that look poured rather "
+                "than built, cradling deeply inset white silk-velvet upholstery, with "
+                "capsule-like curves and narrow recessed ice-blue luminous seams; key "
+                "pieces hover on mirrored plinths with cool light beneath. Smoked-glass "
+                "and pale silver surfaces reflect soft ice-blue and rose highlights. "
+                "Interior stays bright and clean, never dark. Exterior view: keep the "
+                "real view's horizon, terrain, water and the layout, spacing and scale "
+                "of its buildings, but rebuild every visible building as a gleaming 2142 "
+                "tower of mirrored glass and white light ribbons at blue hour, with "
+                "exactly one sleek silent flying vehicle gliding in the distance."
+            ),
+            "Glacier glass": (
+                "Arctic white, frosted crystal, brushed aluminum and pale ice-blue with "
+                "warm amber light channels. Furnishings are low, broad sculptural forms "
+                "in frosted crystal-ceramic and soft white smart-knit, with integrated "
+                "touch surfaces and edges that glow faintly when touched; tables are "
+                "slabs of clear glacier glass with light suspended inside. Flush white "
+                "wall panels with precise light seams. Brilliant, crisp, high-key "
+                "interior. Exterior view: replace the view with a pristine 2142 "
+                "megacity in bright clear daylight, with elegant white and glass "
+                "supertall towers, terraced sky gardens, silent maglev lines and "
+                "luminous clean air. No flying vehicles."
+            ),
+        },
     },
 }
+
+# Rotation is process-local; saved staging records retain their chosen variant on retry.
+_VARIANT_BAGS: dict[str, list[str]] = {}
+_LAST_VARIANTS: dict[str, str] = {}
+_VARIANT_LOCK = Lock()
+
+
+def select_variant(style: str) -> str:
+    """Shuffle each style's directions once per cycle, without a boundary repeat."""
+    style = style if style in STYLE_PRESETS else "modern-luxury"
+    with _VARIANT_LOCK:
+        bag = _VARIANT_BAGS.setdefault(style, [])
+        if not bag:
+            bag.extend(STYLE_PRESETS[style]["variants"])
+            random.shuffle(bag)
+            if len(bag) > 1 and bag[-1] == _LAST_VARIANTS.get(style):
+                bag[0], bag[-1] = bag[-1], bag[0]
+        variant = bag.pop()
+        _LAST_VARIANTS[style] = variant
+        return variant
+
 
 GEOMETRY_RULES = (
     "Virtually stage the source photo for a real estate listing. Preserve the exact camera "
@@ -95,12 +229,13 @@ FANTASY_RULES = (
     "This is futuristic concept art, not listing-accurate staging. Preserve the original "
     "camera position, framing, room proportions, structural layout, and the position and "
     "size of all window and door openings. Futuristic door panels, ceiling fixtures, "
-    "surface treatments and the skyline described above are intentional. Keep openings "
-    "recognizable and walkways clear. No people, text, logos or personal photographs."
+    "surface treatments and the exterior view described in the design direction are "
+    "intentional. Keep window frames and openings recognizable and walkways clear. "
+    "No people, text, logos or personal photographs."
 )
 
 ROOM_GUIDANCE = {
-    "living": "Furnish as a living room, with seating and a coffee table or rug where space allows.",
+    "living": "Furnish as a living room: include a comfortable sofa as the primary seating, plus a coffee table and rug where space allows. If only one seating piece fits, prioritize the sofa over a chair, bench or ottoman.",
     "bedroom": "Furnish as a bedroom, with an appropriately sized bed and bedside pieces where space allows.",
     "dining": "Furnish as a dining room, with an appropriately sized dining table and chairs where space allows.",
     "office": "Furnish as an office, with an appropriately sized desk and chair where space allows.",
@@ -112,6 +247,27 @@ OUTDOOR_NOTE = (
     "appropriately scaled outdoor pieces in the same style, such as a pair of loungers or "
     "outdoor seating; keep railings, glass and the view unobstructed."
 )
+
+CYBERPUNK_ROOM_GUIDANCE = {
+    "living": (
+        "Furnish as a living room with a comfortable 2142 sofa as the primary seating, "
+        "built as one seamless sculptural form following the selected direction, with "
+        "no conventional legs, frame or visible hardware. Coordinate a low coffee "
+        "table and any accent chair with this design, giving each its own silhouette."
+    ),
+    "bedroom": (
+        "Furnish as a bedroom with a 2142 bed following the selected direction: a "
+        "seamless low platform that appears to hover on a soft halo of light, with an "
+        "integrated sculptural headboard and discreet touch controls. Keep bedding "
+        "soft, tactile and immaculate. Add floating bedside units only where space "
+        "allows."
+    ),
+    "dining": "Furnish as a dining room with a seamless sculptural dining table and comfortable chairs whose shells, upholstery and silhouettes follow the selected 2142 direction.",
+    "office": "Furnish as an office with a seamless sculptural desk and ergonomic task chair following the selected 2142 direction, with invisible integrated controls.",
+    "terrace": "Furnish as a terrace with immaculate weather-proof 2142 outdoor seating and a sculptural table in the selected direction.",
+    "kitchen": "Keep this a functional kitchen. Preserve the count, positions and sizes of cabinets, appliances, sinks and openings. Apply pristine 2142 materials, flush touch controls and integrated task lighting to existing surfaces without blocking access or adding unrelated furniture.",
+    "bathroom": "Keep this a functional bathroom. Preserve the positions and sizes of the vanity, basin, toilet, bath or shower, mirrors and openings. Apply pristine 2142 materials, discreet touch controls and integrated light to existing fixtures without adding unrelated furniture.",
+}
 
 MAX_RESTAGE_LEVEL = 2
 
@@ -133,17 +289,27 @@ def _now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
-def prompt_for(style: str, room: dict[str, Any] | None = None) -> str:
-    preset = STYLE_PRESETS.get(style, STYLE_PRESETS["modern-luxury"])
+def prompt_for(style: str, room: dict[str, Any] | None = None, *,
+               variant: str | None = None) -> str:
+    style = style if style in STYLE_PRESETS else "modern-luxury"
+    preset = STYLE_PRESETS[style]
     room = room or {}
+    saved = room.get("staging") or {}
+    if variant is None and saved.get("style") == style:
+        variant = saved.get("variant")
+    if variant not in preset["variants"]:
+        variant = select_variant(style)
+    direction = f"Design direction: {variant}. {preset['variants'][variant]}"
     guidance = ROOM_GUIDANCE.get(room.get("type"),
         "Choose furnishings appropriate to the room's apparent function; if uncertain, "
         "keep the staging neutral and do not impose a new function.")
     fantasy = style == "2142"
+    if fantasy:
+        guidance = CYBERPUNK_ROOM_GUIDANCE.get(room.get("type"), guidance)
     rules = FANTASY_RULES if fantasy else GEOMETRY_RULES
     wet_note = "" if fantasy else _wet_room_note(room)
     outdoor = "" if fantasy or room.get("type") in WET_ROOM_TYPES else OUTDOOR_NOTE
-    return " ".join(part for part in (preset["description"], guidance, outdoor, rules, wet_note) if part)
+    return " ".join(part for part in (preset["description"], direction, guidance, outdoor, rules, wet_note) if part)
 
 
 def _structure_counts(frame: dict[str, Any] | None) -> str:
@@ -174,10 +340,16 @@ def restage_prompt(style: str, room: dict[str, Any], frame: dict[str, Any] | Non
                    level: int) -> str:
     """Stricter staging prompt for a flagged room. Part of the Meta cache key:
     keep the wording stable and deterministic."""
-    preset = STYLE_PRESETS.get(style, STYLE_PRESETS["modern-luxury"])
+    style = style if style in STYLE_PRESETS else "modern-luxury"
+    preset = STYLE_PRESETS[style]
+    saved = room.get("staging") or {}
+    variant = saved.get("variant") if saved.get("style") == style else None
+    if variant not in preset["variants"]:
+        # Legacy staging has no variant metadata; its retries still need stable cache keys.
+        variant = next(iter(preset["variants"]))
     counts = _structure_counts(frame)
     if style == "2142":
-        return " ".join(part for part in (prompt_for(style, room), STRICT_FRAMING, counts) if part)
+        return " ".join(part for part in (prompt_for(style, room, variant=variant), STRICT_FRAMING, counts) if part)
     if level >= 2:
         surface = {
             "kitchen": "on the countertop or island",
@@ -189,9 +361,10 @@ def restage_prompt(style: str, room: dict[str, Any], frame: dict[str, Any] | Non
                 f"{surface} in a {preset['label'].lower()} style. Change nothing else in "
                 f"the image.")
         return " ".join(part for part in
-                        (head, GEOMETRY_RULES, STRICT_FRAMING, STRICT_STRUCTURE, counts)
+                        (head, f"Design direction: {variant}. {preset['variants'][variant]}",
+                         GEOMETRY_RULES, STRICT_FRAMING, STRICT_STRUCTURE, counts)
                         if part)
-    head = f"{prompt_for(style, room)} {STRICT_FRAMING} {STRICT_STRUCTURE}"
+    head = f"{prompt_for(style, room, variant=variant)} {STRICT_FRAMING} {STRICT_STRUCTURE}"
     return " ".join(part for part in (head, counts) if part)
 
 
@@ -250,8 +423,10 @@ def stage_rooms(listing: dict[str, Any]) -> dict[str, Any]:
                              "at": _now()}
 
     for room in order:
-        prompt = prompt_for(style, room)
-        record = {"model": getattr(meta, "image_model", None), "prompt": prompt, "style": style, "error": None}
+        variant = select_variant(style)
+        prompt = prompt_for(style, room, variant=variant)
+        record = {"model": getattr(meta, "image_model", None), "prompt": prompt,
+                  "style": style, "variant": variant, "error": None}
         if main is None or (room is not main and main.get("after") is None):
             record["error"] = NO_MAIN_ROOM if main is None else MAIN_FAILED
             room["staging"] = record
@@ -333,6 +508,8 @@ def restage_room(listing: dict[str, Any], room_id: str, level: int) -> str | Non
         "model": getattr(meta, "image_model", None),
         "prompt": prompt,
         "style": style,
+        "variant": (previous_staging or {}).get("variant") or next(iter(
+            STYLE_PRESETS.get(style, STYLE_PRESETS["modern-luxury"])["variants"])),
         "error": None,
         "level": level,
         "purpose": "image.restage",

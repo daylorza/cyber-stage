@@ -442,7 +442,13 @@ def _prepare_style(listing: dict[str, Any], room: dict[str, Any], style_id: str,
     reuse = style_id == room.get("style") and room.get("after")
     # The Stage 1 image is the approved one and is never regenerated. A generated
     # style that drifts gets one retry with a stricter prompt, then stays unavailable.
-    prompts = [None] if reuse else [stage.prompt_for(style_id), stage.prompt_for(style_id) + RETRY_RULES]
+    if reuse:
+        entry["variant"] = (room.get("staging") or {}).get("variant")
+        prompts = [None]
+    else:
+        entry["variant"] = stage.select_variant(style_id)
+        base_prompt = stage.prompt_for(style_id, room, variant=entry["variant"])
+        prompts = [base_prompt, base_prompt + RETRY_RULES]
     last_version = base_version
     try:
         for prompt in prompts:
@@ -974,7 +980,7 @@ def for_residence(residence_id: str) -> dict[str, Any] | None:
 
 def rerun_style(job: dict[str, Any]) -> None:
     """Regenerate one style; retain its existing image unless all checks succeed."""
-    _, room_id, style_id = job["kind"].split(":", 2)
+    _, room_id, style_id, *picked = job["kind"].split(":", 3)
     listing = db.get_listing(job["listing_id"])
     if not listing or listing.get("status") != "published":
         raise ValueError("Listing is no longer published.")
@@ -994,7 +1000,8 @@ def rerun_style(job: dict[str, Any]) -> None:
     required = {"living": ("sofa", "table"), "bedroom": ("bed",), "dining": ("table", "chair")}.get(room.get("type"))
     if not required:
         raise ValueError("Targeted furniture rerun is available for living rooms, bedrooms and dining rooms.")
-    prompt = (stage.prompt_for(style_id) + stage.STRICT_FRAMING + stage.STRICT_STRUCTURE
+    variant = picked[0] if picked else stage.select_variant(style_id)
+    prompt = (stage.prompt_for(style_id, room, variant=variant) + " " + stage.STRICT_FRAMING + " " + stage.STRICT_STRUCTURE
               + f" Furnish this {room.get('type')} room with clearly visible " + " and ".join(required) + ". "
               + f"Render variation {job['id']}.")
     # Recheck a face-checked candidate rejected solely for missing source boxes,
@@ -1009,6 +1016,7 @@ def rerun_style(job: dict[str, Any]) -> None:
     previous_candidate = raw_dir / f"{previous['id']}_checked.jpg" if reusable else None
     if previous_candidate and previous_candidate.is_file():
         candidate.write_bytes(previous_candidate.read_bytes())
+        variant = None  # The reused candidate predates this attempt's selected direction.
     else:
         data = meta.image_stage(before, prompt, trace=trace, purpose="live.image.stage",
                                 target={"room": room_id, "style": style_id, "job": job["id"]})
@@ -1075,7 +1083,7 @@ def rerun_style(job: dict[str, Any]) -> None:
     dest.write_bytes(candidate.read_bytes())
     target["styles"][style_id] = {**target["styles"].get(style_id, {}), "label": stage.STYLE_PRESETS[style_id]["label"], "image": rel, "source": "live", "available": True, "concept": is_concept,
                                   "error": None, "geometry": geometry, "concept_geometry": concept_geometry if is_concept else None, "structure": structure, "pieces": pieces,
-                                  "align": align, "drift": drift_record, "mask": None}
+                                  "align": align, "drift": drift_record, "mask": None, "variant": variant}
     _record_version(current, room_id, style_id, target["styles"][style_id], version=version,
                     created_by=f"style rerun job {job['id']}",
                     model=getattr(meta, "image_model", meta_client.DEFAULT_MODELS["image"]))
