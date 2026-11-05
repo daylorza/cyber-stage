@@ -40,7 +40,7 @@ Right now, Cyber Stage just does staging — one room, done convincingly, end to
 
 ## Demo — 3 minutes
 
-[Watch the demo on YouTube](https://youtu.be/e4h0FqXTF5A).
+[Watch the demo on YouTube](https://youtu.be/e1hGIZah_oI).
 
 1. **0:00–0:15 — Problem + raw phone footage.** An empty room on a phone video.
 2. **0:15–0:50 — Generated listing + before/after.** The same room, staged.

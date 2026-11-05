@@ -126,7 +126,7 @@ export default function TechnicalDetails({ listing, children }: { listing?: List
         <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
           {listing && <Link to="/about" className="btn-ghost text-ivory/85">What is Cyber Stage? About →</Link>}
           <a href={REPO} target="_blank" rel="noreferrer" className="btn-ghost text-ivory/85">Repository ↗</a>
-          <a href="https://youtu.be/e4h0FqXTF5A" target="_blank" rel="noreferrer" className="btn-ghost text-ivory/85">Demo video ↗</a>
+          <a href="https://youtu.be/e1hGIZah_oI" target="_blank" rel="noreferrer" className="btn-ghost text-ivory/85">Demo video ↗</a>
         </div>
       </div>
 

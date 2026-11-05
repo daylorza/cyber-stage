@@ -42,7 +42,7 @@ export default function About() {
         <a href="#technical" className="btn btn-halo group px-6 py-3 text-base font-medium">Technical details — for judges <span aria-hidden className="transition group-hover:translate-x-1">→</span></a>
         <Link to="/inventory" className="btn-ghost text-base text-ivory/80">See the inventory</Link>
         <a href="https://github.com/daylorza/cyber-stage" className="btn-ghost text-base text-ivory/80">See GitHub repo</a>
-        <a href="https://youtu.be/e4h0FqXTF5A" className="btn-ghost text-base text-ivory/80">Watch on YouTube</a>
+        <a href="https://youtu.be/e1hGIZah_oI" className="btn-ghost text-base text-ivory/80">Watch on YouTube</a>
       </div>
 
       <section className="mt-16 grid grid-cols-1 gap-6 border-t border-ivory/10 pt-10 sm:mt-20 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-10">
